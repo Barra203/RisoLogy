@@ -1,0 +1,8 @@
+{
+  "name": "RisoLogy POS",
+  "description": "Aplikasi Kasir / Point of Sale modern, bersih, dan minimalis bertema hitam putih untuk brand RisoLogy.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
