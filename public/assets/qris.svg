@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 850" width="600" height="850">
+  <!-- White Paper Background -->
+  <rect width="600" height="850" fill="#FFFFFF" rx="12"/>
+
+  <!-- Left Red Geometric Triangular Accents -->
+  <path d="M 0 170 L 120 270 L 0 370 Z" fill="#EE2737"/>
+  <path d="M 0 270 L 60 320 L 0 370 Z" fill="#B31A28"/>
+
+  <!-- Subtle Traditional Batik Pattern Overlay in Background -->
+  <g opacity="0.04" stroke="#000000" stroke-width="2" fill="none">
+    <pattern id="batik" width="40" height="40" patternUnits="userSpaceOnUse">
+      <rect x="5" y="5" width="30" height="30" rx="4"/>
+      <circle cx="20" cy="20" r="8"/>
+    </pattern>
+    <rect width="600" height="850" fill="url(#batik)"/>
+  </g>
+
+  <!-- Top Left: QRIS Logo -->
+  <g transform="translate(35, 30)">
+    <!-- QRIS stylized text -->
+    <rect x="0" y="4" width="28" height="28" fill="#1C1C1C" rx="3"/>
+    <rect x="5" y="9" width="18" height="18" fill="#FFFFFF" rx="2"/>
+    <rect x="9" y="13" width="10" height="10" fill="#1C1C1C"/>
+    
+    <text x="36" y="27" font-family="'Arial Black', sans-serif" font-weight="900" font-size="28" fill="#1C1C1C" letter-spacing="-1">
+      QRIS
+    </text>
+    <text x="110" y="16" font-family="'Arial', sans-serif" font-weight="700" font-size="10" fill="#1C1C1C">
+      QR Code Standar
+    </text>
+    <text x="110" y="27" font-family="'Arial', sans-serif" font-weight="700" font-size="10" fill="#1C1C1C">
+      Pembayaran Nasional
+    </text>
+  </g>
+
+  <!-- Top Right: GPN Red Eagle Logo -->
+  <g transform="translate(500, 25)">
+    <!-- Eagle Wings in Red -->
+    <path d="M 15 25 C 20 10, 45 0, 55 12 C 45 15, 35 22, 30 35 C 38 30, 48 26, 55 28 C 45 35, 38 42, 30 50 Z" fill="#EE2737"/>
+    <text x="8" y="52" font-family="'Arial Black', sans-serif" font-weight="900" font-size="16" fill="#1C1C1C" letter-spacing="1">
+      GPN
+    </text>
+  </g>
+
+  <!-- Header Store Information -->
+  <text x="300" y="155" text-anchor="middle" font-family="'Arial', sans-serif" font-weight="900" font-size="28" fill="#111827">
+    RisoLogy, Elektronik
+  </text>
+  <text x="300" y="195" text-anchor="middle" font-family="'Arial', sans-serif" font-weight="700" font-size="19" fill="#1F2937">
+    NMID : ID1026489793988
+  </text>
+  <text x="300" y="235" text-anchor="middle" font-family="'Arial', sans-serif" font-weight="700" font-size="20" fill="#1F2937">
+    A01
+  </text>
+
+  <!-- QR Code Frame & High Density QR Matrix Representation -->
+  <g transform="translate(140, 270)">
+    <!-- QR Outer Border -->
+    <rect x="-10" y="-10" width="340" height="340" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="2" rx="8"/>
+
+    <!-- 3 Finder Patterns (Top-Left, Top-Right, Bottom-Left) -->
+    <!-- Top-Left -->
+    <rect x="10" y="10" width="64" height="64" fill="#000000"/>
+    <rect x="20" y="20" width="44" height="44" fill="#FFFFFF"/>
+    <rect x="28" y="28" width="28" height="28" fill="#000000"/>
+
+    <!-- Top-Right -->
+    <rect x="246" y="10" width="64" height="64" fill="#000000"/>
+    <rect x="256" y="20" width="44" height="44" fill="#FFFFFF"/>
+    <rect x="264" y="28" width="28" height="28" fill="#000000"/>
+
+    <!-- Bottom-Left -->
+    <rect x="10" y="246" width="64" height="64" fill="#000000"/>
+    <rect x="20" y="256" width="44" height="44" fill="#FFFFFF"/>
+    <rect x="28" y="264" width="28" height="28" fill="#000000"/>
+
+    <!-- Timing Patterns -->
+    <g fill="#000000">
+      <rect x="85" y="38" width="150" height="8" rx="2"/>
+      <rect x="38" y="85" width="8" height="150" rx="2"/>
+
+      <!-- Dense QR Code modules simulation with realistic clustering -->
+      <!-- Center pattern -->
+      <rect x="100" y="100" width="120" height="120" fill="#000000" rx="4"/>
+      <rect x="115" y="115" width="90" height="90" fill="#FFFFFF" rx="2"/>
+      <rect x="135" y="135" width="50" height="50" fill="#000000"/>
+      <circle cx="160" cy="160" r="12" fill="#FFFFFF"/>
+
+      <!-- Surrounding Data Blocks -->
+      <rect x="90" y="15" width="25" height="15"/>
+      <rect x="125" y="15" width="15" height="15"/>
+      <rect x="150" y="10" width="20" height="20"/>
+      <rect x="180" y="20" width="30" height="12"/>
+      <rect x="220" y="15" width="15" height="15"/>
+
+      <rect x="90" y="55" width="40" height="15"/>
+      <rect x="140" y="55" width="20" height="30"/>
+      <rect x="175" y="60" width="35" height="15"/>
+      <rect x="220" y="55" width="15" height="30"/>
+
+      <rect x="15" y="90" width="15" height="35"/>
+      <rect x="15" y="135" width="15" height="20"/>
+      <rect x="15" y="165" width="15" height="30"/>
+      <rect x="15" y="205" width="15" height="25"/>
+
+      <rect x="55" y="90" width="20" height="20"/>
+      <rect x="55" y="125" width="25" height="30"/>
+      <rect x="55" y="170" width="20" height="20"/>
+      <rect x="55" y="205" width="20" height="30"/>
+
+      <rect x="250" y="90" width="20" height="35"/>
+      <rect x="285" y="90" width="25" height="20"/>
+      <rect x="250" y="140" width="20" height="25"/>
+      <rect x="280" y="125" width="30" height="18"/>
+      <rect x="250" y="180" width="60" height="20"/>
+      <rect x="250" y="215" width="25" height="25"/>
+      <rect x="285" y="215" width="25" height="20"/>
+
+      <rect x="90" y="240" width="35" height="20"/>
+      <rect x="140" y="240" width="20" height="30"/>
+      <rect x="170" y="245" width="30" height="15"/>
+      <rect x="210" y="240" width="20" height="20"/>
+
+      <rect x="90" y="275" width="20" height="35"/>
+      <rect x="120" y="280" width="35" height="20"/>
+      <rect x="165" y="275" width="20" height="35"/>
+      <rect x="195" y="280" width="40" height="25"/>
+      <rect x="245" y="255" width="65" height="20"/>
+      <rect x="245" y="285" width="30" height="25"/>
+      <rect x="285" y="285" width="25" height="25"/>
+    </g>
+  </g>
+
+  <!-- Tagline: SATU QRIS UNTUK SEMUA -->
+  <text x="300" y="640" text-anchor="middle" font-family="'Arial', sans-serif" font-weight="900" font-size="20" fill="#1E293B" letter-spacing="1">
+    SATU QRIS UNTUK SEMUA
+  </text>
+  <text x="300" y="670" text-anchor="middle" font-family="'Arial', sans-serif" font-weight="600" font-size="14" fill="#475569">
+    Cek aplikasi penyelenggara di:
+  </text>
+  <text x="300" y="692" text-anchor="middle" font-family="'Arial', sans-serif" font-weight="700" font-size="14" fill="#0F172A">
+    www.aspi-qris.id
+  </text>
+
+  <!-- Bottom Red Wave Banner & Payment Instruction Icons -->
+  <g transform="translate(0, 715)">
+    <!-- Red curved banner on right side -->
+    <path d="M 280 135 C 330 90, 420 50, 600 45 L 600 135 Z" fill="#EE2737"/>
+
+    <!-- Instructions Text on top of red banner -->
+    <text x="560" y="32" text-anchor="end" font-family="'Arial', sans-serif" font-weight="800" font-size="12" fill="#1E293B">
+      Cara bayar dengan QRIS:
+    </text>
+
+    <!-- 3 Action Icons -->
+    <!-- Icon 1: Phone with QRIS -->
+    <g transform="translate(425, 45)">
+      <circle cx="20" cy="20" r="18" fill="#FFFFFF" stroke="#EE2737" stroke-width="2"/>
+      <rect x="13" y="10" width="14" height="20" rx="2" fill="none" stroke="#111827" stroke-width="2"/>
+      <rect x="16" y="14" width="8" height="8" fill="#EE2737"/>
+    </g>
+    <text x="445" y="95" text-anchor="middle" font-family="'Arial', sans-serif" font-weight="700" font-size="9" fill="#FFFFFF">
+      Buka Aplikasi
+    </text>
+    <text x="445" y="106" text-anchor="middle" font-family="'Arial', sans-serif" font-weight="700" font-size="9" fill="#FFFFFF">
+      Berlogo QRIS
+    </text>
+
+    <!-- Icon 2: Scan and Check -->
+    <g transform="translate(485, 45)">
+      <circle cx="20" cy="20" r="18" fill="#FFFFFF" stroke="#EE2737" stroke-width="2"/>
+      <rect x="13" y="10" width="14" height="20" rx="2" fill="none" stroke="#111827" stroke-width="2"/>
+      <line x1="10" y1="20" x2="30" y2="20" stroke="#EE2737" stroke-width="2"/>
+    </g>
+    <text x="505" y="95" text-anchor="middle" font-family="'Arial', sans-serif" font-weight="700" font-size="9" fill="#FFFFFF">
+      Scan dan Cek
+    </text>
+
+    <!-- Icon 3: Pay -->
+    <g transform="translate(545, 45)">
+      <circle cx="20" cy="20" r="18" fill="#FFFFFF" stroke="#EE2737" stroke-width="2"/>
+      <rect x="13" y="10" width="14" height="20" rx="2" fill="none" stroke="#111827" stroke-width="2"/>
+      <path d="M 16 20 L 19 23 L 24 17" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text x="565" y="95" text-anchor="middle" font-family="'Arial', sans-serif" font-weight="700" font-size="9" fill="#FFFFFF">
+      Bayar
+    </text>
+
+    <!-- Bottom Left Print Details -->
+    <text x="35" y="85" font-family="'Arial', sans-serif" font-weight="600" font-size="12" fill="#334155">
+      Dicetak oleh: 93600915
+    </text>
+    <text x="35" y="105" font-family="'Arial', sans-serif" font-weight="600" font-size="12" fill="#334155">
+      Versi cetak: 1.0.15.10.26
+    </text>
+  </g>
+</svg>

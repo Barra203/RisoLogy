@@ -86,12 +86,47 @@ export const SettingsView: React.FC = () => {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetError, setResetError] = useState('');
 
-  // Direct File Reader helper
+  // Direct File Reader helper with auto-resizing for safe Firestore database storage
   const readFileAsDataUrl = (file: File, callback: (dataUrl: string) => void) => {
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
-        callback(reader.result);
+        const rawResult = reader.result;
+        // If image is large (> 400KB), resize via canvas to fit safely under 1MB Firestore doc limits
+        if (file.size > 400 * 1024) {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxDimension = 800;
+            let width = img.width;
+            let height = img.height;
+            if (width > height) {
+              if (width > maxDimension) {
+                height = Math.round((height * maxDimension) / width);
+                width = maxDimension;
+              }
+            } else {
+              if (height > maxDimension) {
+                width = Math.round((width * maxDimension) / height);
+                height = maxDimension;
+              }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              const compressed = canvas.toDataURL('image/jpeg', 0.85);
+              callback(compressed);
+              return;
+            }
+            callback(rawResult);
+          };
+          img.onerror = () => callback(rawResult);
+          img.src = rawResult;
+        } else {
+          callback(rawResult);
+        }
       }
     };
     reader.readAsDataURL(file);

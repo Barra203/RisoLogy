@@ -1,4 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
+import {
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  onSnapshot,
+  getDocs,
+  writeBatch,
+} from 'firebase/firestore';
 import {
   Product,
   CartItem,
@@ -9,7 +18,6 @@ import {
   DiscountPreset,
   SupplierExpense,
   CustomerRecord,
-  CASHIER_LIST,
 } from '../types/pos';
 import {
   INITIAL_PRODUCTS,
@@ -29,6 +37,13 @@ import {
   calculateChange,
   formatTransactionNumber,
 } from '../utils/pos-logic';
+import {
+  db,
+  FIRESTORE_COLLECTIONS,
+  handleFirestoreError,
+  OperationType,
+  cleanFirestoreData,
+} from '../lib/firebase';
 
 interface PosContextType {
   // Auth
@@ -112,6 +127,7 @@ interface PosContextType {
   viewReceipt: (tx: Transaction | null) => void;
   activeReceipt: Transaction | null;
   resetAllData: (verificationPassword?: string) => { success: boolean; message: string };
+  isSyncing: boolean;
 }
 
 const PosContext = createContext<PosContextType | undefined>(undefined);
@@ -191,7 +207,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return base;
   });
 
-  // Products catalog
+  // State entities initialized from local cache for instant 0ms render
   const [products, setProducts] = useState<Product[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
     if (saved) {
@@ -204,7 +220,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_PRODUCTS;
   });
 
-  // Categories list
   const [categories, setCategories] = useState<string[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
     if (saved) {
@@ -218,7 +233,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_CATEGORIES;
   });
 
-  // Transactions list
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
     if (saved) {
@@ -231,7 +245,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_TRANSACTIONS;
   });
 
-  // Persistent Transaction Sequence Counter (#RSL-XXXX)
   const [transactionSequence, setTransactionSequence] = useState<number>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.SEQUENCE);
     if (saved) {
@@ -241,7 +254,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_TRANSACTION_SEQUENCE;
   });
 
-  // Discounts Presets (CRUD)
   const [discounts, setDiscounts] = useState<DiscountPreset[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.DISCOUNTS);
     if (saved) {
@@ -254,14 +266,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_DISCOUNTS;
   });
 
-  // Supplier Expenses (Belanja Bahan Supplier - Starts empty as requested by user)
   const [expenses, setExpenses] = useState<SupplierExpense[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.EXPENSES);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          // If stored data contains the old mock items (#EXP-0001, etc.), clear them out as requested
           const isOldMocks = parsed.length > 0 && parsed.every((p: any) => p?.id && String(p.id).startsWith('exp-000'));
           if (isOldMocks) {
             localStorage.removeItem(STORAGE_KEYS.EXPENSES);
@@ -276,14 +286,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_EXPENSES;
   });
 
-  // Customer Directory (Starts empty as requested by user, supports add/edit/delete)
   const [customers, setCustomers] = useState<CustomerRecord[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.CUSTOMERS);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          // If stored data has old mock seeds (cust-seed), clear them out as requested
           const isOldSeed = parsed.length > 0 && parsed.some((c: any) => c?.id && String(c.id).startsWith('cust-seed'));
           if (isOldSeed) {
             localStorage.removeItem(STORAGE_KEYS.CUSTOMERS);
@@ -298,6 +306,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_CUSTOMERS;
   });
 
+  const [isSyncing, setIsSyncing] = useState<boolean>(true);
+
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerName, setCustomerName] = useState<string>('Pelanggan');
@@ -309,64 +319,279 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Active modal receipt
   const [activeReceipt, setActiveReceipt] = useState<Transaction | null>(null);
 
-  // Sync state to LocalStorage
+  // Track initial seeding guard
+  const initialSettingsSeeded = useRef(false);
+  const initialProductsSeeded = useRef(false);
+  const initialCategoriesSeeded = useRef(false);
+  const initialDiscountsSeeded = useRef(false);
+
+  // ============================================================================
+  // SINKRONISASI WAKTU NYATA DENGAN CLOUD FIRESTORE (onSnapshot)
+  // ============================================================================
+
+  // 1. Settings & Store Identity (Logo URL & QRIS URL tersimpan langsung di database)
+  useEffect(() => {
+    const settingsDocRef = doc(db, FIRESTORE_COLLECTIONS.SETTINGS, FIRESTORE_COLLECTIONS.SETTINGS_DOC);
+    const unsubscribe = onSnapshot(
+      settingsDocRef,
+      (snapshot) => {
+        setIsSyncing(false);
+        if (snapshot.exists()) {
+          const data = snapshot.data() as Partial<StoreSettings>;
+          setSettings((prev) => {
+            const merged: StoreSettings = {
+              ...prev,
+              ...data,
+              // Jaga agar logo dan QRIS tidak kosong jika data di cloud belum terisi
+              logoUrl: data.logoUrl || prev.logoUrl || INITIAL_STORE_SETTINGS.logoUrl,
+              qrisUrl: data.qrisUrl || prev.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl,
+              storeName: data.storeName || prev.storeName || INITIAL_STORE_SETTINGS.storeName,
+              brandName: data.brandName || prev.brandName || INITIAL_STORE_SETTINGS.brandName,
+            };
+            try {
+              localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(merged));
+              if (merged.logoUrl) localStorage.setItem('risology_permanent_logo', merged.logoUrl);
+              if (merged.qrisUrl) localStorage.setItem('risology_permanent_qris', merged.qrisUrl);
+              if (merged.storeName) localStorage.setItem('risology_permanent_store_name', merged.storeName);
+              if (merged.brandName) localStorage.setItem('risology_permanent_brand_name', merged.brandName);
+            } catch (_) {}
+            return merged;
+          });
+        } else if (!initialSettingsSeeded.current) {
+          initialSettingsSeeded.current = true;
+          // Inisialisasi awal ke database jika dokumen belum ada
+          const initialData: StoreSettings = {
+            ...INITIAL_STORE_SETTINGS,
+            logoUrl: settings.logoUrl || INITIAL_STORE_SETTINGS.logoUrl,
+            qrisUrl: settings.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl,
+            storeName: settings.storeName || INITIAL_STORE_SETTINGS.storeName,
+            brandName: settings.brandName || INITIAL_STORE_SETTINGS.brandName,
+          };
+          setDoc(settingsDocRef, cleanFirestoreData({ ...initialData, updatedAt: Date.now() })).catch((err) =>
+            handleFirestoreError(err, OperationType.WRITE, `${FIRESTORE_COLLECTIONS.SETTINGS}/${FIRESTORE_COLLECTIONS.SETTINGS_DOC}`)
+          );
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, `${FIRESTORE_COLLECTIONS.SETTINGS}/${FIRESTORE_COLLECTIONS.SETTINGS_DOC}`);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Katalog Produk & Stok Inventory Real-Time
+  useEffect(() => {
+    const prodsColRef = collection(db, FIRESTORE_COLLECTIONS.PRODUCTS);
+    const unsubscribe = onSnapshot(
+      prodsColRef,
+      (snapshot) => {
+        if (snapshot.empty && !initialProductsSeeded.current) {
+          initialProductsSeeded.current = true;
+          const batch = writeBatch(db);
+          INITIAL_PRODUCTS.forEach((p) => {
+            batch.set(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, p.id), cleanFirestoreData(p));
+          });
+          batch.commit().catch((err) =>
+            handleFirestoreError(err, OperationType.WRITE, FIRESTORE_COLLECTIONS.PRODUCTS)
+          );
+        } else if (!snapshot.empty) {
+          const list: Product[] = [];
+          snapshot.forEach((d) => {
+            list.push(d.data() as Product);
+          });
+          // Sort konsisten berdasarkan id
+          list.sort((a, b) => a.id.localeCompare(b.id));
+          setProducts(list);
+          try {
+            localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(list));
+          } catch (_) {}
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, FIRESTORE_COLLECTIONS.PRODUCTS);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // 3. Kategori Produk Real-Time
+  useEffect(() => {
+    const catColRef = collection(db, FIRESTORE_COLLECTIONS.CATEGORIES);
+    const unsubscribe = onSnapshot(
+      catColRef,
+      (snapshot) => {
+        if (snapshot.empty && !initialCategoriesSeeded.current) {
+          initialCategoriesSeeded.current = true;
+          const batch = writeBatch(db);
+          INITIAL_CATEGORIES.forEach((name, idx) => {
+            const catId = `cat-${idx + 1}`;
+            batch.set(doc(db, FIRESTORE_COLLECTIONS.CATEGORIES, catId), { id: catId, name, order: idx });
+          });
+          batch.commit().catch((err) =>
+            handleFirestoreError(err, OperationType.WRITE, FIRESTORE_COLLECTIONS.CATEGORIES)
+          );
+        } else if (!snapshot.empty) {
+          const items: { name: string; order?: number }[] = [];
+          snapshot.forEach((d) => {
+            const dData = d.data() as { name: string; order?: number };
+            if (dData.name) items.push(dData);
+          });
+          items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+          const catNames = items.map((i) => i.name);
+          setCategories(catNames);
+          try {
+            localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(catNames));
+          } catch (_) {}
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, FIRESTORE_COLLECTIONS.CATEGORIES);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // 4. Riwayat Transaksi Penjualan Real-Time
+  useEffect(() => {
+    const txColRef = collection(db, FIRESTORE_COLLECTIONS.TRANSACTIONS);
+    const unsubscribe = onSnapshot(
+      txColRef,
+      (snapshot) => {
+        const list: Transaction[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as Transaction);
+        });
+        // Urutkan dari transaksi terbaru (descending)
+        list.sort((a, b) => b.timestamp - a.timestamp);
+        setTransactions(list);
+        try {
+          localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(list));
+        } catch (_) {}
+
+        // Hitung sequence nomor transaksi berikutnya secara dinamis
+        let maxSeq = list.length + 1;
+        list.forEach((t) => {
+          const match = t.transactionNumber?.match(/#RSL-(\d+)/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num >= maxSeq) maxSeq = num + 1;
+          }
+        });
+        setTransactionSequence(maxSeq);
+        try {
+          localStorage.setItem(STORAGE_KEYS.SEQUENCE, maxSeq.toString());
+        } catch (_) {}
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, FIRESTORE_COLLECTIONS.TRANSACTIONS);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // 5. Direktori Pelanggan Real-Time
+  useEffect(() => {
+    const custColRef = collection(db, FIRESTORE_COLLECTIONS.CUSTOMERS);
+    const unsubscribe = onSnapshot(
+      custColRef,
+      (snapshot) => {
+        const list: CustomerRecord[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as CustomerRecord);
+        });
+        list.sort((a, b) => b.lastVisit - a.lastVisit);
+        setCustomers(list);
+        try {
+          localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(list));
+        } catch (_) {}
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, FIRESTORE_COLLECTIONS.CUSTOMERS);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // 6. Belanja Supplier (Pengeluaran Bahan) Real-Time
+  useEffect(() => {
+    const expColRef = collection(db, FIRESTORE_COLLECTIONS.EXPENSES);
+    const unsubscribe = onSnapshot(
+      expColRef,
+      (snapshot) => {
+        const list: SupplierExpense[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as SupplierExpense);
+        });
+        list.sort((a, b) => b.timestamp - a.timestamp);
+        setExpenses(list);
+        try {
+          localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(list));
+        } catch (_) {}
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, FIRESTORE_COLLECTIONS.EXPENSES);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // 7. Preset Diskon Real-Time
+  useEffect(() => {
+    const discColRef = collection(db, FIRESTORE_COLLECTIONS.DISCOUNTS);
+    const unsubscribe = onSnapshot(
+      discColRef,
+      (snapshot) => {
+        if (snapshot.empty && !initialDiscountsSeeded.current) {
+          initialDiscountsSeeded.current = true;
+          const batch = writeBatch(db);
+          INITIAL_DISCOUNTS.forEach((d) => {
+            batch.set(doc(db, FIRESTORE_COLLECTIONS.DISCOUNTS, d.id), cleanFirestoreData(d));
+          });
+          batch.commit().catch((err) =>
+            handleFirestoreError(err, OperationType.WRITE, FIRESTORE_COLLECTIONS.DISCOUNTS)
+          );
+        } else if (!snapshot.empty) {
+          const list: DiscountPreset[] = [];
+          snapshot.forEach((d) => {
+            list.push(d.data() as DiscountPreset);
+          });
+          setDiscounts(list);
+          try {
+            localStorage.setItem(STORAGE_KEYS.DISCOUNTS, JSON.stringify(list));
+          } catch (_) {}
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, FIRESTORE_COLLECTIONS.DISCOUNTS);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // Sinkronisasi status autentikasi kasir
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.AUTH, isAuthenticated ? 'true' : 'false');
   }, [isAuthenticated]);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
-    try {
-      if (settings.logoUrl) localStorage.setItem('risology_permanent_logo', settings.logoUrl);
-      if (settings.qrisUrl) localStorage.setItem('risology_permanent_qris', settings.qrisUrl);
-      if (settings.storeName) localStorage.setItem('risology_permanent_store_name', settings.storeName);
-      if (settings.brandName) localStorage.setItem('risology_permanent_brand_name', settings.brandName);
-    } catch (_) {}
-  }, [settings]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
-  }, [products]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
-  }, [categories]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
-  }, [transactions]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SEQUENCE, transactionSequence.toString());
-  }, [transactionSequence]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.DISCOUNTS, JSON.stringify(discounts));
-  }, [discounts]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
-  }, [expenses]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers));
-  }, [customers]);
-
-  // Next transaction number representation (#RSL-0001, etc.)
+  // Nomor transaksi berikutnya (#RSL-0001, dll.)
   const nextTransactionNumber = formatTransactionNumber(transactionSequence);
 
-  // Calculations
+  // Kalkulasi total & diskon
   const subtotal = calculateSubtotal(cart);
   const discountAmount = calculateDiscount(subtotal, discountType, discountValue);
   const total = calculateTotal(subtotal, discountAmount);
 
-  // Auth actions
-  // Supports (username, password) where username is one of cashiers (Harits, Rafi, Barra, Dimas, Akhyar)
-  // and password is "RisoLogyKeren" (or fallback PIN "666666" / settings.pinCode).
+  // Login kasir
   const login = (usernameOrPin: string, password?: string): boolean => {
     const trimmedInput = usernameOrPin.trim();
 
-    // Two-parameter authentication: username + password
     if (password !== undefined) {
       const trimmedPassword = password.trim();
       const matchedCashier = cashierList.find(
@@ -387,7 +612,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    // Single-parameter fallback (PIN or direct password)
     if (
       trimmedInput === settings.pinCode.trim() ||
       trimmedInput === '666666' ||
@@ -406,7 +630,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEYS.AUTH, 'false');
   };
 
-  // Cart actions
+  // Cart operations
   const addToCart = (product: Product) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
@@ -461,17 +685,23 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDiscount(preset.type, preset.value, preset.id, preset.name);
   };
 
-  // Discount Presets CRUD
+  // Operasi Database: Diskon
   const addDiscount = (discount: Omit<DiscountPreset, 'id'>) => {
     const newPreset: DiscountPreset = {
       ...discount,
       id: `disc-${Date.now()}`,
     };
     setDiscounts((prev) => [...prev, newPreset]);
+    setDoc(doc(db, FIRESTORE_COLLECTIONS.DISCOUNTS, newPreset.id), cleanFirestoreData(newPreset)).catch((err) =>
+      handleFirestoreError(err, OperationType.CREATE, `${FIRESTORE_COLLECTIONS.DISCOUNTS}/${newPreset.id}`)
+    );
   };
 
   const updateDiscount = (id: string, updates: Partial<DiscountPreset>) => {
     setDiscounts((prev) => prev.map((d) => (d.id === id ? { ...d, ...updates } : d)));
+    setDoc(doc(db, FIRESTORE_COLLECTIONS.DISCOUNTS, id), cleanFirestoreData(updates), { merge: true }).catch((err) =>
+      handleFirestoreError(err, OperationType.UPDATE, `${FIRESTORE_COLLECTIONS.DISCOUNTS}/${id}`)
+    );
   };
 
   const deleteDiscount = (id: string) => {
@@ -479,9 +709,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (selectedDiscountPresetId === id) {
       applyDiscountPreset(null);
     }
+    deleteDoc(doc(db, FIRESTORE_COLLECTIONS.DISCOUNTS, id)).catch((err) =>
+      handleFirestoreError(err, OperationType.DELETE, `${FIRESTORE_COLLECTIONS.DISCOUNTS}/${id}`)
+    );
   };
 
-  // Supplier Expenses CRUD
+  // Operasi Database: Belanja Supplier
   const addExpense = (
     expense: Omit<SupplierExpense, 'id' | 'expenseNumber' | 'timestamp'>
   ): SupplierExpense => {
@@ -495,6 +728,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cashierName: expense.cashierName || activeCashier,
     };
     setExpenses((prev) => [newExp, ...prev]);
+    setDoc(doc(db, FIRESTORE_COLLECTIONS.EXPENSES, newExp.id), cleanFirestoreData(newExp)).catch((err) =>
+      handleFirestoreError(err, OperationType.CREATE, `${FIRESTORE_COLLECTIONS.EXPENSES}/${newExp.id}`)
+    );
     return newExp;
   };
 
@@ -502,13 +738,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setExpenses((prev) =>
       prev.map((exp) => (exp.id === id ? { ...exp, ...updates } : exp))
     );
+    setDoc(doc(db, FIRESTORE_COLLECTIONS.EXPENSES, id), cleanFirestoreData(updates), { merge: true }).catch((err) =>
+      handleFirestoreError(err, OperationType.UPDATE, `${FIRESTORE_COLLECTIONS.EXPENSES}/${id}`)
+    );
   };
 
   const deleteExpense = (id: string) => {
     setExpenses((prev) => prev.filter((exp) => exp.id !== id));
+    deleteDoc(doc(db, FIRESTORE_COLLECTIONS.EXPENSES, id)).catch((err) =>
+      handleFirestoreError(err, OperationType.DELETE, `${FIRESTORE_COLLECTIONS.EXPENSES}/${id}`)
+    );
   };
 
-  // Process checkout with persistent #RSL-XXXX
+  // Operasi Database: Checkout Transaksi Kasir & Pengurangan Stok
   const processCheckout = (paymentMethod: PaymentMethod, cashTendered?: number): Transaction => {
     const txNumber = formatTransactionNumber(transactionSequence);
     const tendered = cashTendered ?? (paymentMethod === 'CASH' ? total : 0);
@@ -541,28 +783,39 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'PAID',
     };
 
-    // Prepend to transactions list so newest is first
+    // 1. Catat transaksi baru ke local state & Cloud Firestore
     setTransactions((prev) => [newTransaction, ...prev]);
+    setDoc(doc(db, FIRESTORE_COLLECTIONS.TRANSACTIONS, newTransaction.id), cleanFirestoreData(newTransaction)).catch((err) =>
+      handleFirestoreError(err, OperationType.CREATE, `${FIRESTORE_COLLECTIONS.TRANSACTIONS}/${newTransaction.id}`)
+    );
 
-    // Deduct stock if tracked
+    // 2. Kurangi stok produk secara langsung di Cloud Firestore
     setProducts((prev) =>
       prev.map((p) => {
         const cartItem = cart.find((ci) => ci.product.id === p.id);
         if (cartItem && typeof p.stockQuantity === 'number') {
           const newQty = Math.max(0, p.stockQuantity - cartItem.quantity);
-          return { ...p, stockQuantity: newQty, inStock: newQty > 0 };
+          const updatedProd = { ...p, stockQuantity: newQty, inStock: newQty > 0 };
+          setDoc(
+            doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, p.id),
+            cleanFirestoreData({ stockQuantity: newQty, inStock: newQty > 0, updatedAt: Date.now() }),
+            { merge: true }
+          ).catch((err) =>
+            handleFirestoreError(err, OperationType.UPDATE, `${FIRESTORE_COLLECTIONS.PRODUCTS}/${p.id}`)
+          );
+          return updatedProd;
         }
         return p;
       })
     );
 
-    // Increment persistent sequence
+    // 3. Naikkan nomor urut transaksi
     setTransactionSequence((prev) => prev + 1);
 
-    // Clear cart
+    // 4. Bersihkan keranjang kasir
     clearCart();
 
-    // Automatically record or update customer in directory if customer name is provided
+    // 5. Catat otomatis riwayat pelanggan ke koleksi Customers di Cloud Firestore
     const trimmedCustomer = customerName.trim();
     if (trimmedCustomer && trimmedCustomer.toLowerCase() !== 'pelanggan') {
       let topItemName = cart[0]?.product.name || 'Risol Mayo Melt';
@@ -574,58 +827,63 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       });
 
+      const existingIdx = customers.findIndex(
+        (c) => c.name.toLowerCase() === trimmedCustomer.toLowerCase()
+      );
+
+      let targetCustomer: CustomerRecord;
+      if (existingIdx >= 0) {
+        const existing = customers[existingIdx];
+        const newOrders = existing.totalOrders + 1;
+        const newSpent = existing.totalSpent + total;
+        const newAov = Math.round(newSpent / newOrders);
+        targetCustomer = {
+          ...existing,
+          totalOrders: newOrders,
+          totalSpent: newSpent,
+          averageOrderValue: newAov,
+          lastVisit: Date.now(),
+          loyaltyTier:
+            existing.loyaltyTier === 'VIP'
+              ? 'VIP'
+              : newOrders >= 10 || newSpent >= 150000
+              ? 'VIP'
+              : newOrders >= 3
+              ? 'Reguler'
+              : existing.loyaltyTier,
+          favoriteItem: existing.favoriteItem || topItemName,
+        };
+      } else {
+        targetCustomer = {
+          id: `cust-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          name: trimmedCustomer,
+          totalOrders: 1,
+          totalSpent: total,
+          averageOrderValue: total,
+          firstVisit: Date.now(),
+          lastVisit: Date.now(),
+          favoriteItem: topItemName,
+          loyaltyTier: total >= 150000 ? 'VIP' : 'Baru',
+        };
+      }
+
       setCustomers((prev) => {
-        const existingIdx = prev.findIndex(
-          (c) => c.name.toLowerCase() === trimmedCustomer.toLowerCase()
-        );
-        if (existingIdx >= 0) {
-          const existing = prev[existingIdx];
-          const newOrders = existing.totalOrders + 1;
-          const newSpent = existing.totalSpent + total;
-          const newAov = Math.round(newSpent / newOrders);
-          const updated: CustomerRecord = {
-            ...existing,
-            totalOrders: newOrders,
-            totalSpent: newSpent,
-            averageOrderValue: newAov,
-            lastVisit: Date.now(),
-            loyaltyTier:
-              existing.loyaltyTier === 'VIP'
-                ? 'VIP'
-                : newOrders >= 10 || newSpent >= 150000
-                ? 'VIP'
-                : newOrders >= 3
-                ? 'Reguler'
-                : existing.loyaltyTier,
-            favoriteItem: existing.favoriteItem || topItemName,
-          };
-          const copy = [...prev];
-          copy[existingIdx] = updated;
-          return copy;
-        } else {
-          const newCust: CustomerRecord = {
-            id: `cust-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-            name: trimmedCustomer,
-            totalOrders: 1,
-            totalSpent: total,
-            averageOrderValue: total,
-            firstVisit: Date.now(),
-            lastVisit: Date.now(),
-            favoriteItem: topItemName,
-            loyaltyTier: total >= 150000 ? 'VIP' : 'Baru',
-          };
-          return [newCust, ...prev];
-        }
+        const copy = [...prev];
+        if (existingIdx >= 0) copy[existingIdx] = targetCustomer;
+        else copy.unshift(targetCustomer);
+        return copy;
       });
+
+      setDoc(doc(db, FIRESTORE_COLLECTIONS.CUSTOMERS, targetCustomer.id), cleanFirestoreData(targetCustomer), { merge: true }).catch((err) =>
+        handleFirestoreError(err, OperationType.WRITE, `${FIRESTORE_COLLECTIONS.CUSTOMERS}/${targetCustomer.id}`)
+      );
     }
 
-    // Set as active receipt for receipt modal
     setActiveReceipt(newTransaction);
-
     return newTransaction;
   };
 
-  // Customer Directory CRUD Actions
+  // Operasi Database: Direktori Pelanggan
   const addCustomer = (
     customerData: Omit<CustomerRecord, 'id' | 'firstVisit' | 'lastVisit' | 'averageOrderValue'> & {
       firstVisit?: number;
@@ -652,6 +910,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setCustomers((prev) => [newCustomer, ...prev]);
+    setDoc(doc(db, FIRESTORE_COLLECTIONS.CUSTOMERS, newCustomer.id), cleanFirestoreData(newCustomer)).catch((err) =>
+      handleFirestoreError(err, OperationType.CREATE, `${FIRESTORE_COLLECTIONS.CUSTOMERS}/${newCustomer.id}`)
+    );
     return newCustomer;
   };
 
@@ -674,13 +935,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updated;
       })
     );
+    setDoc(doc(db, FIRESTORE_COLLECTIONS.CUSTOMERS, id), cleanFirestoreData(updates), { merge: true }).catch((err) =>
+      handleFirestoreError(err, OperationType.UPDATE, `${FIRESTORE_COLLECTIONS.CUSTOMERS}/${id}`)
+    );
   };
 
   const deleteCustomer = (id: string) => {
     setCustomers((prev) => prev.filter((c) => c.id !== id));
+    deleteDoc(doc(db, FIRESTORE_COLLECTIONS.CUSTOMERS, id)).catch((err) =>
+      handleFirestoreError(err, OperationType.DELETE, `${FIRESTORE_COLLECTIONS.CUSTOMERS}/${id}`)
+    );
   };
 
-  // Send receipt email via server endpoint
+  // Kirim email struk
   const sendReceiptEmail = async (
     tx: Transaction,
     email: string
@@ -704,6 +971,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             t.id === tx.id ? { ...t, customerEmail: email, emailSent: true } : t
           )
         );
+        setDoc(
+          doc(db, FIRESTORE_COLLECTIONS.TRANSACTIONS, tx.id),
+          { customerEmail: email, emailSent: true },
+          { merge: true }
+        ).catch(() => {});
         return {
           success: true,
           message: data.message || `Struk berhasil dikirim ke ${email}`,
@@ -727,6 +999,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveReceipt(tx);
   };
 
+  // Operasi Database: Update Pengaturan Toko & Gambar Logo / QRIS
   const updateSettings = (newSettings: Partial<StoreSettings>) => {
     try {
       if (newSettings.logoUrl) localStorage.setItem('risology_permanent_logo', newSettings.logoUrl);
@@ -734,28 +1007,49 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (newSettings.storeName) localStorage.setItem('risology_permanent_store_name', newSettings.storeName);
       if (newSettings.brandName) localStorage.setItem('risology_permanent_brand_name', newSettings.brandName);
     } catch (_) {}
+
     setSettings((prev) => ({ ...prev, ...newSettings }));
+
+    // Simpan langsung ke Cloud Firestore agar tersinkronisasi ke seluruh perangkat
+    setDoc(
+      doc(db, FIRESTORE_COLLECTIONS.SETTINGS, FIRESTORE_COLLECTIONS.SETTINGS_DOC),
+      cleanFirestoreData({ ...newSettings, updatedAt: Date.now() }),
+      { merge: true }
+    ).catch((err) =>
+      handleFirestoreError(err, OperationType.WRITE, `${FIRESTORE_COLLECTIONS.SETTINGS}/${FIRESTORE_COLLECTIONS.SETTINGS_DOC}`)
+    );
   };
 
+  // Operasi Database: Produk & Menu
   const addProduct = (product: Omit<Product, 'id'>) => {
     const newProduct: Product = {
       ...product,
       id: `prod-${Date.now()}`,
     };
     setProducts((prev) => [...prev, newProduct]);
+    setDoc(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, newProduct.id), cleanFirestoreData(newProduct)).catch((err) =>
+      handleFirestoreError(err, OperationType.CREATE, `${FIRESTORE_COLLECTIONS.PRODUCTS}/${newProduct.id}`)
+    );
   };
 
   const updateProduct = (id: string, updates: Partial<Product>) => {
     setProducts((prev) =>
       prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
     );
+    setDoc(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, id), cleanFirestoreData(updates), { merge: true }).catch((err) =>
+      handleFirestoreError(err, OperationType.UPDATE, `${FIRESTORE_COLLECTIONS.PRODUCTS}/${id}`)
+    );
   };
 
   const deleteProduct = (id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
     removeFromCart(id);
+    deleteDoc(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, id)).catch((err) =>
+      handleFirestoreError(err, OperationType.DELETE, `${FIRESTORE_COLLECTIONS.PRODUCTS}/${id}`)
+    );
   };
 
+  // Operasi Database: Kategori
   const addCategory = (name: string): boolean => {
     const trimmed = name.trim();
     if (!trimmed) return false;
@@ -763,6 +1057,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
     setCategories((prev) => [...prev, trimmed]);
+    const catId = `cat-${Date.now()}`;
+    setDoc(doc(db, FIRESTORE_COLLECTIONS.CATEGORIES, catId), {
+      id: catId,
+      name: trimmed,
+      order: categories.length,
+      createdAt: Date.now(),
+    }).catch((err) =>
+      handleFirestoreError(err, OperationType.CREATE, `${FIRESTORE_COLLECTIONS.CATEGORIES}/${catId}`)
+    );
     return true;
   };
 
@@ -779,27 +1082,54 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setProducts((prev) =>
       prev.map((p) => (p.category === oldName ? { ...p, category: trimmed } : p))
     );
+
+    // Update di Cloud Firestore
+    getDocs(collection(db, FIRESTORE_COLLECTIONS.CATEGORIES)).then((snap) => {
+      snap.forEach((d) => {
+        if (d.data().name === oldName) {
+          setDoc(doc(db, FIRESTORE_COLLECTIONS.CATEGORIES, d.id), { name: trimmed }, { merge: true });
+        }
+      });
+    }).catch(() => {});
+
+    getDocs(collection(db, FIRESTORE_COLLECTIONS.PRODUCTS)).then((snap) => {
+      snap.forEach((d) => {
+        if (d.data().category === oldName) {
+          setDoc(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, d.id), { category: trimmed }, { merge: true });
+        }
+      });
+    }).catch(() => {});
+
     return true;
   };
 
   const deleteCategory = (name: string) => {
     const remaining = categories.filter((c) => c !== name);
-    if (remaining.length === 0) {
-      setCategories(['Umum']);
-      setProducts((prev) =>
-        prev.map((p) => (p.category === name ? { ...p, category: 'Umum' } : p))
-      );
-      return;
-    }
-    setCategories(remaining);
-    const fallback = remaining[0];
+    const fallback = remaining.length > 0 ? remaining[0] : 'Umum';
+    setCategories(remaining.length > 0 ? remaining : ['Umum']);
     setProducts((prev) =>
       prev.map((p) => (p.category === name ? { ...p, category: fallback } : p))
     );
+
+    getDocs(collection(db, FIRESTORE_COLLECTIONS.CATEGORIES)).then((snap) => {
+      snap.forEach((d) => {
+        if (d.data().name === name) {
+          deleteDoc(doc(db, FIRESTORE_COLLECTIONS.CATEGORIES, d.id));
+        }
+      });
+    }).catch(() => {});
+
+    getDocs(collection(db, FIRESTORE_COLLECTIONS.PRODUCTS)).then((snap) => {
+      snap.forEach((d) => {
+        if (d.data().category === name) {
+          setDoc(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, d.id), { category: fallback }, { merge: true });
+        }
+      });
+    }).catch(() => {});
   };
 
-  // Reset Data Awal: Requires security password 'AnakDajjalYangReset'
-  // Strictly protects logo and QRIS image so they are NEVER wiped out
+  // Reset Data Awal: Memerlukan Password Keamanan 'AnakDajjalYangReset'
+  // Gambar Logo dan QRIS tetap aman dipertahankan dan disimpan di Firestore
   const resetAllData = (
     verificationPassword?: string
   ): { success: boolean; message: string } => {
@@ -810,32 +1140,18 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
+    // 1. Simpan dan pertahankan Logo Toko & QRIS
+    const preservedSettings: StoreSettings = {
+      ...INITIAL_STORE_SETTINGS,
+      logoUrl: settings.logoUrl || INITIAL_STORE_SETTINGS.logoUrl,
+      qrisUrl: settings.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl,
+      storeName: settings.storeName || INITIAL_STORE_SETTINGS.storeName,
+      brandName: settings.brandName || INITIAL_STORE_SETTINGS.brandName,
+    };
+
+    setSettings(preservedSettings);
     setProducts(INITIAL_PRODUCTS);
     setCategories(INITIAL_CATEGORIES);
-
-    // Retain custom uploaded logo, QRIS image, and store identity on reset
-    setSettings((prev) => {
-      const preserved: StoreSettings = {
-        ...INITIAL_STORE_SETTINGS,
-        logoUrl: prev.logoUrl || INITIAL_STORE_SETTINGS.logoUrl,
-        qrisUrl: prev.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl,
-        storeName: prev.storeName || INITIAL_STORE_SETTINGS.storeName,
-        brandName: prev.brandName || INITIAL_STORE_SETTINGS.brandName,
-      };
-
-      try {
-        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(preserved));
-        if (preserved.logoUrl) localStorage.setItem('risology_permanent_logo', preserved.logoUrl);
-        if (preserved.qrisUrl) localStorage.setItem('risology_permanent_qris', preserved.qrisUrl);
-        if (preserved.storeName) localStorage.setItem('risology_permanent_store_name', preserved.storeName);
-        if (preserved.brandName) localStorage.setItem('risology_permanent_brand_name', preserved.brandName);
-      } catch (err) {
-        console.error('Failed to preserve brand settings', err);
-      }
-
-      return preserved;
-    });
-
     setTransactions(INITIAL_TRANSACTIONS);
     setTransactionSequence(INITIAL_TRANSACTION_SEQUENCE);
     setDiscounts(INITIAL_DISCOUNTS);
@@ -844,9 +1160,67 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveCashier(INITIAL_CASHIERS[0]);
     clearCart();
 
+    // 2. Tulis pengaturan bersih ke Cloud Firestore
+    setDoc(
+      doc(db, FIRESTORE_COLLECTIONS.SETTINGS, FIRESTORE_COLLECTIONS.SETTINGS_DOC),
+      cleanFirestoreData({ ...preservedSettings, updatedAt: Date.now() })
+    ).catch(() => {});
+
+    // 3. Reset koleksi produk ke data awal di Cloud Firestore
+    getDocs(collection(db, FIRESTORE_COLLECTIONS.PRODUCTS)).then((snap) => {
+      const batch = writeBatch(db);
+      snap.forEach((d) => batch.delete(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, d.id)));
+      INITIAL_PRODUCTS.forEach((p) => {
+        batch.set(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, p.id), cleanFirestoreData(p));
+      });
+      batch.commit().catch(() => {});
+    }).catch(() => {});
+
+    // 4. Reset koleksi kategori ke data awal di Cloud Firestore
+    getDocs(collection(db, FIRESTORE_COLLECTIONS.CATEGORIES)).then((snap) => {
+      const batch = writeBatch(db);
+      snap.forEach((d) => batch.delete(doc(db, FIRESTORE_COLLECTIONS.CATEGORIES, d.id)));
+      INITIAL_CATEGORIES.forEach((name, idx) => {
+        const catId = `cat-${idx + 1}`;
+        batch.set(doc(db, FIRESTORE_COLLECTIONS.CATEGORIES, catId), { id: catId, name, order: idx });
+      });
+      batch.commit().catch(() => {});
+    }).catch(() => {});
+
+    // 5. Bersihkan transaksi lama di Cloud Firestore
+    getDocs(collection(db, FIRESTORE_COLLECTIONS.TRANSACTIONS)).then((snap) => {
+      const batch = writeBatch(db);
+      snap.forEach((d) => batch.delete(doc(db, FIRESTORE_COLLECTIONS.TRANSACTIONS, d.id)));
+      batch.commit().catch(() => {});
+    }).catch(() => {});
+
+    // 6. Bersihkan pengeluaran supplier lama di Cloud Firestore
+    getDocs(collection(db, FIRESTORE_COLLECTIONS.EXPENSES)).then((snap) => {
+      const batch = writeBatch(db);
+      snap.forEach((d) => batch.delete(doc(db, FIRESTORE_COLLECTIONS.EXPENSES, d.id)));
+      batch.commit().catch(() => {});
+    }).catch(() => {});
+
+    // 7. Bersihkan pelanggan lama di Cloud Firestore
+    getDocs(collection(db, FIRESTORE_COLLECTIONS.CUSTOMERS)).then((snap) => {
+      const batch = writeBatch(db);
+      snap.forEach((d) => batch.delete(doc(db, FIRESTORE_COLLECTIONS.CUSTOMERS, d.id)));
+      batch.commit().catch(() => {});
+    }).catch(() => {});
+
+    // 8. Reset diskon
+    getDocs(collection(db, FIRESTORE_COLLECTIONS.DISCOUNTS)).then((snap) => {
+      const batch = writeBatch(db);
+      snap.forEach((d) => batch.delete(doc(db, FIRESTORE_COLLECTIONS.DISCOUNTS, d.id)));
+      INITIAL_DISCOUNTS.forEach((d) => {
+        batch.set(doc(db, FIRESTORE_COLLECTIONS.DISCOUNTS, d.id), cleanFirestoreData(d));
+      });
+      batch.commit().catch(() => {});
+    }).catch(() => {});
+
     return {
       success: true,
-      message: 'Data berhasil direset. Logo toko dan QRIS tetap aman dipertahankan.',
+      message: 'Data berhasil direset di Cloud Database. Logo toko dan QRIS tetap aman dipertahankan.',
     };
   };
 
@@ -905,6 +1279,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         viewReceipt,
         activeReceipt,
         resetAllData,
+        isSyncing,
       }}
     >
       {children}

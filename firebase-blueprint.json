@@ -1,0 +1,159 @@
+{
+  "entities": {
+    "StoreSetting": {
+      "title": "Store Setting",
+      "description": "Store profile, brand identity, logo, and QRIS configuration",
+      "type": "object",
+      "properties": {
+        "storeName": { "type": "string" },
+        "brandName": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "footerText": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "qrisUrl": { "type": "string" },
+        "pinCode": { "type": "string" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["storeName", "brandName"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Point of sale menu item and inventory stock",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "inStock": { "type": "boolean" },
+        "stockQuantity": { "type": "number" },
+        "unitCost": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["name", "price", "category"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Menu categories for grouping items",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["name"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Sales ledger receipt record",
+      "type": "object",
+      "properties": {
+        "transactionNumber": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "customerName": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "discountType": { "type": "string" },
+        "discountValue": { "type": "number" },
+        "discountAmount": { "type": "number" },
+        "discountPresetId": { "type": "string" },
+        "discountPresetName": { "type": "string" },
+        "total": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "cashTendered": { "type": "number" },
+        "cashChange": { "type": "number" },
+        "cashierName": { "type": "string" },
+        "status": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "emailSent": { "type": "boolean" }
+      },
+      "required": ["transactionNumber", "timestamp", "total", "paymentMethod", "status"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Customer directory, LTV, tier and order history",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "totalOrders": { "type": "number" },
+        "totalSpent": { "type": "number" },
+        "averageOrderValue": { "type": "number" },
+        "firstVisit": { "type": "number" },
+        "lastVisit": { "type": "number" },
+        "favoriteItem": { "type": "string" },
+        "loyaltyTier": { "type": "string" }
+      },
+      "required": ["name", "totalOrders", "totalSpent"]
+    },
+    "Expense": {
+      "title": "Supplier Expense",
+      "description": "Raw material purchase recording from suppliers",
+      "type": "object",
+      "properties": {
+        "expenseNumber": { "type": "string" },
+        "date": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "itemName": { "type": "string" },
+        "category": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" },
+        "unitPrice": { "type": "number" },
+        "totalPrice": { "type": "number" },
+        "supplierName": { "type": "string" },
+        "supplierLocation": { "type": "string" },
+        "cashierName": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["expenseNumber", "timestamp", "itemName", "totalPrice"]
+    },
+    "Discount": {
+      "title": "Discount Preset",
+      "description": "Discount presets for cashier transactions",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "value": { "type": "number" },
+        "minPurchase": { "type": "number" },
+        "description": { "type": "string" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["name", "type", "value", "isActive"]
+    }
+  },
+  "firestore": {
+    "/store_settings/{settingId}": {
+      "schema": "StoreSetting",
+      "description": "Store settings and branding"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Products and menu catalog items"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Product categories"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Completed and logged POS sales orders"
+    },
+    "/customers/{customerId}": {
+      "schema": "Customer",
+      "description": "Customer directory records"
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Supplier expenses"
+    },
+    "/discounts/{discountId}": {
+      "schema": "Discount",
+      "description": "Discount presets"
+    }
+  }
+}

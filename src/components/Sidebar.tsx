@@ -12,6 +12,7 @@ import {
   LogOut,
   ChevronDown,
   UserCheck,
+  Cloud,
 } from 'lucide-react';
 import { RisolIcon } from './RisolIcon';
 
@@ -129,6 +130,15 @@ export const Sidebar: React.FC = () => {
 
         {/* Bottom Footer Actions: Shift Kasir Selector & Logout */}
         <div className="p-3 border-t border-[#E5E5E5] space-y-2">
+          {/* Real-time Firebase Sync Status */}
+          <div className="flex items-center justify-between px-2.5 py-1.5 bg-emerald-50/80 border border-emerald-200/80 rounded text-[11px] text-emerald-800">
+            <div className="flex items-center gap-1.5 font-medium">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+              <span>Firebase Real-Time</span>
+            </div>
+            <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+          </div>
+
           {/* Shift Kasir Dropdown / Pill */}
           <div className="relative">
             <button
@@ -204,7 +214,13 @@ export const Sidebar: React.FC = () => {
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {/* Cloud Sync indicator */}
+            <span className="flex items-center gap-1 text-[9px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded" title="Tersinkronisasi Real-Time dengan Firebase Firestore">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Cloud</span>
+            </span>
+
             {/* Shift pill */}
             <span className="text-[10px] font-bold bg-blue-50 text-[#1854BA] border border-blue-200 px-2 py-0.5 rounded">
               Kasir: {activeCashier}
