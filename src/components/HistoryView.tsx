@@ -18,26 +18,38 @@ import {
   Loader2,
   AlertTriangle,
   StickyNote,
+  Clock,
 } from 'lucide-react';
+
+interface EditFormState {
+  customerName: string;
+  paymentMethod: PaymentMethod;
+  shift: string;
+  status: 'PAID' | 'REFUNDED';
+  notes: string;
+}
 
 export const HistoryView: React.FC = () => {
   const { transactions, viewReceipt, updateTransaction, deleteTransaction } = usePos();
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [methodFilter, setMethodFilter] = useState<'ALL' | 'CASH' | 'QRIS' | 'TRANSFER'>('ALL');
 
-  // State Modal Edit Transaksi
+  // State Modal Edit Transaksi (Light Mode + Shift Kasir)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [editCustomerName, setEditCustomerName] = useState<string>('');
-  const [editPaymentMethod, setEditPaymentMethod] = useState<PaymentMethod>('CASH');
-  const [editNotes, setEditNotes] = useState<string>('');
-  const [editStatus, setEditStatus] = useState<'PAID' | 'REFUNDED'>('PAID');
+  const [editFormData, setEditFormData] = useState<EditFormState>({
+    customerName: '',
+    paymentMethod: 'CASH',
+    shift: 'Shift 1',
+    status: 'PAID',
+    notes: '',
+  });
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // State Modal Konfirmasi Hapus Transaksi
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
-  // Notifikasi Umpan Balik Aksi
+  // Notifikasi Umpan Balik Aksi (Light Mode Toast)
   const [feedbackMsg, setFeedbackMsg] = useState<{
     type: 'success' | 'error';
     text: string;
@@ -57,6 +69,7 @@ export const HistoryView: React.FC = () => {
       const matchSearch =
         tx.transactionNumber.toLowerCase().includes(q) ||
         tx.customerName.toLowerCase().includes(q) ||
+        (tx.shift && tx.shift.toLowerCase().includes(q)) ||
         (tx.notes && tx.notes.toLowerCase().includes(q));
       const matchMethod = methodFilter === 'ALL' || tx.paymentMethod === methodFilter;
       return matchSearch && matchMethod;
@@ -82,29 +95,35 @@ export const HistoryView: React.FC = () => {
   // Buka Modal Edit Transaksi
   const handleOpenEditModal = (tx: Transaction) => {
     setEditingTransaction(tx);
-    setEditCustomerName(tx.customerName || 'Pelanggan');
-    setEditPaymentMethod(tx.paymentMethod || 'CASH');
-    setEditNotes(tx.notes || '');
-    setEditStatus(tx.status || 'PAID');
+    setEditFormData({
+      customerName: tx.customerName || 'Pelanggan',
+      paymentMethod: tx.paymentMethod || 'CASH',
+      shift: tx.shift || tx.cashierShift || 'Shift 1',
+      status: tx.status || 'PAID',
+      notes: tx.notes || '',
+    });
   };
 
-  // Simpan Perubahan Edit Transaksi ke Cloud Firestore
+  // Simpan Perubahan Edit Transaksi (termasuk Shift Kasir) ke Cloud Firestore
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTransaction) return;
 
     setIsSaving(true);
     try {
+      const resolvedShift = editFormData.shift || 'Shift 1';
       await updateTransaction(editingTransaction.id, {
-        customerName: editCustomerName.trim() || 'Pelanggan',
-        paymentMethod: editPaymentMethod,
-        notes: editNotes.trim(),
-        status: editStatus,
+        customerName: editFormData.customerName.trim() || 'Pelanggan',
+        paymentMethod: editFormData.paymentMethod,
+        shift: resolvedShift,
+        cashierShift: resolvedShift,
+        status: editFormData.status,
+        notes: editFormData.notes.trim(),
       });
       setEditingTransaction(null);
       showFeedback(
         'success',
-        `Transaksi ${editingTransaction.transactionNumber} berhasil diperbarui di Cloud Firestore.`
+        `Transaksi ${editingTransaction.transactionNumber} berhasil diperbarui (${resolvedShift}).`
       );
     } catch (err) {
       showFeedback('error', 'Gagal memperbarui transaksi. Periksa koneksi database.');
@@ -143,7 +162,7 @@ export const HistoryView: React.FC = () => {
               </h1>
             </div>
             <p className="text-xs text-[#666666] mt-0.5">
-              Daftar seluruh transaksi kasir RisoLogy dengan manajemen edit &amp; hapus langsung ke Cloud Firestore
+              Daftar seluruh transaksi kasir RisoLogy dengan manajemen edit shift, metode bayar &amp; hapus langsung ke Cloud Firestore
             </p>
           </div>
 
@@ -185,10 +204,10 @@ export const HistoryView: React.FC = () => {
           </div>
         </div>
 
-        {/* Feedback Toast Banner */}
+        {/* Feedback Toast Banner (Light Mode) */}
         {feedbackMsg && (
           <div
-            className={`mt-4 px-4 py-2.5 rounded border text-xs font-semibold flex items-center justify-between ${
+            className={`mt-4 px-4 py-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between shadow-xs ${
               feedbackMsg.type === 'success'
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
                 : 'bg-rose-50 border-rose-200 text-rose-800'
@@ -212,7 +231,7 @@ export const HistoryView: React.FC = () => {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#888888]" />
             <input
               type="text"
-              placeholder="Cari No. Transaksi (#RSL-...), Nama, atau Catatan..."
+              placeholder="Cari No. Transaksi (#RSL-...), Nama, Shift, atau Catatan..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-8 py-2 text-xs bg-[#F5F5F5] border border-[#E5E5E5] text-slate-900 focus:outline-none focus:border-[#1854BA] focus:bg-white transition-colors rounded-sm"
@@ -276,7 +295,7 @@ export const HistoryView: React.FC = () => {
                 <tr className="bg-[#F8FAFC] border-b border-[#E5E5E5] text-slate-600 uppercase text-[10px] tracking-wider font-semibold">
                   <th className="py-3 px-4">No. Transaksi</th>
                   <th className="py-3 px-4">Waktu</th>
-                  <th className="py-3 px-4">Pelanggan</th>
+                  <th className="py-3 px-4">Pelanggan &amp; Shift</th>
                   <th className="py-3 px-4">Pesanan &amp; Catatan</th>
                   <th className="py-3 px-4">Metode</th>
                   <th className="py-3 px-4 text-right">Subtotal</th>
@@ -291,6 +310,7 @@ export const HistoryView: React.FC = () => {
                   const dt = formatDateTime(tx.timestamp);
                   const isRefund = tx.status === 'REFUNDED';
                   const totalItems = tx.items.reduce((a, b) => a + b.quantity, 0);
+                  const shiftLabel = tx.shift || tx.cashierShift || 'Shift 1';
 
                   return (
                     <tr key={tx.id} className="hover:bg-blue-50/30 transition-colors group">
@@ -307,10 +327,18 @@ export const HistoryView: React.FC = () => {
                         <div className="text-[10px] font-mono text-slate-500">{dt.time}</div>
                       </td>
 
-                      {/* Customer Name */}
+                      {/* Customer Name & Cashier Shift */}
                       <td className="py-3.5 px-4 font-medium text-slate-900 whitespace-nowrap">
                         <div className="font-semibold">{tx.customerName}</div>
-                        <div className="text-[10px] text-slate-500">Kasir: {tx.cashierName}</div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] text-slate-500">
+                            Kasir: {tx.cashierName}
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded text-[10px] font-semibold">
+                            <Clock className="w-2.5 h-2.5 text-blue-600" />
+                            <span>{shiftLabel}</span>
+                          </span>
+                        </div>
                         {tx.customerEmail && (
                           <div className="text-[10px] text-blue-600 flex items-center gap-1 mt-0.5">
                             <CheckCircle className="w-2.5 h-2.5 text-blue-600" />
@@ -331,11 +359,11 @@ export const HistoryView: React.FC = () => {
                             const itemNote = i.note || i.description;
                             return (
                               <div key={`${i.productId}-${idx}`}>
-                                <div className="font-medium">
+                                <div className="font-medium text-slate-800">
                                   {i.name} ({i.quantity}x)
                                 </div>
                                 {itemNote && (
-                                  <div className="text-xs text-zinc-400 italic">
+                                  <div className="text-xs text-slate-500 italic">
                                     Catatan: {itemNote}
                                   </div>
                                 )}
@@ -463,25 +491,27 @@ export const HistoryView: React.FC = () => {
       </div>
 
       {/* ===================================================================== */}
-      {/* MODAL FORMULIR EDIT TRANSAKSI                                         */}
+      {/* MODAL FORMULIR EDIT TRANSAKSI (LIGHT MODE)                            */}
       {/* ===================================================================== */}
       {editingTransaction && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4 text-zinc-100">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-5 text-slate-800">
+            {/* Header Modal */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Pencil className="w-4 h-4 text-amber-400" />
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-blue-600" />
                   <span>Edit Transaksi {editingTransaction.transactionNumber}</span>
                 </h3>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Perbarui metode pembayaran, pelanggan, atau catatan langsung ke Firestore
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Perbarui metode pembayaran, shift kasir, pelanggan, atau catatan langsung ke Firestore
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setEditingTransaction(null)}
-                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
+                aria-label="Tutup"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -490,81 +520,124 @@ export const HistoryView: React.FC = () => {
             <form onSubmit={handleSaveEdit} className="space-y-4">
               {/* Nama Pelanggan */}
               <div>
-                <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Nama Pelanggan
                 </label>
                 <input
                   type="text"
-                  value={editCustomerName}
-                  onChange={(e) => setEditCustomerName(e.target.value)}
+                  value={editFormData.customerName}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, customerName: e.target.value })
+                  }
                   placeholder="Nama pelanggan..."
-                  className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 />
               </div>
 
               {/* Pilihan Dropdown Metode Pembayaran (Cash, QRIS, Transfer) */}
               <div>
-                <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Metode Pembayaran
                 </label>
                 <select
-                  value={editPaymentMethod}
-                  onChange={(e) => setEditPaymentMethod(e.target.value as PaymentMethod)}
-                  className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                  value={editFormData.paymentMethod}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      paymentMethod: e.target.value as PaymentMethod,
+                    })
+                  }
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
                 >
-                  <option value="CASH">Cash (Tunai)</option>
-                  <option value="QRIS">QRIS</option>
-                  <option value="TRANSFER">Transfer</option>
+                  <option value="CASH" className="bg-white text-slate-900">
+                    Cash (Tunai)
+                  </option>
+                  <option value="QRIS" className="bg-white text-slate-900">
+                    QRIS
+                  </option>
+                  <option value="TRANSFER" className="bg-white text-slate-900">
+                    Transfer
+                  </option>
                 </select>
               </div>
 
-              {/* Status Pembayaran */}
+              {/* Pilihan Dropdown Shift Kasir */}
               <div>
-                <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Shift Kasir
+                </label>
+                <select
+                  value={editFormData.shift || 'Shift 1'}
+                  onChange={(e) => setEditFormData({ ...editFormData, shift: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
+                >
+                  <option value="Shift 1" className="bg-white text-slate-900">
+                    Shift 1 (Pagi)
+                  </option>
+                  <option value="Shift 2" className="bg-white text-slate-900">
+                    Shift 2 (Sore)
+                  </option>
+                  <option value="Full Day" className="bg-white text-slate-900">
+                    Full Day
+                  </option>
+                </select>
+              </div>
+
+              {/* Status Transaksi */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Status Transaksi
                 </label>
                 <select
-                  value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value as 'PAID' | 'REFUNDED')}
-                  className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                  value={editFormData.status}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      status: e.target.value as 'PAID' | 'REFUNDED',
+                    })
+                  }
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
                 >
-                  <option value="PAID">Lunas (PAID)</option>
-                  <option value="REFUNDED">Refund / Dibatalkan (REFUNDED)</option>
+                  <option value="PAID" className="bg-white text-slate-900">
+                    Lunas (PAID)
+                  </option>
+                  <option value="REFUNDED" className="bg-white text-slate-900">
+                    Refund / Dibatalkan (REFUNDED)
+                  </option>
                 </select>
               </div>
 
               {/* Textarea Catatan Transaksi (notes) */}
               <div>
-                <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Catatan Transaksi (Notes)
                 </label>
                 <textarea
-                  rows={3}
-                  value={editNotes}
-                  onChange={(e) => setEditNotes(e.target.value)}
+                  value={editFormData.notes}
+                  onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
                   placeholder="Tambahkan catatan transaksi (misal: pembayaran via transfer BCA, pesanan khusus, dll)..."
-                  className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-blue-500 resize-none"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none h-24"
                 />
               </div>
 
-              {/* Tombol Footer: Batal & Simpan */}
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-zinc-800">
+              {/* Tombol Aksi Bawah: Batal & Simpan */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   disabled={isSaving}
                   onClick={() => setEditingTransaction(null)}
-                  className="px-4 py-2 text-xs font-semibold text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-slate-50 hover:bg-slate-100 font-medium text-sm transition-all cursor-pointer disabled:opacity-50"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-4 py-2 text-xs font-bold text-white bg-[#1854BA] hover:bg-[#12408F] rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-60"
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-medium text-sm transition-all shadow-md shadow-blue-500/20 cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-60"
                 >
                   {isSaving ? (
                     <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       <span>Menyimpan...</span>
                     </>
                   ) : (
@@ -578,23 +651,24 @@ export const HistoryView: React.FC = () => {
       )}
 
       {/* ===================================================================== */}
-      {/* MODAL KONFIRMASI HAPUS TRANSAKSI                                      */}
+      {/* MODAL KONFIRMASI HAPUS TRANSAKSI (LIGHT MODE)                         */}
       {/* ===================================================================== */}
       {deletingTransaction && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4 text-zinc-100">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-5 text-slate-800">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-rose-500/20 border border-rose-500/40 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5 text-rose-400" />
+              <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">
+                <h3 className="text-lg font-bold text-slate-900">
                   Hapus Transaksi {deletingTransaction.transactionNumber}?
                 </h3>
-                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                   Apakah Anda yakin ingin menghapus transaksi atas nama{' '}
-                  <strong className="text-white">{deletingTransaction.customerName}</strong> senilai{' '}
-                  <strong className="text-emerald-400">
+                  <strong className="text-slate-900">{deletingTransaction.customerName}</strong>{' '}
+                  senilai{' '}
+                  <strong className="text-emerald-700">
                     {formatCurrency(deletingTransaction.total)}
                   </strong>
                   ? Tindakan ini akan menghapus dokumen secara permanen dari Cloud Firestore.
@@ -602,12 +676,12 @@ export const HistoryView: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-zinc-800">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
               <button
                 type="button"
                 disabled={isDeleting}
                 onClick={() => setDeletingTransaction(null)}
-                className="px-4 py-2 text-xs font-semibold text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-slate-50 hover:bg-slate-100 font-medium text-sm transition-all cursor-pointer disabled:opacity-50"
               >
                 Batal
               </button>
@@ -615,16 +689,16 @@ export const HistoryView: React.FC = () => {
                 type="button"
                 disabled={isDeleting}
                 onClick={handleConfirmDelete}
-                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-60"
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white font-medium text-sm transition-all shadow-md shadow-rose-500/20 cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-60"
               >
                 {isDeleting ? (
                   <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     <span>Menghapus...</span>
                   </>
                 ) : (
                   <>
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" />
                     <span>Ya, Hapus Permanen</span>
                   </>
                 )}

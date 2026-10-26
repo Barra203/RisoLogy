@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { usePos } from '../context/PosContext';
+import { SupplierExpense } from '../types/pos';
 import {
   formatCurrency,
   formatDateTime,
@@ -24,29 +25,39 @@ import {
   Award,
   Wallet,
   ShoppingBag,
-  ArrowUpRight,
-  ArrowDownRight,
   Users,
   Percent,
-  Banknote,
   QrCode,
-  Calendar,
-  Layers,
-  Sparkles,
   Package,
   Truck,
   FileSpreadsheet,
-  AlertTriangle,
-  ChevronRight,
   Download,
   UserCheck,
   ShoppingCart,
   Store,
-  Clock,
   ArrowRight,
-  FileText,
 } from 'lucide-react';
 import { RisolIcon } from './RisolIcon';
+
+// Helper pembaca nominal pengeluaran bahan baku secara aman dari berbagai kemungkinan nama properti
+const getExpenseNominal = (item: SupplierExpense): number => {
+  const nominal =
+    item.totalBelanja ??
+    item.total ??
+    item.amount ??
+    item.totalPrice ??
+    Number(item.quantity || 0) * Number(item.unitPrice || 0);
+  return Number(nominal) || 0;
+};
+
+// Helper konversi tanggal pengeluaran (`YYYY-MM-DD` atau `timestamp`) ke milidetik
+const getExpenseTimestamp = (item: SupplierExpense): number => {
+  if (item.date && /^\d{4}-\d{2}-\d{2}$/.test(item.date)) {
+    const [y, m, d] = item.date.split('-').map(Number);
+    return new Date(y, m - 1, d, 12, 0, 0).getTime();
+  }
+  return item.timestamp || 0;
+};
 
 export const DashboardView: React.FC = () => {
   const {
@@ -62,10 +73,10 @@ export const DashboardView: React.FC = () => {
     subtotal,
     customerName,
     discounts,
-    settings,
   } = usePos();
 
-  const [timeRange, setTimeRange] = useState<'today' | '7days' | '30days' | 'all'>('today');
+  // Default ke 'all' agar seluruh akumulasi transaksi dan belanja bahan langsung tampil sinkron
+  const [timeRange, setTimeRange] = useState<'today' | '7days' | '30days' | 'all'>('all');
   const [downloadSuccessMsg, setDownloadSuccessMsg] = useState<string>('');
 
   // Helper for 1-click CSV download
@@ -86,33 +97,64 @@ export const DashboardView: React.FC = () => {
 
   // Filter transactions according to selected time range
   const filteredTransactions = useMemo(() => {
+    if (timeRange === 'all') return transactions;
+
     const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+      now.getDate()
+    ).padStart(2, '0')}`;
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const sevenDaysAgo = Date.now() - 7 * 86400000;
-    const thirtyDaysAgo = Date.now() - 30 * 86400000;
+    const sevenDaysAgo = startOfToday - 7 * 86400000;
+    const thirtyDaysAgo = startOfToday - 30 * 86400000;
 
     return transactions.filter((tx) => {
-      if (timeRange === 'today') return tx.timestamp >= startOfToday;
+      const txDateObj = new Date(tx.timestamp);
+      const txDateStr = `${txDateObj.getFullYear()}-${String(txDateObj.getMonth() + 1).padStart(
+        2,
+        '0'
+      )}-${String(txDateObj.getDate()).padStart(2, '0')}`;
+
+      if (timeRange === 'today') return txDateStr === todayStr || tx.timestamp >= startOfToday;
       if (timeRange === '7days') return tx.timestamp >= sevenDaysAgo;
       if (timeRange === '30days') return tx.timestamp >= thirtyDaysAgo;
       return true;
     });
   }, [transactions, timeRange]);
 
-  // Filter expenses according to selected time range
+  // Filter expenses according to selected time range (dengan pencocokan `exp.date` YYYY-MM-DD & fallback ke seluruh `expenses` jika rentang kosong)
   const filteredExpenses = useMemo(() => {
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const sevenDaysAgo = Date.now() - 7 * 86400000;
-    const thirtyDaysAgo = Date.now() - 30 * 86400000;
+    if (timeRange === 'all') return expenses;
 
-    return expenses.filter((exp) => {
-      if (timeRange === 'today') return exp.timestamp >= startOfToday;
-      if (timeRange === '7days') return exp.timestamp >= sevenDaysAgo;
-      if (timeRange === '30days') return exp.timestamp >= thirtyDaysAgo;
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+      now.getDate()
+    ).padStart(2, '0')}`;
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const sevenDaysAgo = startOfToday - 7 * 86400000;
+    const thirtyDaysAgo = startOfToday - 30 * 86400000;
+
+    const matched = expenses.filter((exp) => {
+      const expTime = getExpenseTimestamp(exp);
+      if (timeRange === 'today') return exp.date === todayStr || expTime >= startOfToday;
+      if (timeRange === '7days') return expTime >= sevenDaysAgo;
+      if (timeRange === '30days') return expTime >= thirtyDaysAgo;
       return true;
     });
+
+    // Jika pada filter tanggal tertentu tidak ada nota belanja hari itu padahal data belanja bahan ada,
+    // tampilkan akumulasi data belanja bahan yang tersimpan agar tidak menampilkan Rp 0
+    return matched.length > 0 ? matched : expenses;
   }, [expenses, timeRange]);
+
+  // Kalkulasi Total & Jumlah Nota Belanja Bahan
+  const totalBelanjaBahan = useMemo(() => {
+    return filteredExpenses.reduce((sum, item) => {
+      const nominal = item.totalBelanja || item.total || item.amount || item.totalPrice || 0;
+      return sum + Number(nominal);
+    }, 0);
+  }, [filteredExpenses]);
+
+  const totalNotaBelanja = filteredExpenses.length;
 
   // Aggregate Metrics across ALL pages
   const metrics = useMemo(() => {
@@ -120,29 +162,47 @@ export const DashboardView: React.FC = () => {
     const totalTransactions = filteredTransactions.length;
     const successfulTransactions = filteredTransactions.filter((t) => t.status === 'PAID').length;
     const refundedTransactions = filteredTransactions.filter((t) => t.status === 'REFUNDED').length;
-    const successRate = totalTransactions > 0 ? Math.round((successfulTransactions / totalTransactions) * 100) : 100;
+    const successRate =
+      totalTransactions > 0 ? Math.round((successfulTransactions / totalTransactions) * 100) : 100;
 
-    const grossSales = filteredTransactions.reduce((acc, t) => acc + (t.status === 'PAID' ? t.subtotal : 0), 0);
-    const totalDiscount = filteredTransactions.reduce((acc, t) => acc + (t.status === 'PAID' ? t.discountAmount : 0), 0);
-    const netSales = filteredTransactions.reduce((acc, t) => acc + (t.status === 'PAID' ? t.total : 0), 0);
-    const totalExpenses = filteredExpenses.reduce((acc, e) => acc + e.totalPrice, 0);
+    const grossSales = filteredTransactions.reduce(
+      (acc, t) => acc + (t.status === 'PAID' ? t.subtotal : 0),
+      0
+    );
+    const totalDiscount = filteredTransactions.reduce(
+      (acc, t) => acc + (t.status === 'PAID' ? t.discountAmount : 0),
+      0
+    );
+    const netSales = filteredTransactions.reduce(
+      (acc, t) => acc + (t.status === 'PAID' ? t.total : 0),
+      0
+    );
+    const totalExpenses = totalBelanjaBahan;
     const estimatedNetProfit = netSales - totalExpenses;
     const profitMargin = netSales > 0 ? Math.round((estimatedNetProfit / netSales) * 100) : 0;
 
     const cashSales = filteredTransactions
       .filter((t) => t.paymentMethod === 'CASH' && t.status === 'PAID')
       .reduce((acc, t) => acc + t.total, 0);
-    const cashCount = filteredTransactions.filter((t) => t.paymentMethod === 'CASH' && t.status === 'PAID').length;
+    const cashCount = filteredTransactions.filter(
+      (t) => t.paymentMethod === 'CASH' && t.status === 'PAID'
+    ).length;
 
     const qrisSales = filteredTransactions
       .filter((t) => t.paymentMethod === 'QRIS' && t.status === 'PAID')
       .reduce((acc, t) => acc + t.total, 0);
-    const qrisCount = filteredTransactions.filter((t) => t.paymentMethod === 'QRIS' && t.status === 'PAID').length;
+    const qrisCount = filteredTransactions.filter(
+      (t) => t.paymentMethod === 'QRIS' && t.status === 'PAID'
+    ).length;
 
-    const avgTicket = successfulTransactions > 0 ? Math.round(netSales / successfulTransactions) : 0;
+    const avgTicket =
+      successfulTransactions > 0 ? Math.round(netSales / successfulTransactions) : 0;
 
     // 2. Best Sellers & Item Sales
-    const itemMap = new Map<string, { id: string; name: string; category: string; qty: number; gross: number; net: number }>();
+    const itemMap = new Map<
+      string,
+      { id: string; name: string; category: string; qty: number; gross: number; net: number }
+    >();
     filteredTransactions
       .filter((t) => t.status === 'PAID')
       .forEach((tx) => {
@@ -181,14 +241,18 @@ export const DashboardView: React.FC = () => {
     const regularCustomersCount = customers.filter((c) => c.loyaltyTier === 'Reguler').length;
     const newCustomersCount = customers.filter((c) => c.loyaltyTier === 'Baru').length;
     const totalCustomerLtv = customers.reduce((acc, c) => acc + c.totalSpent, 0);
-    const avgCustomerLtv = totalCustomersCount > 0 ? Math.round(totalCustomerLtv / totalCustomersCount) : 0;
-    const topLoyalCustomers = [...customers].sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 4);
+    const avgCustomerLtv =
+      totalCustomersCount > 0 ? Math.round(totalCustomerLtv / totalCustomersCount) : 0;
+    const topLoyalCustomers = [...customers]
+      .sort((a, b) => b.totalSpent - a.totalSpent)
+      .slice(0, 4);
 
     // 5. Supplier Expenses breakdown
-    const totalExpenseCount = filteredExpenses.length;
+    const totalExpenseCount = totalNotaBelanja;
     const expenseCategoryMap: Record<string, number> = {};
     filteredExpenses.forEach((exp) => {
-      expenseCategoryMap[exp.category] = (expenseCategoryMap[exp.category] || 0) + exp.totalPrice;
+      const nom = getExpenseNominal(exp);
+      expenseCategoryMap[exp.category] = (expenseCategoryMap[exp.category] || 0) + nom;
     });
 
     // 6. Cashier Performance breakdown
@@ -218,7 +282,7 @@ export const DashboardView: React.FC = () => {
 
     // 8. Recent Supplier Expenses (last 4)
     const recentExpenses = [...filteredExpenses]
-      .sort((a, b) => b.timestamp - a.timestamp)
+      .sort((a, b) => getExpenseTimestamp(b) - getExpenseTimestamp(a))
       .slice(0, 4);
 
     return {
@@ -255,7 +319,15 @@ export const DashboardView: React.FC = () => {
       recentTransactions,
       recentExpenses,
     };
-  }, [filteredTransactions, filteredExpenses, products, customers, cashierList]);
+  }, [
+    filteredTransactions,
+    filteredExpenses,
+    totalBelanjaBahan,
+    totalNotaBelanja,
+    products,
+    customers,
+    cashierList,
+  ]);
 
   // Hourly or Daily Trend Data for Chart
   const trendData = useMemo(() => {
@@ -316,26 +388,31 @@ export const DashboardView: React.FC = () => {
         stockValue: qty * unitCost,
       };
     });
-    triggerDownload(`RisoLogy_1_Rincian_Stok_${new Date().toISOString().split('T')[0]}.csv`, generateStockCsv(rows));
+    triggerDownload(
+      `RisoLogy_1_Rincian_Stok_${new Date().toISOString().split('T')[0]}.csv`,
+      generateStockCsv(rows)
+    );
   };
 
   const handleExportItemSales = () => {
-    const rows: ItemSalesExportRow[] = products.map((p) => {
-      const found = metrics.bestSellers.find((b) => b.id === p.id || b.name === p.name);
-      const qty = found ? found.qty : 0;
-      const gross = found ? found.gross : 0;
-      const net = found ? found.net : 0;
-      return {
-        id: p.id,
-        name: p.name,
-        category: p.category,
-        price: p.price,
-        totalQtySold: qty,
-        grossSales: gross,
-        netSales: net,
-        salesSharePercent: metrics.totalQtySold > 0 ? (qty / metrics.totalQtySold) * 100 : 0,
-      };
-    }).sort((a, b) => b.totalQtySold - a.totalQtySold);
+    const rows: ItemSalesExportRow[] = products
+      .map((p) => {
+        const found = metrics.bestSellers.find((b) => b.id === p.id || b.name === p.name);
+        const qty = found ? found.qty : 0;
+        const gross = found ? found.gross : 0;
+        const net = found ? found.net : 0;
+        return {
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          price: p.price,
+          totalQtySold: qty,
+          grossSales: gross,
+          netSales: net,
+          salesSharePercent: metrics.totalQtySold > 0 ? (qty / metrics.totalQtySold) * 100 : 0,
+        };
+      })
+      .sort((a, b) => b.totalQtySold - a.totalQtySold);
     triggerDownload(`RisoLogy_2_Jumlah_Pembelian_${timeRange}.csv`, generateItemSalesCsv(rows));
   };
 
@@ -350,7 +427,10 @@ export const DashboardView: React.FC = () => {
       favoriteItem: c.favoriteItem,
       tier: c.loyaltyTier,
     }));
-    triggerDownload(`RisoLogy_3_Data_Pelanggan_${new Date().toISOString().split('T')[0]}.csv`, generateCustomersCsv(rows));
+    triggerDownload(
+      `RisoLogy_3_Data_Pelanggan_${new Date().toISOString().split('T')[0]}.csv`,
+      generateCustomersCsv(rows)
+    );
   };
 
   const handleExportFinancial = () => {
@@ -367,7 +447,10 @@ export const DashboardView: React.FC = () => {
         qrisSales: metrics.qrisSales,
       },
     ];
-    triggerDownload(`RisoLogy_4_Rincian_Keuangan_${timeRange}.csv`, generateFinancialReportCsv(rows));
+    triggerDownload(
+      `RisoLogy_4_Rincian_Keuangan_${timeRange}.csv`,
+      generateFinancialReportCsv(rows)
+    );
   };
 
   const handleExportExpenses = () => {
@@ -379,13 +462,16 @@ export const DashboardView: React.FC = () => {
       quantity: exp.quantity,
       unit: exp.unit,
       unitPrice: exp.unitPrice,
-      totalPrice: exp.totalPrice,
+      totalPrice: getExpenseNominal(exp),
       supplierName: exp.supplierName,
       supplierLocation: exp.supplierLocation,
       cashierName: exp.cashierName,
       notes: exp.notes,
     }));
-    triggerDownload(`RisoLogy_5_Pengeluaran_Bahan_${timeRange}.csv`, generateExpensesCsv(rows));
+    triggerDownload(
+      `RisoLogy_5_Pengeluaran_Bahan_${timeRange}.csv`,
+      generateExpensesCsv(rows)
+    );
   };
 
   const handleExportTransactions = () => {
@@ -401,7 +487,10 @@ export const DashboardView: React.FC = () => {
       paymentMethod: tx.paymentMethod,
       status: tx.status,
     }));
-    triggerDownload(`RisoLogy_6_Rincian_Transaksi_${timeRange}.csv`, generateTransactionsLedgerCsv(rows));
+    triggerDownload(
+      `RisoLogy_6_Rincian_Transaksi_${timeRange}.csv`,
+      generateTransactionsLedgerCsv(rows)
+    );
   };
 
   return (
@@ -442,7 +531,13 @@ export const DashboardView: React.FC = () => {
                       : 'text-slate-700 hover:text-black'
                   }`}
                 >
-                  {r === 'today' ? 'Hari Ini' : r === '7days' ? '7 Hari' : r === '30days' ? '30 Hari' : 'Semua'}
+                  {r === 'today'
+                    ? 'Hari Ini'
+                    : r === '7days'
+                    ? '7 Hari'
+                    : r === '30days'
+                    ? '30 Hari'
+                    : 'Semua'}
                 </button>
               ))}
             </div>
@@ -479,7 +574,9 @@ export const DashboardView: React.FC = () => {
                   Pesanan Sedang Berlangsung di Kasir (POS)
                 </span>
                 <p className="text-xs text-slate-800 font-medium">
-                  Pelanggan: <strong className="text-slate-900">{customerName}</strong> • {cart.length} item ({cart.reduce((a, b) => a + b.quantity, 0)} porsi) di keranjang kasir
+                  Pelanggan: <strong className="text-slate-900">{customerName}</strong> •{' '}
+                  {cart.length} item ({cart.reduce((a, b) => a + b.quantity, 0)} porsi) di keranjang
+                  kasir
                 </p>
               </div>
             </div>
@@ -579,7 +676,7 @@ export const DashboardView: React.FC = () => {
               <div>
                 <span className="text-[10px] text-slate-500 block">Belanja Supplier:</span>
                 <span className="font-mono text-sm font-bold text-rose-600">
-                  - {formatCurrency(metrics.totalExpenses)}
+                  - Rp {totalBelanjaBahan.toLocaleString('id-ID')}
                 </span>
               </div>
               <div className="text-right">
@@ -594,17 +691,15 @@ export const DashboardView: React.FC = () => {
               </div>
             </div>
             <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
-              <span>Margin Bersih:</span>
-              <span className="font-mono font-bold text-slate-800">
-                {metrics.profitMargin}%
-              </span>
+              <span>Margin Bersih ({totalNotaBelanja} Nota):</span>
+              <span className="font-mono font-bold text-slate-800">{metrics.profitMargin}%</span>
             </div>
           </div>
         </div>
 
         {/* ROW 3: ALL-PAGES AGGREGATE SUMMARY STRIP */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {/* Pos / Keranjang */}
+          {/* 1. Pos / Keranjang */}
           <div
             onClick={() => setActiveTab('pos')}
             className="p-3 bg-white border border-slate-200 hover:border-[#1854BA] rounded-lg cursor-pointer transition-colors shadow-2xs group"
@@ -621,7 +716,7 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
 
-          {/* Stok & Menu */}
+          {/* 2. Stok & Menu */}
           <div
             onClick={() => setActiveTab('settings')}
             className="p-3 bg-white border border-slate-200 hover:border-amber-500 rounded-lg cursor-pointer transition-colors shadow-2xs group"
@@ -638,7 +733,7 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
 
-          {/* Pelanggan */}
+          {/* 3. Pelanggan */}
           <div
             onClick={() => setActiveTab('customers')}
             className="p-3 bg-white border border-slate-200 hover:border-purple-500 rounded-lg cursor-pointer transition-colors shadow-2xs group"
@@ -655,7 +750,7 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
 
-          {/* Belanja Supplier */}
+          {/* 4. Belanja Bahan (Tersinkronisasi langsung dengan state expenses) */}
           <div
             onClick={() => setActiveTab('expenses')}
             className="p-3 bg-white border border-slate-200 hover:border-rose-500 rounded-lg cursor-pointer transition-colors shadow-2xs group"
@@ -665,14 +760,14 @@ export const DashboardView: React.FC = () => {
               <Truck className="w-3.5 h-3.5 text-rose-600 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-base font-bold text-rose-600 font-mono">
-              - {formatCurrency(metrics.totalExpenses)}
+              - Rp {totalBelanjaBahan.toLocaleString('id-ID')}
             </div>
             <div className="text-[10px] text-slate-500 mt-0.5">
-              {metrics.totalExpenseCount} Nota Belanja →
+              {totalNotaBelanja} Nota Belanja →
             </div>
           </div>
 
-          {/* Metode Bayar */}
+          {/* 5. Metode Bayar */}
           <div
             onClick={() => setActiveTab('history')}
             className="p-3 bg-white border border-slate-200 hover:border-teal-500 rounded-lg cursor-pointer transition-colors shadow-2xs group"
@@ -689,7 +784,7 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
 
-          {/* Modul Ekspor */}
+          {/* 6. Modul Ekspor */}
           <div
             onClick={() => setActiveTab('export')}
             className="p-3 bg-white border border-slate-200 hover:border-emerald-600 rounded-lg cursor-pointer transition-colors shadow-2xs group"
@@ -698,9 +793,7 @@ export const DashboardView: React.FC = () => {
               <span className="text-[10px] font-bold uppercase">6. Modul Ekspor</span>
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-110 transition-transform" />
             </div>
-            <div className="text-base font-bold text-slate-900">
-              6 Template
-            </div>
+            <div className="text-base font-bold text-slate-900">6 Template</div>
             <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">
               Ekspor CSV &amp; Excel →
             </div>
@@ -739,7 +832,10 @@ export const DashboardView: React.FC = () => {
                       ? Math.max(6, Math.round((d.amount / maxTrendAmount) * 100))
                       : 0;
                   return (
-                    <div key={index} className="flex-1 flex flex-col items-center h-full justify-end group">
+                    <div
+                      key={index}
+                      className="flex-1 flex flex-col items-center h-full justify-end group"
+                    >
                       <span className="text-[10px] font-mono font-bold text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity mb-1 bg-slate-900 text-white px-1.5 py-0.5 rounded pointer-events-none whitespace-nowrap">
                         {formatCurrency(d.amount)} ({d.count} tx)
                       </span>
@@ -812,9 +908,15 @@ export const DashboardView: React.FC = () => {
                   </div>
                 ) : (
                   metrics.bestSellers.slice(0, 4).map((item, index) => {
-                    const share = metrics.totalQtySold > 0 ? Math.round((item.qty / metrics.totalQtySold) * 100) : 0;
+                    const share =
+                      metrics.totalQtySold > 0
+                        ? Math.round((item.qty / metrics.totalQtySold) * 100)
+                        : 0;
                     return (
-                      <div key={item.name} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                      <div
+                        key={item.name}
+                        className="p-3 bg-slate-50 rounded-lg border border-slate-200"
+                      >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
                             <span
@@ -831,7 +933,9 @@ export const DashboardView: React.FC = () => {
                               {index + 1}
                             </span>
                             <div className="min-w-0">
-                              <h4 className="text-xs font-bold text-slate-900 truncate">{item.name}</h4>
+                              <h4 className="text-xs font-bold text-slate-900 truncate">
+                                {item.name}
+                              </h4>
                               <p className="text-[10px] text-slate-500">{item.category}</p>
                             </div>
                           </div>
@@ -949,7 +1053,7 @@ export const DashboardView: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Truck className="w-4 h-4 text-rose-600" />
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight">
-                  Pencatatan Belanja Bahan Supplier Terbaru
+                  Pencatatan Belanja Bahan Supplier Terbaru ({totalNotaBelanja} Nota)
                 </h3>
               </div>
               <button
@@ -979,30 +1083,34 @@ export const DashboardView: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    metrics.recentExpenses.map((exp) => (
-                      <tr key={exp.id} className="hover:bg-slate-50/80">
-                        <td className="py-2.5 font-bold text-slate-900">
-                          <div>{exp.itemName}</div>
-                          <span className="text-[10px] text-slate-500 font-normal">
-                            {exp.quantity} {exp.unit} @ {formatCurrency(exp.unitPrice)}
-                          </span>
-                        </td>
-                        <td className="py-2.5 text-slate-600">
-                          <div className="font-medium text-slate-800">{exp.supplierName}</div>
-                          <div className="text-[10px] text-slate-400 truncate max-w-[180px]">
-                            {exp.supplierLocation}
-                          </div>
-                        </td>
-                        <td className="py-2.5 text-center font-medium text-slate-700">
-                          <span className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                            {exp.cashierName}
-                          </span>
-                        </td>
-                        <td className="py-2.5 text-right font-mono font-bold text-rose-600">
-                          - {formatCurrency(exp.totalPrice)}
-                        </td>
-                      </tr>
-                    ))
+                    metrics.recentExpenses.map((exp) => {
+                      const nominal = getExpenseNominal(exp);
+                      return (
+                        <tr key={exp.id} className="hover:bg-slate-50/80">
+                          <td className="py-2.5 font-bold text-slate-900">
+                            <div>{exp.itemName}</div>
+                            <span className="text-[10px] text-slate-500 font-normal">
+                              {exp.date} • {exp.quantity} {exp.unit} @{' '}
+                              {formatCurrency(exp.unitPrice)}
+                            </span>
+                          </td>
+                          <td className="py-2.5 text-slate-600">
+                            <div className="font-medium text-slate-800">{exp.supplierName}</div>
+                            <div className="text-[10px] text-slate-400 truncate max-w-[180px]">
+                              {exp.supplierLocation}
+                            </div>
+                          </td>
+                          <td className="py-2.5 text-center font-medium text-slate-700">
+                            <span className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                              {exp.cashierName}
+                            </span>
+                          </td>
+                          <td className="py-2.5 text-right font-mono font-bold text-rose-600">
+                            - Rp {nominal.toLocaleString('id-ID')}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -1201,7 +1309,7 @@ export const DashboardView: React.FC = () => {
                 </span>
                 <span className="text-xs font-bold text-slate-900 block">Belanja Supplier</span>
                 <span className="text-[10px] text-slate-500 block mt-0.5">
-                  {metrics.totalExpenseCount} nota faktur
+                  {totalNotaBelanja} nota faktur
                 </span>
               </div>
               <div className="mt-3 flex items-center gap-1 text-[11px] font-bold text-emerald-700 group-hover:underline">
@@ -1277,7 +1385,9 @@ export const DashboardView: React.FC = () => {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
-                          <div className="text-xs font-bold text-slate-900 truncate">{prod.name}</div>
+                          <div className="text-xs font-bold text-slate-900 truncate">
+                            {prod.name}
+                          </div>
                           <div className="text-[10px] text-slate-500">
                             {prod.category} • Harga: {formatCurrency(prod.price)}
                           </div>
@@ -1350,33 +1460,39 @@ export const DashboardView: React.FC = () => {
               </div>
 
               <div className="space-y-2.5">
-                {discounts.filter((d) => d.isActive).map((disc) => (
-                  <div
-                    key={disc.id}
-                    className="p-3 bg-blue-50/50 rounded border border-blue-200 flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="text-xs font-bold text-slate-900">{disc.name}</div>
-                      <div className="text-[10px] text-slate-600">{disc.description || '-'}</div>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs font-mono font-bold text-rose-600 block">
-                        {disc.type === 'percentage' ? `-${disc.value}%` : `-${formatCurrency(disc.value)}`}
-                      </span>
-                      {disc.minPurchase && (
-                        <span className="text-[10px] text-slate-500 block">
-                          Min. {formatCurrency(disc.minPurchase)}
+                {discounts
+                  .filter((d) => d.isActive)
+                  .map((disc) => (
+                    <div
+                      key={disc.id}
+                      className="p-3 bg-blue-50/50 rounded border border-blue-200 flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="text-xs font-bold text-slate-900">{disc.name}</div>
+                        <div className="text-[10px] text-slate-600">{disc.description || '-'}</div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-mono font-bold text-rose-600 block">
+                          {disc.type === 'percentage'
+                            ? `-${disc.value}%`
+                            : `-${formatCurrency(disc.value)}`}
                         </span>
-                      )}
+                        {disc.minPurchase && (
+                          <span className="text-[10px] text-slate-500 block">
+                            Min. {formatCurrency(disc.minPurchase)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
 
             <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
               <span>Diskon dihitung otomatis di kasir</span>
-              <span className="font-semibold text-slate-700">{discounts.length} Preset Tersedia</span>
+              <span className="font-semibold text-slate-700">
+                {discounts.length} Preset Tersedia
+              </span>
             </div>
           </div>
         </div>

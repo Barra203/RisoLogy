@@ -435,9 +435,25 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const list: SupplierExpense[] = [];
         snapshot.forEach((d) => {
-          list.push({ ...(d.data() as SupplierExpense), id: d.id });
+          const raw = d.data() as SupplierExpense;
+          const resolvedNominal =
+            Number(
+              raw.totalBelanja ??
+                raw.total ??
+                raw.amount ??
+                raw.totalPrice ??
+                Number(raw.quantity || 0) * Number(raw.unitPrice || 0)
+            ) || 0;
+          list.push({
+            ...raw,
+            id: d.id,
+            totalPrice: resolvedNominal,
+            totalBelanja: resolvedNominal,
+            total: resolvedNominal,
+            amount: resolvedNominal,
+          });
         });
-        list.sort((a, b) => b.timestamp - a.timestamp);
+        list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         setExpenses(list);
       },
       (error) => {
@@ -929,6 +945,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ): SupplierExpense => {
     const nextNum = `#EXP-${String(expenses.length + 1).padStart(4, '0')}`;
     const tempId = `exp-${Date.now()}`;
+    const resolvedNominal =
+      Number(
+        expense.totalBelanja ??
+          expense.total ??
+          expense.amount ??
+          expense.totalPrice ??
+          Number(expense.quantity || 0) * Number(expense.unitPrice || 0)
+      ) || 0;
     const newExp: SupplierExpense = {
       ...expense,
       id: tempId,
@@ -936,6 +960,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: Date.now(),
       date: expense.date || new Date().toISOString().split('T')[0],
       cashierName: expense.cashierName || activeCashier,
+      totalPrice: resolvedNominal,
+      totalBelanja: resolvedNominal,
+      total: resolvedNominal,
+      amount: resolvedNominal,
     };
 
     setExpenses((prev) => [newExp, ...prev]);
@@ -954,10 +982,30 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateExpense = (id: string, updates: Partial<SupplierExpense>) => {
-    setExpenses((prev) => prev.map((exp) => (exp.id === id ? { ...exp, ...updates } : exp)));
-    updateDoc(doc(db, FIRESTORE_COLLECTIONS.EXPENSES, id), cleanFirestoreData(updates)).catch(
-      (err) =>
-        reportError(err, OperationType.UPDATE, `${FIRESTORE_COLLECTIONS.EXPENSES}/${id}`)
+    const resolvedNominal =
+      updates.totalBelanja ??
+      updates.total ??
+      updates.amount ??
+      updates.totalPrice;
+    const normalizedUpdates: Partial<SupplierExpense> = {
+      ...updates,
+      ...(resolvedNominal !== undefined
+        ? {
+            totalPrice: Number(resolvedNominal) || 0,
+            totalBelanja: Number(resolvedNominal) || 0,
+            total: Number(resolvedNominal) || 0,
+            amount: Number(resolvedNominal) || 0,
+          }
+        : {}),
+    };
+    setExpenses((prev) =>
+      prev.map((exp) => (exp.id === id ? { ...exp, ...normalizedUpdates } : exp))
+    );
+    updateDoc(
+      doc(db, FIRESTORE_COLLECTIONS.EXPENSES, id),
+      cleanFirestoreData(normalizedUpdates)
+    ).catch((err) =>
+      reportError(err, OperationType.UPDATE, `${FIRESTORE_COLLECTIONS.EXPENSES}/${id}`)
     );
   };
 
@@ -1012,6 +1060,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       paymentMethod,
       ...(paymentMethod === 'CASH' ? { cashTendered: tendered, cashChange: change } : {}),
       cashierName: activeCashier || 'Kasir',
+      shift: 'Shift 1',
+      cashierShift: 'Shift 1',
       notes: '',
       status: 'PAID',
     };
@@ -1168,26 +1218,25 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newTransaction;
   };
 
-  // Fungsi Perbarui Transaksi (`updateTransaction`) langsung ke Cloud Firestore
+  // Fungsi Perbarui Transaksi (`updateTransaction`) langsung ke Cloud Firestore (termasuk shift kasir)
   const updateTransaction = async (
     transactionId: string,
     updatedData: Partial<Transaction>
   ): Promise<void> => {
     try {
-      const payload = cleanFirestoreData({
+      const syncedShift = updatedData.shift ?? updatedData.cashierShift;
+      const normalizedData: Partial<Transaction> = {
         ...updatedData,
+        ...(syncedShift !== undefined ? { shift: syncedShift, cashierShift: syncedShift } : {}),
         updatedAt: Date.now(),
-      });
+      };
+      const payload = cleanFirestoreData(normalizedData);
       await updateDoc(doc(db, 'transactions', transactionId), payload);
       setTransactions((prev) =>
-        prev.map((t) =>
-          t.id === transactionId ? { ...t, ...updatedData, updatedAt: Date.now() } : t
-        )
+        prev.map((t) => (t.id === transactionId ? { ...t, ...normalizedData } : t))
       );
       if (activeReceipt?.id === transactionId) {
-        setActiveReceipt((prev) =>
-          prev ? { ...prev, ...updatedData, updatedAt: Date.now() } : null
-        );
+        setActiveReceipt((prev) => (prev ? { ...prev, ...normalizedData } : null));
       }
     } catch (err) {
       reportError(

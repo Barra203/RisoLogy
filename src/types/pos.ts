@@ -55,6 +55,9 @@ export interface SupplierExpense {
   unit: string; // kg, pack, pcs, liter, karton, tabung
   unitPrice: number;
   totalPrice: number;
+  totalBelanja?: number;
+  total?: number;
+  amount?: number;
   supplierName: string;
   supplierLocation: string;
   cashierName: string;
@@ -105,6 +108,8 @@ export interface Transaction {
   cashTendered?: number;
   cashChange?: number;
   cashierName: string; // Harits, Rafi, Barra, Dimas, Akhyar
+  shift?: string; // Shift 1, Shift 2, Full Day
+  cashierShift?: string;
   customerEmail?: string;
   emailSent?: boolean;
   notes?: string;
