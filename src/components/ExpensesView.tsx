@@ -184,7 +184,7 @@ export const ExpensesView: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <Truck className="w-5 h-5 text-[#1854BA] stroke-[2]" />
+              <Truck className="w-5 h-5 text-amber-600 stroke-[2]" />
               <h1 className="text-xl font-bold tracking-tight text-slate-900">
                 Pencatatan Belanja Bahan Supplier
               </h1>
@@ -197,7 +197,7 @@ export const ExpensesView: React.FC = () => {
           <button
             type="button"
             onClick={handleOpenAddModal}
-            className="px-4 py-2.5 bg-[#1854BA] text-white hover:bg-[#12408F] text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition-colors"
+            className="px-4 py-2.5 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-md shadow-amber-600/20 transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Catat Belanja Baru</span>
@@ -216,11 +216,11 @@ export const ExpensesView: React.FC = () => {
             </span>
           </div>
 
-          <div className="p-3 bg-blue-50/70 border border-blue-200 rounded">
-            <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">
+          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded">
+            <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">
               Jumlah Faktur / Transaksi
             </span>
-            <span className="font-mono text-xl font-extrabold text-blue-950 mt-0.5 block">
+            <span className="font-mono text-xl font-extrabold text-amber-950 mt-0.5 block">
               {stats.invoiceCount} Transaksi
             </span>
           </div>
@@ -253,7 +253,7 @@ export const ExpensesView: React.FC = () => {
               placeholder="Cari nama bahan, supplier, lokasi, atau #EXP..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-[#1854BA] focus:outline-none"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
             />
           </div>
 
@@ -265,8 +265,8 @@ export const ExpensesView: React.FC = () => {
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3 py-1 text-xs font-semibold rounded whitespace-nowrap cursor-pointer transition-colors ${
                   selectedCategory === cat
-                    ? 'bg-[#1854BA] text-white shadow-xs'
-                    : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:border-amber-300'
                 }`}
               >
                 {cat}
@@ -362,7 +362,7 @@ export const ExpensesView: React.FC = () => {
 
                       {/* Kasir / Shift PIC */}
                       <td className="py-3 px-3">
-                        <span className="px-2 py-0.5 bg-blue-50 text-blue-800 font-bold rounded text-[10px] border border-blue-200">
+                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[10px] border border-amber-200">
                           {exp.cashierName}
                         </span>
                       </td>
@@ -373,7 +373,7 @@ export const ExpensesView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleOpenEditModal(exp)}
-                            className="p-1 text-slate-500 hover:text-blue-700 hover:bg-slate-100 rounded cursor-pointer"
+                            className="p-1 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded cursor-pointer"
                             title="Edit belanja"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -446,7 +446,7 @@ export const ExpensesView: React.FC = () => {
                   placeholder="Cth: Daging Smoked Beef Slice Premium, Mayonaise Kewpie, dsb."
                   value={itemName}
                   onChange={(e) => setItemName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none"
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                 />
               </div>
 
@@ -459,7 +459,7 @@ export const ExpensesView: React.FC = () => {
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                   >
                     <option value="Bahan Utama">Bahan Utama</option>
                     <option value="Bumbu & Saus">Bumbu &amp; Saus</option>
@@ -479,7 +479,7 @@ export const ExpensesView: React.FC = () => {
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none font-mono"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none font-mono"
                   />
                 </div>
               </div>
@@ -497,7 +497,7 @@ export const ExpensesView: React.FC = () => {
                     required
                     value={quantity || ''}
                     onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none font-mono font-bold"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none font-mono font-bold"
                   />
                 </div>
 
@@ -511,7 +511,7 @@ export const ExpensesView: React.FC = () => {
                     placeholder="kg / pack / pcs"
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                   />
                 </div>
 
@@ -525,7 +525,7 @@ export const ExpensesView: React.FC = () => {
                     required
                     value={unitPrice || ''}
                     onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none font-mono font-bold"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none font-mono font-bold"
                   />
                 </div>
               </div>
@@ -550,7 +550,7 @@ export const ExpensesView: React.FC = () => {
                     placeholder="Cth: CV Sumber Pangan Mandiri, Toko Kue Berkah"
                     value={supplierName}
                     onChange={(e) => setSupplierName(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                   />
                 </div>
 
@@ -561,7 +561,7 @@ export const ExpensesView: React.FC = () => {
                   <select
                     value={expenseCashier}
                     onChange={(e) => setExpenseCashier(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none font-semibold"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none font-semibold"
                   >
                     {cashierList.map((c) => (
                       <option key={c} value={c}>
@@ -581,7 +581,7 @@ export const ExpensesView: React.FC = () => {
                   placeholder="Cth: Pasar Senen Blok B No. 14, Jakarta Pusat (0812-8899-1122)"
                   value={supplierLocation}
                   onChange={(e) => setSupplierLocation(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none"
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                 />
               </div>
 
@@ -594,7 +594,7 @@ export const ExpensesView: React.FC = () => {
                   placeholder="Cth: Stok untuk kebutuhan 4 hari, grade A premium"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none"
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                 />
               </div>
 
@@ -609,7 +609,7 @@ export const ExpensesView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold text-white bg-[#1854BA] hover:bg-[#12408F] rounded shadow-xs cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded shadow-md shadow-amber-600/20 cursor-pointer flex items-center gap-1.5"
                 >
                   <Check className="w-4 h-4" />
                   <span>Simpan Catatan Belanja</span>

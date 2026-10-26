@@ -212,7 +212,7 @@ export const CustomersView: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-[#1854BA] stroke-[2]" />
+              <Users className="w-5 h-5 text-amber-600 stroke-[2]" />
               <h1 className="text-xl font-bold tracking-tight text-slate-900">
                 Data Pelanggan &amp; Riwayat Belanja
               </h1>
@@ -226,7 +226,7 @@ export const CustomersView: React.FC = () => {
             <button
               type="button"
               onClick={handleOpenAddModal}
-              className="px-3.5 py-2 bg-[#1854BA] text-white hover:bg-[#12408F] text-xs font-bold uppercase tracking-wider rounded flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+              className="px-3.5 py-2 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold uppercase tracking-wider rounded flex items-center gap-1.5 cursor-pointer shadow-md shadow-amber-600/20 transition-colors"
             >
               <UserPlus className="w-4 h-4" />
               <span>Tambah Pelanggan</span>
@@ -248,11 +248,11 @@ export const CustomersView: React.FC = () => {
 
         {/* Metrics Row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[#F0F0F0]">
-          <div className="p-3 bg-blue-50/60 border border-blue-100 rounded">
-            <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">
+          <div className="p-3 bg-amber-50/60 border border-amber-200 rounded">
+            <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">
               Total Pelanggan Terdaftar
             </span>
-            <span className="font-mono text-xl font-extrabold text-blue-950 mt-0.5 block">
+            <span className="font-mono text-xl font-extrabold text-amber-950 mt-0.5 block">
               {stats.totalCount} orang
             </span>
           </div>
@@ -294,7 +294,7 @@ export const CustomersView: React.FC = () => {
               placeholder="Cari nama pelanggan atau nomor telepon..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-[#1854BA] focus:outline-none"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
             />
           </div>
 
@@ -306,8 +306,8 @@ export const CustomersView: React.FC = () => {
                 onClick={() => setSelectedTier(tier)}
                 className={`px-3 py-1 text-xs font-semibold rounded cursor-pointer transition-colors ${
                   selectedTier === tier
-                    ? 'bg-[#1854BA] text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50'
                 }`}
               >
                 {tier === 'ALL' ? 'Semua Status' : tier}
@@ -339,7 +339,7 @@ export const CustomersView: React.FC = () => {
                   <tr>
                     <td colSpan={8} className="py-14 text-center">
                       <div className="max-w-md mx-auto flex flex-col items-center justify-center text-slate-500">
-                        <div className="w-12 h-12 rounded-full bg-blue-50 text-[#1854BA] flex items-center justify-center mb-3">
+                        <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
                           <Users className="w-6 h-6" />
                         </div>
                         <h3 className="font-bold text-sm text-slate-800">
@@ -356,7 +356,7 @@ export const CustomersView: React.FC = () => {
                           <button
                             type="button"
                             onClick={handleOpenAddModal}
-                            className="mt-4 px-4 py-2 bg-[#1854BA] hover:bg-[#12408F] text-white text-xs font-bold uppercase tracking-wider rounded flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                            className="mt-4 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold uppercase tracking-wider rounded flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
                           >
                             <UserPlus className="w-4 h-4" />
                             <span>Tambah Pelanggan Baru</span>
@@ -374,7 +374,7 @@ export const CustomersView: React.FC = () => {
                         {/* Name & avatar */}
                         <td className="py-3 px-4 font-semibold text-slate-900">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-blue-100 text-[#1854BA] font-extrabold flex items-center justify-center shrink-0 text-xs">
+                            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-extrabold flex items-center justify-center shrink-0 text-xs">
                               {cust.name.substring(0, 2).toUpperCase()}
                             </div>
                             <div>
@@ -405,7 +405,7 @@ export const CustomersView: React.FC = () => {
                               isVip
                                 ? 'bg-amber-100 text-amber-900 border border-amber-300'
                                 : isReguler
-                                ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                                ? 'bg-amber-50 text-amber-800 border border-amber-200'
                                 : 'bg-slate-100 text-slate-700'
                             }`}
                           >
@@ -443,7 +443,7 @@ export const CustomersView: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleStartOrderForCustomer(cust.name)}
-                              className="px-2 py-1 bg-[#1854BA] text-white hover:bg-[#12408F] font-semibold text-[11px] rounded flex items-center gap-0.5 cursor-pointer transition-colors shadow-2xs"
+                              className="px-2 py-1 bg-amber-600 text-white hover:bg-amber-700 font-semibold text-[11px] rounded flex items-center gap-0.5 cursor-pointer transition-colors shadow-2xs"
                               title="Buka Kasir untuk Pelanggan Ini"
                             >
                               <span>Order</span>
@@ -453,7 +453,7 @@ export const CustomersView: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setActiveCustomerDetail(cust)}
-                              className="p-1 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded cursor-pointer transition-colors"
+                              className="p-1 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded cursor-pointer transition-colors"
                               title="Lihat Riwayat Transaksi"
                             >
                               <Eye className="w-4 h-4" />
@@ -492,15 +492,15 @@ export const CustomersView: React.FC = () => {
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="w-full max-w-md bg-white rounded-lg shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
-            <div className="px-6 py-4 bg-[#1854BA] text-white flex items-center justify-between">
+            <div className="px-6 py-4 bg-amber-600 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-amber-300" />
+                <UserPlus className="w-5 h-5 text-amber-100" />
                 <h3 className="font-bold text-sm tracking-tight">Tambah Data Pelanggan Baru</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-1 text-blue-200 hover:text-white rounded cursor-pointer"
+                className="p-1 text-amber-100 hover:text-white rounded cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -524,7 +524,7 @@ export const CustomersView: React.FC = () => {
                   placeholder="Misal: Bu Nadia, Mas Dimas"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-[#1854BA] focus:outline-none"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                 />
               </div>
 
@@ -537,7 +537,7 @@ export const CustomersView: React.FC = () => {
                   placeholder="Misal: 0812-3456-7890"
                   value={formPhone}
                   onChange={(e) => setFormPhone(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-[#1854BA] focus:outline-none font-mono"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none font-mono"
                 />
               </div>
 
@@ -556,7 +556,7 @@ export const CustomersView: React.FC = () => {
                           ? t === 'VIP'
                             ? 'bg-amber-100 text-amber-900 border-amber-400 ring-2 ring-amber-300'
                             : t === 'Reguler'
-                            ? 'bg-blue-100 text-blue-900 border-blue-400 ring-2 ring-blue-300'
+                            ? 'bg-amber-50 text-amber-800 border-amber-400 ring-2 ring-amber-300'
                             : 'bg-slate-200 text-slate-900 border-slate-400 ring-2 ring-slate-300'
                           : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                       }`}
@@ -575,7 +575,7 @@ export const CustomersView: React.FC = () => {
                 <select
                   value={formFavoriteItem}
                   onChange={(e) => setFormFavoriteItem(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-[#1854BA] focus:outline-none"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                 >
                   {productOptions.map((pName) => (
                     <option key={pName} value={pName}>
@@ -591,7 +591,7 @@ export const CustomersView: React.FC = () => {
                     placeholder="Ketik nama menu favorit..."
                     value={formCustomFavorite}
                     onChange={(e) => setFormCustomFavorite(e.target.value)}
-                    className="w-full mt-2 px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none"
+                    className="w-full mt-2 px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                   />
                 )}
               </div>
@@ -634,7 +634,7 @@ export const CustomersView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold text-white bg-[#1854BA] hover:bg-[#12408F] rounded shadow-xs cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded shadow-md shadow-amber-600/20 cursor-pointer flex items-center gap-1.5"
                 >
                   <Check className="w-4 h-4" />
                   <span>Simpan Pelanggan</span>
@@ -682,7 +682,7 @@ export const CustomersView: React.FC = () => {
                   required
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-[#1854BA] focus:outline-none font-semibold text-slate-900"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none font-semibold text-slate-900"
                 />
               </div>
 
@@ -695,7 +695,7 @@ export const CustomersView: React.FC = () => {
                   placeholder="Misal: 0812-3456-7890"
                   value={formPhone}
                   onChange={(e) => setFormPhone(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-[#1854BA] focus:outline-none font-mono"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none font-mono"
                 />
               </div>
 
@@ -714,7 +714,7 @@ export const CustomersView: React.FC = () => {
                           ? t === 'VIP'
                             ? 'bg-amber-100 text-amber-900 border-amber-400 ring-2 ring-amber-300'
                             : t === 'Reguler'
-                            ? 'bg-blue-100 text-blue-900 border-blue-400 ring-2 ring-blue-300'
+                            ? 'bg-amber-50 text-amber-800 border-amber-400 ring-2 ring-amber-300'
                             : 'bg-slate-200 text-slate-900 border-slate-400 ring-2 ring-slate-300'
                           : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                       }`}
@@ -733,7 +733,7 @@ export const CustomersView: React.FC = () => {
                 <select
                   value={formFavoriteItem}
                   onChange={(e) => setFormFavoriteItem(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-[#1854BA] focus:outline-none"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                 >
                   {productOptions.map((pName) => (
                     <option key={pName} value={pName}>
@@ -749,7 +749,7 @@ export const CustomersView: React.FC = () => {
                     placeholder="Ketik nama menu favorit..."
                     value={formCustomFavorite}
                     onChange={(e) => setFormCustomFavorite(e.target.value)}
-                    className="w-full mt-2 px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none"
+                    className="w-full mt-2 px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                   />
                 )}
               </div>
@@ -806,7 +806,7 @@ export const CustomersView: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 text-xs font-bold text-white bg-[#1854BA] hover:bg-[#12408F] rounded shadow-xs cursor-pointer flex items-center gap-1.5"
+                    className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded shadow-md shadow-amber-600/20 cursor-pointer flex items-center gap-1.5"
                   >
                     <Check className="w-4 h-4" />
                     <span>Simpan Perubahan</span>
@@ -966,7 +966,7 @@ export const CustomersView: React.FC = () => {
                               setActiveCustomerDetail(null);
                               viewReceipt(tx);
                             }}
-                            className="text-[10px] text-[#1854BA] hover:underline font-semibold cursor-pointer"
+                            className="text-[10px] text-amber-700 hover:underline font-semibold cursor-pointer"
                           >
                             Buka Struk
                           </button>
@@ -992,7 +992,7 @@ export const CustomersView: React.FC = () => {
                   handleStartOrderForCustomer(activeCustomerDetail.name);
                   setActiveCustomerDetail(null);
                 }}
-                className="px-4 py-2 text-xs font-bold text-white bg-[#1854BA] hover:bg-[#12408F] rounded shadow-xs cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded shadow-xs cursor-pointer flex items-center gap-1.5"
               >
                 <span>Mulai Order Sekarang</span>
                 <ArrowRight className="w-3.5 h-3.5" />

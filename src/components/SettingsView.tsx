@@ -316,7 +316,7 @@ export const SettingsView: React.FC = () => {
 
           <div className="flex items-center gap-3">
             {saveSuccess && (
-              <span className="text-xs font-semibold text-[#1854BA] bg-[#1854BA]/10 px-3 py-1 flex items-center gap-1.5 border border-[#1854BA]">
+              <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-3 py-1 flex items-center gap-1.5 border border-amber-300">
                 <Check className="w-3.5 h-3.5" />
                 <span>Pengaturan Tersimpan</span>
               </span>
@@ -324,7 +324,7 @@ export const SettingsView: React.FC = () => {
             <button
               type="button"
               onClick={handleSaveSettings}
-              className="px-5 py-2.5 bg-[#1854BA] text-white hover:bg-[#12408F] text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
+              className="px-5 py-2.5 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-amber-600/20"
             >
               <Save className="w-4 h-4" />
               <span>Simpan Perubahan</span>
@@ -338,7 +338,7 @@ export const SettingsView: React.FC = () => {
         {/* Section 1: Logo Toko & Identitas Brand (Direct Upload Logo) */}
         <div className="bg-white border border-[#E5E5E5] p-6">
           <div className="flex items-center gap-2 pb-4 mb-4 border-b border-[#E5E5E5]">
-            <Store className="w-4 h-4 text-[#1854BA] stroke-[1.5]" />
+            <Store className="w-4 h-4 text-amber-600 stroke-[1.5]" />
             <h2 className="text-sm font-bold text-black uppercase tracking-wider">
               1. Identitas Brand & Upload Logo Toko
             </h2>
@@ -374,7 +374,7 @@ export const SettingsView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => logoFileInputRef.current?.click()}
-                  className="w-full px-3 py-2 bg-[#1854BA] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#12408F] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                  className="w-full px-3 py-2 bg-amber-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-amber-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                 >
                   <Upload className="w-3.5 h-3.5" />
                   <span>Unggah / Ganti Logo</span>
@@ -403,7 +403,7 @@ export const SettingsView: React.FC = () => {
                   type="text"
                   value={storeName}
                   onChange={(e) => setStoreName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-[#1854BA] font-semibold text-black bg-white"
+                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 font-semibold text-black bg-white focus:outline-none"
                   placeholder="RisoLogy"
                 />
               </div>
@@ -416,7 +416,7 @@ export const SettingsView: React.FC = () => {
                   type="text"
                   value={brandName}
                   onChange={(e) => setBrandName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-[#1854BA] font-semibold text-black bg-white"
+                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 font-semibold text-black bg-white focus:outline-none"
                   placeholder="RisoLogy"
                 />
               </div>
@@ -429,7 +429,7 @@ export const SettingsView: React.FC = () => {
                   type="text"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-[#1854BA] text-black bg-white"
+                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 text-black bg-white focus:outline-none"
                   placeholder="Jl. Melati No. 8, Senopati, Jakarta"
                 />
               </div>
@@ -442,7 +442,7 @@ export const SettingsView: React.FC = () => {
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-[#1854BA] text-black bg-white font-mono"
+                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 text-black bg-white font-mono focus:outline-none"
                   placeholder="0812-3456-7890"
                 />
               </div>
@@ -455,7 +455,7 @@ export const SettingsView: React.FC = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-[#1854BA] text-black bg-white"
+                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 text-black bg-white focus:outline-none"
                   placeholder="contact@risology.id"
                 />
               </div>
@@ -468,7 +468,7 @@ export const SettingsView: React.FC = () => {
                   rows={2}
                   value={footerText}
                   onChange={(e) => setFooterText(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-[#1854BA] text-black bg-white font-mono"
+                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 text-black bg-white font-mono focus:outline-none"
                   placeholder="Terima kasih atas kunjungan Anda!..."
                 />
               </div>
@@ -479,7 +479,7 @@ export const SettingsView: React.FC = () => {
         {/* Section 2: QRIS Digital & Upload Gambar QRIS Langsung (NMID REMOVED) */}
         <div className="bg-white border border-[#E5E5E5] p-6">
           <div className="flex items-center gap-2 pb-4 mb-4 border-b border-[#E5E5E5]">
-            <QrCode className="w-4 h-4 text-[#1854BA] stroke-[1.5]" />
+            <QrCode className="w-4 h-4 text-amber-600 stroke-[1.5]" />
             <h2 className="text-sm font-bold text-black uppercase tracking-wider">
               2. Konfigurasi & Upload Gambar QRIS Toko
             </h2>
@@ -515,7 +515,7 @@ export const SettingsView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => qrisFileInputRef.current?.click()}
-                  className="w-full px-3 py-2 bg-[#1854BA] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#12408F] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                  className="w-full px-3 py-2 bg-amber-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-amber-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                 >
                   <Upload className="w-3.5 h-3.5" />
                   <span>Unggah Gambar QRIS</span>
@@ -546,8 +546,8 @@ export const SettingsView: React.FC = () => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 p-3 bg-[#F0F5FF] border border-[#1854BA]/30 text-xs text-[#1854BA]">
-                <Check className="w-4 h-4 shrink-0" />
+              <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                <Check className="w-4 h-4 shrink-0 text-amber-600" />
                 <span>Gambar QRIS otomatis tersimpan secara persistent di browser kasir Anda.</span>
               </div>
             </div>
@@ -558,7 +558,7 @@ export const SettingsView: React.FC = () => {
         <div className="bg-white border border-[#E5E5E5] p-6">
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E5E5]">
             <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-[#1854BA] stroke-[1.5]" />
+              <Layers className="w-4 h-4 text-amber-600 stroke-[1.5]" />
               <h2 className="text-sm font-bold text-black uppercase tracking-wider">
                 3. Manajemen Kategori Menu Kasir ({categories.length})
               </h2>
@@ -599,12 +599,12 @@ export const SettingsView: React.FC = () => {
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
               placeholder="Tambah kategori baru (cth: Pastry, Tea, Snack, Dessert)..."
-              className="flex-1 px-3 py-2 text-xs border border-[#CCCCCC] focus:border-[#1854BA] bg-white font-medium focus:outline-none"
+              className="flex-1 px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white font-medium focus:outline-none"
             />
             <button
               type="submit"
               onClick={() => handleAddCategory()}
-              className="px-4 py-2 bg-[#1854BA] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#12408F] transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+              className="px-4 py-2 bg-amber-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-amber-700 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Tambah Kategori</span>
@@ -613,18 +613,18 @@ export const SettingsView: React.FC = () => {
 
           {/* Edit Category Inline Bar */}
           {editingCat && (
-            <form onSubmit={handleSaveEditCategory} className="p-3 bg-[#F0F5FF] border border-[#1854BA] mb-4 flex items-center gap-2">
+            <form onSubmit={handleSaveEditCategory} className="p-3 bg-amber-50 border border-amber-500 mb-4 flex items-center gap-2">
               <span className="text-xs font-semibold text-black">Ubah Kategori "{editingCat.oldName}":</span>
               <input
                 type="text"
                 value={editingCat.newName}
                 onChange={(e) => setEditingCat({ ...editingCat, newName: e.target.value })}
-                className="flex-1 px-2.5 py-1 text-xs border border-[#CCCCCC] bg-white font-medium focus:border-[#1854BA] focus:outline-none"
+                className="flex-1 px-2.5 py-1 text-xs border border-[#CCCCCC] bg-white font-medium focus:border-amber-500 focus:outline-none"
                 autoFocus
               />
               <button
                 type="submit"
-                className="px-3 py-1 bg-[#1854BA] text-white text-xs font-bold uppercase cursor-pointer hover:bg-[#12408F]"
+                className="px-3 py-1 bg-amber-600 text-white text-xs font-bold uppercase cursor-pointer hover:bg-amber-700"
               >
                 Simpan
               </button>
@@ -645,7 +645,7 @@ export const SettingsView: React.FC = () => {
               return (
                 <div
                   key={cat}
-                  className="p-3 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-between hover:border-[#1854BA] transition-colors"
+                  className="p-3 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-between hover:border-amber-500 transition-colors"
                 >
                   <div className="min-w-0 pr-2">
                     <span className="text-xs font-bold text-black block truncate">{cat}</span>
@@ -658,7 +658,7 @@ export const SettingsView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setEditingCat({ oldName: cat, newName: cat })}
-                      className="p-1.5 text-[#666666] hover:text-[#1854BA] hover:bg-white border border-transparent hover:border-[#CCCCCC] transition-colors cursor-pointer"
+                      className="p-1.5 text-[#666666] hover:text-amber-700 hover:bg-white border border-transparent hover:border-[#CCCCCC] transition-colors cursor-pointer"
                       title={`Ubah nama kategori ${cat}`}
                     >
                       <Edit2 className="w-3.5 h-3.5" />
@@ -682,7 +682,7 @@ export const SettingsView: React.FC = () => {
         <div className="bg-white border border-[#E5E5E5] p-6">
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E5E5]">
             <div className="flex items-center gap-2">
-              <RisolIcon className="w-4 h-4 text-[#1854BA] stroke-[1.8]" />
+              <RisolIcon className="w-4 h-4 text-amber-600 stroke-[1.8]" />
               <h2 className="text-sm font-bold text-black uppercase tracking-wider">
                 4. Manajemen Menu Produk ({products.length} Menu • {products.reduce((acc, p) => acc + (p.stockQuantity || 0), 0)} Porsi Stok)
               </h2>
@@ -691,7 +691,7 @@ export const SettingsView: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowAddProduct(!showAddProduct)}
-              className="px-3.5 py-1.5 bg-[#1854BA] text-white text-xs font-semibold uppercase tracking-wider hover:bg-[#12408F] transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+              className="px-3.5 py-1.5 bg-amber-600 text-white text-xs font-semibold uppercase tracking-wider hover:bg-amber-700 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Tambah Menu Baru</span>
@@ -700,10 +700,10 @@ export const SettingsView: React.FC = () => {
 
           {/* Add Product Inline Form */}
           {showAddProduct && (
-            <form onSubmit={handleCreateProduct} className="p-4 bg-[#FAFAFA] border border-[#1854BA] mb-6 space-y-4">
+            <form onSubmit={handleCreateProduct} className="p-4 bg-[#FAFAFA] border border-amber-500 mb-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-black uppercase tracking-wider flex items-center gap-1.5">
-                  <Plus className="w-3.5 h-3.5 text-[#1854BA]" />
+                  <Plus className="w-3.5 h-3.5 text-amber-600" />
                   <span>Tambah Menu Baru</span>
                 </h3>
                 <button
@@ -726,7 +726,7 @@ export const SettingsView: React.FC = () => {
                     value={newProdName}
                     onChange={(e) => setNewProdName(e.target.value)}
                     placeholder="cth: Vanilla Cold Brew"
-                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] bg-white font-medium focus:border-[#1854BA] focus:outline-none"
+                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] bg-white font-medium focus:border-amber-500 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -736,7 +736,7 @@ export const SettingsView: React.FC = () => {
                   <select
                     value={newProdCategory}
                     onChange={(e) => setNewProdCategory(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] bg-white font-medium focus:border-[#1854BA] focus:outline-none"
+                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] bg-white font-medium focus:border-amber-500 focus:outline-none"
                   >
                     {categories.map((c) => (
                       <option key={c} value={c}>
@@ -757,7 +757,7 @@ export const SettingsView: React.FC = () => {
                     value={newProdPrice}
                     onChange={(e) => setNewProdPrice(e.target.value)}
                     placeholder="25000"
-                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] bg-white font-mono focus:border-[#1854BA] focus:outline-none"
+                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] bg-white font-mono focus:border-amber-500 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -771,7 +771,7 @@ export const SettingsView: React.FC = () => {
                     value={newProdStock}
                     onChange={(e) => setNewProdStock(e.target.value)}
                     placeholder="30"
-                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] bg-white font-mono focus:border-[#1854BA] focus:outline-none"
+                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] bg-white font-mono focus:border-amber-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -785,7 +785,7 @@ export const SettingsView: React.FC = () => {
                   value={newProdDesc}
                   onChange={(e) => setNewProdDesc(e.target.value)}
                   placeholder="Deskripsi singkat rasa dan bahan..."
-                  className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] bg-white focus:border-[#1854BA] focus:outline-none"
+                  className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] bg-white focus:border-amber-500 focus:outline-none"
                 />
               </div>
 
@@ -827,7 +827,7 @@ export const SettingsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => productFileInputRef.current?.click()}
-                    className="px-3 py-1.5 bg-white text-black border border-[#CCCCCC] hover:border-[#1854BA] text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                    className="px-3 py-1.5 bg-white text-black border border-[#CCCCCC] hover:border-amber-500 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
                   >
                     <Upload className="w-3.5 h-3.5" />
                     <span>Upload Foto</span>
@@ -854,7 +854,7 @@ export const SettingsView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-[#1854BA] text-white text-xs font-bold uppercase cursor-pointer hover:bg-[#12408F]"
+                  className="px-4 py-1.5 bg-amber-600 text-white text-xs font-bold uppercase cursor-pointer hover:bg-amber-700"
                 >
                   Simpan Menu
                 </button>
@@ -885,7 +885,7 @@ export const SettingsView: React.FC = () => {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-xs text-black">{p.name}</span>
-                      <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-[#F0F5FF] text-[#1854BA] border border-[#1854BA]/20">
+                      <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200">
                         {p.category}
                       </span>
                     </div>
@@ -945,7 +945,7 @@ export const SettingsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setEditingProduct({ ...p })}
-                    className="p-1.5 text-[#1854BA] hover:bg-[#1854BA]/10 border border-transparent hover:border-[#1854BA] transition-colors cursor-pointer"
+                    className="p-1.5 text-amber-700 hover:bg-amber-50 border border-transparent hover:border-amber-400 transition-colors cursor-pointer"
                     title={`Edit menu ${p.name}`}
                   >
                     <Edit2 className="w-4 h-4" />
@@ -969,14 +969,14 @@ export const SettingsView: React.FC = () => {
         {/* Section 5: Keamanan, Akun Kasir & Password */}
         <div className="bg-white border border-[#E5E5E5] p-6">
           <div className="flex items-center gap-2 pb-4 mb-4 border-b border-[#E5E5E5]">
-            <Lock className="w-4 h-4 text-[#1854BA] stroke-[1.5]" />
+            <Lock className="w-4 h-4 text-amber-600 stroke-[1.5]" />
             <h2 className="text-sm font-bold text-black uppercase tracking-wider">
               5. Keamanan, Akun Kasir &amp; Password Masuk
             </h2>
           </div>
 
           {/* Cashier accounts info box */}
-          <div className="mb-4 p-3 bg-blue-50/70 border border-blue-200 rounded text-xs space-y-1.5">
+          <div className="mb-4 p-3 bg-amber-50/70 border border-amber-200 rounded text-xs space-y-1.5">
             <div className="font-bold text-slate-900 flex items-center justify-between">
               <span>Akun Login Kasir Resmi:</span>
               <span className="font-mono text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded text-[11px]">
@@ -987,7 +987,7 @@ export const SettingsView: React.FC = () => {
               User kasir: <strong>Harits</strong>, <strong>Rafi</strong>, <strong>Barra</strong>, <strong>Dimas</strong>, dan <strong>Akhyar</strong>.
             </p>
             <p className="text-slate-600">
-              Password masuk sistem: <code className="bg-white px-2 py-0.5 rounded font-mono font-bold text-[#1854BA] border border-blue-200">RisoLogyKeren</code> (atau PIN alternatif: <code>{settings.pinCode}</code>)
+              Password masuk sistem: <code className="bg-white px-2 py-0.5 rounded font-mono font-bold text-amber-800 border border-amber-300">RisoLogyKeren</code> (atau PIN alternatif: <code>{settings.pinCode}</code>)
             </p>
           </div>
 
@@ -1002,7 +1002,7 @@ export const SettingsView: React.FC = () => {
                   maxLength={6}
                   value={oldPin}
                   onChange={(e) => setOldPin(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-[#1854BA] font-mono text-black bg-white focus:outline-none"
+                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 font-mono text-black bg-white focus:outline-none"
                   placeholder="******"
                 />
               </div>
@@ -1016,7 +1016,7 @@ export const SettingsView: React.FC = () => {
                   maxLength={6}
                   value={newPin}
                   onChange={(e) => setNewPin(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-[#1854BA] font-mono text-black bg-white focus:outline-none"
+                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 font-mono text-black bg-white focus:outline-none"
                   placeholder="******"
                 />
               </div>
@@ -1025,7 +1025,7 @@ export const SettingsView: React.FC = () => {
             <button
               type="submit"
               disabled={!oldPin || newPin.length !== 6}
-              className="px-4 py-2 bg-[#1854BA] text-white hover:bg-[#12408F] text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-40 cursor-pointer shadow-sm"
+              className="px-4 py-2 bg-amber-600 text-white hover:bg-amber-700 text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-40 cursor-pointer shadow-sm"
             >
               Ubah PIN Kasir
             </button>
@@ -1034,7 +1034,7 @@ export const SettingsView: React.FC = () => {
               <div
                 className={`p-2.5 text-xs border ${
                   pinMessage.success
-                    ? 'bg-[#1854BA] text-white border-[#1854BA]'
+                    ? 'bg-amber-600 text-white border-amber-600'
                     : 'bg-red-50 text-red-600 border-red-200'
                 }`}
               >
@@ -1271,7 +1271,7 @@ export const SettingsView: React.FC = () => {
           <div className="w-full max-w-lg bg-white border border-[#E5E5E5] shadow-2xl p-6">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E5E5E5]">
               <h3 className="text-sm font-bold text-black uppercase tracking-tight flex items-center gap-2">
-                <Edit2 className="w-4 h-4 text-[#1854BA]" />
+                <Edit2 className="w-4 h-4 text-amber-600" />
                 <span>Edit Menu: {editingProduct.name}</span>
               </h3>
               <button
@@ -1294,7 +1294,7 @@ export const SettingsView: React.FC = () => {
                     required
                     value={editingProduct.name}
                     onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
-                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] focus:border-[#1854BA] bg-white font-medium focus:outline-none"
+                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white font-medium focus:outline-none"
                   />
                 </div>
 
@@ -1305,7 +1305,7 @@ export const SettingsView: React.FC = () => {
                   <select
                     value={editingProduct.category}
                     onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
-                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] focus:border-[#1854BA] bg-white font-medium focus:outline-none"
+                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white font-medium focus:outline-none"
                   >
                     {categories.map((c) => (
                       <option key={c} value={c}>
@@ -1328,7 +1328,7 @@ export const SettingsView: React.FC = () => {
                     step="500"
                     value={editingProduct.price}
                     onChange={(e) => setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] focus:border-[#1854BA] bg-white font-mono focus:outline-none"
+                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white font-mono focus:outline-none"
                   />
                 </div>
 
@@ -1347,7 +1347,7 @@ export const SettingsView: React.FC = () => {
                         stockQuantity: Math.max(0, parseInt(e.target.value, 10) || 0),
                       })
                     }
-                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] focus:border-[#1854BA] bg-white font-mono focus:outline-none"
+                    className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white font-mono focus:outline-none"
                   />
                 </div>
               </div>
@@ -1360,7 +1360,7 @@ export const SettingsView: React.FC = () => {
                   rows={2}
                   value={editingProduct.description || ''}
                   onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
-                  className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] focus:border-[#1854BA] bg-white focus:outline-none"
+                  className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white focus:outline-none"
                 />
               </div>
 
@@ -1404,7 +1404,7 @@ export const SettingsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => editProductFileInputRef.current?.click()}
-                    className="px-3 py-1.5 bg-white text-[#1854BA] border border-[#1854BA] hover:bg-[#1854BA] hover:text-white text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
+                    className="px-3 py-1.5 bg-white text-amber-700 border border-amber-500 hover:bg-amber-600 hover:text-white text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
                   >
                     <Upload className="w-3.5 h-3.5" />
                     <span>Ganti Foto</span>
@@ -1431,7 +1431,7 @@ export const SettingsView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#1854BA] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#12408F] cursor-pointer shadow-sm"
+                  className="px-5 py-2 bg-amber-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-amber-700 cursor-pointer shadow-sm"
                 >
                   Simpan Perubahan
                 </button>

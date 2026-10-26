@@ -278,7 +278,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
             type="button"
             onClick={handleCompletePayment}
             disabled={isSubmitting || !paymentValid}
-            className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-md shadow-amber-600/25"
+            className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-amber-600/25"
           >
             {isSubmitting ? (
               <>

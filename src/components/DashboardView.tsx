@@ -500,13 +500,13 @@ export const DashboardView: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded bg-blue-50 border border-blue-200 flex items-center justify-center text-[#1854BA]">
+              <div className="w-8 h-8 rounded bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
                 <LayoutDashboard className="w-4 h-4 stroke-[2]" />
               </div>
               <div>
                 <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
                   <span>Dashboard Operasional Terpadu</span>
-                  <span className="text-[10px] bg-blue-100 text-[#1854BA] px-2 py-0.5 rounded font-mono font-bold uppercase">
+                  <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-mono font-bold uppercase">
                     Semua Halaman
                   </span>
                 </h1>
@@ -527,8 +527,8 @@ export const DashboardView: React.FC = () => {
                   onClick={() => setTimeRange(r)}
                   className={`px-3 py-1.5 text-xs font-semibold rounded cursor-pointer transition-colors ${
                     timeRange === r
-                      ? 'bg-[#1854BA] text-white shadow-xs'
-                      : 'text-slate-700 hover:text-black'
+                      ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/20'
+                      : 'text-slate-700 hover:text-amber-700 hover:bg-amber-50'
                   }`}
                 >
                   {r === 'today'
@@ -564,13 +564,13 @@ export const DashboardView: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         {/* ROW 1: REAL-TIME OVERVIEW & POS CART ALERT */}
         {cart.length > 0 && (
-          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#1854BA] text-white rounded-lg flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 bg-amber-600 text-white rounded-lg flex items-center justify-center shrink-0">
                 <ShoppingCart className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#1854BA] block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 block">
                   Pesanan Sedang Berlangsung di Kasir (POS)
                 </span>
                 <p className="text-xs text-slate-800 font-medium">
@@ -587,7 +587,7 @@ export const DashboardView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('pos')}
-                className="px-3 py-1.5 bg-[#1854BA] hover:bg-[#12408F] text-white text-xs font-bold rounded cursor-pointer transition-colors flex items-center gap-1 shadow-xs"
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded cursor-pointer transition-colors flex items-center gap-1 shadow-xs"
               >
                 <span>Lanjutkan Order</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -599,13 +599,13 @@ export const DashboardView: React.FC = () => {
         {/* ROW 2: PRIMARY FINANCIAL & TRANSACTION KPI CARDS (4 CARDS) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Jumlah Transaksi & AOV */}
-          <div className="p-4 bg-white border border-blue-200 rounded-lg shadow-xs relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-[#1854BA]" />
+          <div className="p-4 bg-white border border-amber-200 rounded-lg shadow-xs relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-amber-600" />
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-[#1854BA] uppercase tracking-wider">
+              <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">
                 Jumlah Transaksi
               </span>
-              <Receipt className="w-4 h-4 text-[#1854BA]" />
+              <Receipt className="w-4 h-4 text-amber-600" />
             </div>
             <div className="font-mono text-3xl font-extrabold text-slate-900 tabular-nums">
               {metrics.totalTransactions}
@@ -702,16 +702,16 @@ export const DashboardView: React.FC = () => {
           {/* 1. Pos / Keranjang */}
           <div
             onClick={() => setActiveTab('pos')}
-            className="p-3 bg-white border border-slate-200 hover:border-[#1854BA] rounded-lg cursor-pointer transition-colors shadow-2xs group"
+            className="p-3 bg-white border border-slate-200 hover:border-amber-500 rounded-lg cursor-pointer transition-colors shadow-2xs group"
           >
             <div className="flex items-center justify-between text-slate-500 mb-1">
               <span className="text-[10px] font-bold uppercase">1. Halaman Kasir</span>
-              <Store className="w-3.5 h-3.5 text-[#1854BA] group-hover:scale-110 transition-transform" />
+              <Store className="w-3.5 h-3.5 text-amber-600 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-base font-bold text-slate-900 truncate">
               {cart.length > 0 ? `${cart.length} Pesanan Aktif` : 'Ready Pesanan'}
             </div>
-            <div className="text-[10px] text-[#1854BA] font-semibold mt-0.5">
+            <div className="text-[10px] text-amber-700 font-semibold mt-0.5">
               Kasir: {activeCashier} →
             </div>
           </div>
@@ -806,7 +806,7 @@ export const DashboardView: React.FC = () => {
           <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5 shadow-xs flex flex-col justify-between">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-[#1854BA]" />
+                <TrendingUp className="w-4 h-4 text-amber-600" />
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight">
                   Grafik Tren Omzet ({timeRange === 'today' ? 'Hari Ini per Jam' : 'Tren Harian'})
                 </h3>
@@ -843,7 +843,7 @@ export const DashboardView: React.FC = () => {
                         style={{ height: `${barHeightPercent}%` }}
                         className={`w-full max-w-[42px] rounded-t transition-all duration-300 ${
                           d.amount > 0
-                            ? 'bg-gradient-to-t from-[#1854BA] to-blue-400 group-hover:from-emerald-600 group-hover:to-emerald-400'
+                            ? 'bg-gradient-to-t from-[#D97706] to-amber-400 group-hover:from-emerald-600 group-hover:to-emerald-400'
                             : barHeightPercent > 0
                             ? 'bg-slate-100'
                             : 'h-0'
@@ -862,7 +862,7 @@ export const DashboardView: React.FC = () => {
             <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-600 gap-2">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 bg-[#1854BA] rounded-xs" />
+                  <div className="w-3 h-3 bg-[#D97706] rounded-xs" />
                   <span>Omzet Bersih</span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -878,7 +878,7 @@ export const DashboardView: React.FC = () => {
                 <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-800 font-mono text-[11px]">
                   Cash: {formatCurrency(metrics.cashSales)}
                 </span>
-                <span className="px-2 py-0.5 bg-blue-50 text-blue-800 rounded font-mono text-[11px] border border-blue-200">
+                <span className="px-2 py-0.5 bg-amber-50 text-amber-800 rounded font-mono text-[11px] border border-amber-200">
                   QRIS: {formatCurrency(metrics.qrisSales)}
                 </span>
               </div>
@@ -954,7 +954,7 @@ export const DashboardView: React.FC = () => {
                         <div className="w-full bg-slate-200 h-1.5 rounded-full mt-2 overflow-hidden">
                           <div
                             style={{ width: `${share}%` }}
-                            className="bg-[#1854BA] h-full rounded-full"
+                            className="bg-amber-600 h-full rounded-full"
                           />
                         </div>
                       </div>
@@ -967,9 +967,9 @@ export const DashboardView: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('pos')}
-              className="w-full mt-4 py-2.5 bg-[#1854BA] hover:bg-[#12408F] text-white text-xs font-bold rounded cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+              className="w-full mt-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-amber-600/20"
             >
-              <RisolIcon className="w-4 h-4 text-amber-400" />
+              <RisolIcon className="w-4 h-4 text-amber-200" />
               <span>Buka Kasir Pesanan Baru</span>
             </button>
           </div>
@@ -989,7 +989,7 @@ export const DashboardView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('customers')}
-                className="text-xs text-[#1854BA] hover:underline font-semibold cursor-pointer"
+                className="text-xs text-amber-600 hover:text-amber-700 hover:underline font-semibold cursor-pointer"
               >
                 Lihat Semua ({customers.length}) →
               </button>
@@ -1023,7 +1023,7 @@ export const DashboardView: React.FC = () => {
                               cust.loyaltyTier === 'VIP'
                                 ? 'bg-purple-100 text-purple-800 border border-purple-200'
                                 : cust.loyaltyTier === 'Reguler'
-                                ? 'bg-blue-100 text-blue-800'
+                                ? 'bg-amber-100 text-amber-800'
                                 : 'bg-slate-100 text-slate-700'
                             }`}
                           >
@@ -1059,7 +1059,7 @@ export const DashboardView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('expenses')}
-                className="text-xs text-[#1854BA] hover:underline font-semibold cursor-pointer"
+                className="text-xs text-amber-600 hover:text-amber-700 hover:underline font-semibold cursor-pointer"
               >
                 Catat Belanja Bahan →
               </button>
@@ -1122,14 +1122,14 @@ export const DashboardView: React.FC = () => {
         <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#1854BA]" />
+              <Users className="w-4 h-4 text-amber-600" />
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight">
                 Performa Shift Kasir (5 Anggota Tim)
               </h3>
             </div>
             <div className="flex items-center gap-2 text-xs">
               <span className="text-slate-500">Kasir Aktif Saat Ini:</span>
-              <span className="px-2.5 py-0.5 bg-blue-100 text-[#1854BA] font-bold rounded-full border border-blue-300">
+              <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 font-bold rounded-full border border-amber-300">
                 {activeCashier}
               </span>
             </div>
@@ -1144,21 +1144,21 @@ export const DashboardView: React.FC = () => {
                   key={cashierName}
                   className={`p-3.5 rounded-lg border transition-all ${
                     isActive
-                      ? 'border-[#1854BA] bg-blue-50/50 ring-1 ring-[#1854BA]/20'
+                      ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500/20'
                       : 'border-slate-200 bg-white hover:border-slate-300'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-bold text-xs text-slate-900">{cashierName}</span>
                     {isActive ? (
-                      <span className="text-[10px] bg-[#1854BA] text-white px-2 py-0.5 rounded-full font-semibold">
+                      <span className="text-[10px] bg-amber-600 text-white px-2 py-0.5 rounded-full font-semibold">
                         Shift Aktif
                       </span>
                     ) : (
                       <button
                         type="button"
                         onClick={() => setActiveCashier(cashierName)}
-                        className="text-[10px] text-blue-700 hover:underline cursor-pointer font-medium"
+                        className="text-[10px] text-amber-700 hover:underline cursor-pointer font-medium"
                       >
                         Pilih Shift
                       </button>
@@ -1206,7 +1206,7 @@ export const DashboardView: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('export')}
-              className="text-xs text-[#1854BA] hover:underline font-semibold cursor-pointer shrink-0"
+              className="text-xs text-amber-600 hover:text-amber-700 hover:underline font-semibold cursor-pointer shrink-0"
             >
               Buka Halaman Ekspor Lengkap →
             </button>
@@ -1360,7 +1360,7 @@ export const DashboardView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('settings')}
-                className="text-xs text-[#1854BA] hover:underline font-semibold cursor-pointer shrink-0"
+                className="text-xs text-amber-600 hover:text-amber-700 hover:underline font-semibold cursor-pointer shrink-0"
               >
                 Kelola Stok Menu →
               </button>
@@ -1445,7 +1445,7 @@ export const DashboardView: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Percent className="w-4 h-4 text-[#1854BA]" />
+                  <Percent className="w-4 h-4 text-amber-600" />
                   <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight">
                     Diskon Transaksi Aktif di Kasir
                   </h3>
@@ -1453,7 +1453,7 @@ export const DashboardView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveTab('pos')}
-                  className="text-xs text-[#1854BA] hover:underline font-semibold cursor-pointer"
+                  className="text-xs text-amber-600 hover:text-amber-700 hover:underline font-semibold cursor-pointer"
                 >
                   Gunakan di POS →
                 </button>
@@ -1465,7 +1465,7 @@ export const DashboardView: React.FC = () => {
                   .map((disc) => (
                     <div
                       key={disc.id}
-                      className="p-3 bg-blue-50/50 rounded border border-blue-200 flex items-center justify-between"
+                      className="p-3 bg-amber-50/50 rounded border border-amber-200 flex items-center justify-between"
                     >
                       <div>
                         <div className="text-xs font-bold text-slate-900">{disc.name}</div>

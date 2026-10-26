@@ -57,7 +57,7 @@ export const SuccessReceiptModal: React.FC = () => {
         {/* Top Header - Hidden on print */}
         <div className="p-4 border-b border-[#E5E5E5] flex items-center justify-between bg-[#FAFAFA] shrink-0 print:hidden">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-[#1854BA] stroke-[2]" />
+            <CheckCircle2 className="w-5 h-5 text-amber-600 stroke-[2]" />
             <div>
               <h2 className="text-sm font-bold text-black uppercase tracking-tight">
                 Transaksi Berhasil • {activeReceipt.transactionNumber}
@@ -98,7 +98,7 @@ export const SuccessReceiptModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="w-full py-3 px-4 bg-[#1854BA] text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#12408F] transition-colors cursor-pointer shadow-sm"
+                  className="w-full py-3 px-4 bg-amber-600 text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-amber-700 transition-colors cursor-pointer shadow-md shadow-amber-600/20"
                 >
                   <Printer className="w-4 h-4 stroke-[1.5]" />
                   <span>Cetak Struk (58mm)</span>
@@ -121,12 +121,12 @@ export const SuccessReceiptModal: React.FC = () => {
                     placeholder="nama@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-[#CCCCCC] focus:border-[#1854BA] focus:outline-none"
+                    className="w-full px-3 py-2 text-xs bg-white border border-[#CCCCCC] focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                   />
                   <button
                     type="submit"
                     disabled={isSending || !email}
-                    className="w-full py-2.5 px-3 bg-white text-black border border-[#1854BA] hover:bg-[#1854BA] hover:text-white text-xs font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    className="w-full py-2.5 px-3 bg-white text-black border border-amber-600 hover:bg-amber-600 hover:text-white text-xs font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {isSending ? (
                       <>
@@ -147,7 +147,7 @@ export const SuccessReceiptModal: React.FC = () => {
                   <div
                     className={`mt-2 p-2 text-xs border ${
                       emailStatus.success
-                        ? 'bg-[#1854BA] text-white border-[#1854BA]'
+                        ? 'bg-amber-600 text-white border-amber-600'
                         : 'bg-red-50 text-red-600 border-red-200'
                     }`}
                   >
@@ -165,7 +165,7 @@ export const SuccessReceiptModal: React.FC = () => {
               <button
                 type="button"
                 onClick={handleClose}
-                className="w-full py-3 px-4 bg-[#F5F5F5] text-[#1854BA] border border-[#1854BA] hover:bg-[#1854BA] hover:text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                className="w-full py-3 px-4 bg-[#F5F5F5] text-amber-700 border border-amber-600 hover:bg-amber-600 hover:text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors"
               >
                 <PlusCircle className="w-4 h-4 stroke-[1.5]" />
                 <span>Transaksi Baru</span>

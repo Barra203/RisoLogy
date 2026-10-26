@@ -383,7 +383,7 @@ export const ExportView: React.FC = () => {
       id: 'transactions',
       title: '6. Rincian Transaksi',
       subtitle: 'Semua struk nota kasir, menu & diskon',
-      icon: <Receipt className="w-4 h-4 text-blue-600" />,
+      icon: <Receipt className="w-4 h-4 text-amber-600" />,
     },
     {
       id: 'financial',
@@ -424,7 +424,7 @@ export const ExportView: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-[#1854BA] stroke-[2]" />
+              <FileSpreadsheet className="w-5 h-5 text-amber-600 stroke-[2]" />
               <h1 className="text-xl font-bold tracking-tight text-slate-900">
                 Modul Ekspor Spreadsheet (6 Template Laporan)
               </h1>
@@ -439,7 +439,7 @@ export const ExportView: React.FC = () => {
             <button
               type="button"
               onClick={handleCopyTsv}
-              className="px-3.5 py-2.5 bg-white text-slate-800 border border-[#CCCCCC] hover:border-[#1854BA] hover:text-[#1854BA] text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer rounded shadow-2xs"
+              className="px-3.5 py-2.5 bg-white text-slate-800 border border-[#CCCCCC] hover:border-amber-600 hover:text-amber-700 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer rounded shadow-2xs"
               title="Salin dalam format TSV (Siap Paste ke Excel / Google Sheets)"
             >
               {copied ? (
@@ -458,7 +458,7 @@ export const ExportView: React.FC = () => {
             <button
               type="button"
               onClick={handleDownloadCsv}
-              className="px-5 py-2.5 bg-[#1854BA] text-white hover:bg-[#12408F] text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors cursor-pointer shadow-xs rounded"
+              className="px-5 py-2.5 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-amber-600/20 rounded"
             >
               <Download className="w-4 h-4" />
               <span>Download File CSV</span>
@@ -477,13 +477,13 @@ export const ExportView: React.FC = () => {
                 onClick={() => setActiveTemplate(t.id)}
                 className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all ${
                   isActive
-                    ? 'border-[#1854BA] bg-blue-50/80 shadow-xs ring-1 ring-[#1854BA]/30'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
+                    ? 'border-amber-600 bg-amber-50/80 shadow-xs ring-1 ring-amber-600/30'
+                    : 'border-slate-200 bg-white hover:border-amber-300'
                 }`}
               >
                 <div className="flex items-center gap-1.5 mb-1">
                   {t.icon}
-                  <span className={`text-xs font-bold truncate ${isActive ? 'text-[#1854BA]' : 'text-slate-800'}`}>
+                  <span className={`text-xs font-bold truncate ${isActive ? 'text-amber-700' : 'text-slate-800'}`}>
                     {t.title}
                   </span>
                 </div>
@@ -505,8 +505,8 @@ export const ExportView: React.FC = () => {
               onClick={() => setPeriod('TODAY')}
               className={`px-3 py-1.5 text-xs font-semibold border cursor-pointer rounded transition-colors ${
                 period === 'TODAY'
-                  ? 'bg-[#1854BA] text-white border-[#1854BA] shadow-xs'
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-[#1854BA]'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-amber-500 hover:text-amber-700'
               }`}
             >
               Hari Ini
@@ -517,8 +517,8 @@ export const ExportView: React.FC = () => {
               onClick={() => setPeriod('MONTH')}
               className={`px-3 py-1.5 text-xs font-semibold border cursor-pointer rounded transition-colors ${
                 period === 'MONTH'
-                  ? 'bg-[#1854BA] text-white border-[#1854BA] shadow-xs'
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-[#1854BA]'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-amber-500 hover:text-amber-700'
               }`}
             >
               Bulan Ini
@@ -529,8 +529,8 @@ export const ExportView: React.FC = () => {
               onClick={() => setPeriod('ALL')}
               className={`px-3 py-1.5 text-xs font-semibold border cursor-pointer rounded transition-colors ${
                 period === 'ALL'
-                  ? 'bg-[#1854BA] text-white border-[#1854BA] shadow-xs'
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-[#1854BA]'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-amber-500 hover:text-amber-700'
               }`}
             >
               Semua Waktu
@@ -541,8 +541,8 @@ export const ExportView: React.FC = () => {
               onClick={() => setPeriod('CUSTOM')}
               className={`px-3 py-1.5 text-xs font-semibold border cursor-pointer rounded transition-colors ${
                 period === 'CUSTOM'
-                  ? 'bg-[#1854BA] text-white border-[#1854BA] shadow-xs'
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-[#1854BA]'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-amber-500 hover:text-amber-700'
               }`}
             >
               Kustom Tanggal
@@ -674,7 +674,7 @@ export const ExportView: React.FC = () => {
                         <td className="py-3 px-4 text-right font-mono font-extrabold text-emerald-700 bg-emerald-50/40">
                           +{formatCurrency(row.netSales)}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-bold text-blue-700">
+                        <td className="py-3 px-3 text-right font-mono font-bold text-amber-700">
                           {row.salesSharePercent.toFixed(1)}%
                         </td>
                       </tr>
@@ -715,7 +715,7 @@ export const ExportView: React.FC = () => {
                               row.tier === 'VIP'
                                 ? 'bg-amber-100 text-amber-900 border border-amber-300'
                                 : row.tier === 'Reguler'
-                                ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                                ? 'bg-amber-50 text-amber-800 border border-amber-200'
                                 : 'bg-slate-100 text-slate-700'
                             }`}
                           >
@@ -787,7 +787,7 @@ export const ExportView: React.FC = () => {
                       </td>
 
                       <td className="py-3 px-3 text-right font-mono text-slate-700">{formatCurrency(row.cashSales)}</td>
-                      <td className="py-3 px-3 text-right font-mono text-blue-700 font-semibold">
+                      <td className="py-3 px-3 text-right font-mono text-amber-700 font-semibold">
                         {formatCurrency(row.qrisSales)}
                       </td>
                     </tr>
@@ -853,7 +853,7 @@ export const ExportView: React.FC = () => {
                             {row.supplierLocation}
                           </span>
                         </td>
-                        <td className="py-3 px-3 font-bold text-blue-800">{row.cashierName}</td>
+                        <td className="py-3 px-3 font-bold text-amber-800">{row.cashierName}</td>
                       </tr>
                     ))}
                 </tbody>
@@ -899,7 +899,7 @@ export const ExportView: React.FC = () => {
                           <td className="py-3 px-4 font-mono font-bold text-slate-900">{row.transactionNumber}</td>
                           <td className="py-3 px-3 font-mono text-slate-600 text-[11px]">{row.dateTime}</td>
                           <td className="py-3 px-3">
-                            <span className="px-2 py-0.5 bg-blue-50 text-blue-800 font-bold rounded text-[10px] border border-blue-200">
+                            <span className="px-2 py-0.5 bg-amber-50 text-amber-800 font-bold rounded text-[10px] border border-amber-200">
                               {row.cashierName}
                             </span>
                           </td>
@@ -923,7 +923,7 @@ export const ExportView: React.FC = () => {
                             <span
                               className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                 row.paymentMethod === 'QRIS'
-                                  ? 'bg-blue-100 text-blue-800'
+                                  ? 'bg-amber-100 text-amber-800'
                                   : 'bg-emerald-100 text-emerald-800'
                               }`}
                             >

@@ -166,7 +166,7 @@ export const LoginScreen: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full mt-2 py-3 bg-amber-600 hover:bg-amber-500 text-white text-xs sm:text-sm font-bold tracking-wider uppercase flex items-center justify-center gap-2 transition-colors rounded cursor-pointer shadow-md shadow-amber-600/25 active:scale-[0.99] disabled:opacity-70"
+            className="w-full mt-2 py-3 bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-bold tracking-wider uppercase flex items-center justify-center gap-2 transition-colors rounded cursor-pointer shadow-lg shadow-amber-600/25 active:scale-[0.99] disabled:opacity-70"
           >
             <LogIn className="w-4 h-4" />
             <span>{isSubmitting ? 'Memverifikasi...' : 'Masuk ke Sistem'}</span>

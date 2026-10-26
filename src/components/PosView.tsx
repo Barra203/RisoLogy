@@ -245,7 +245,7 @@ export const PosView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => updateCartQty(cartItemId, item.quantity + 1)}
-                      className="w-7 h-7 flex items-center justify-center text-black hover:bg-[#F5F5F5] cursor-pointer"
+                      className="w-7 h-7 flex items-center justify-center bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white cursor-pointer transition-colors"
                       title="Tambah"
                     >
                       <Plus className="w-3 h-3" />
@@ -413,7 +413,7 @@ export const PosView: React.FC = () => {
           type="button"
           disabled={cart.length === 0}
           onClick={() => setShowPaymentModal(true)}
-          className="w-full py-3.5 bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-amber-600/20 rounded-sm"
+          className="w-full py-3.5 bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-amber-600/25 rounded-sm"
         >
           <CreditCard className="w-4 h-4 stroke-[2]" />
           <span>Bayar Sekarang ({totalCartQty})</span>

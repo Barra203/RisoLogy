@@ -131,13 +131,13 @@ export const Sidebar: React.FC = () => {
                   key={item.id}
                   type="button"
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors cursor-pointer border rounded-md ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors cursor-pointer border rounded-md group ${
                     isActive
                       ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600 font-semibold shadow-md shadow-amber-600/20'
-                      : 'bg-transparent text-slate-800 border-transparent hover:bg-slate-100 hover:border-slate-200'
+                      : 'bg-transparent text-slate-800 border-transparent hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
                   }`}
                 >
-                  <span className={isActive ? 'text-white' : 'text-slate-600'}>{item.icon}</span>
+                  <span className={isActive ? 'text-white' : 'text-slate-600 group-hover:text-amber-600'}>{item.icon}</span>
                   <div className="min-w-0 flex-1">
                     <div className="text-xs tracking-tight font-bold">{item.label}</div>
                     {item.description && (

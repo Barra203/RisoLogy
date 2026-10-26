@@ -111,9 +111,9 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
           {/* Create / Edit Form */}
           {isEditing ? (
-            <form onSubmit={handleSave} className="p-4 bg-blue-50/60 border border-blue-200 rounded-md space-y-3">
+            <form onSubmit={handleSave} className="p-4 bg-amber-50/60 border border-amber-200 rounded-md space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-blue-900 uppercase tracking-wider">
+                <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">
                   {editingId ? 'Edit Diskon' : 'Tambah Diskon Baru'}
                 </span>
                 <button
@@ -141,7 +141,7 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
                   placeholder="Cth: Promo Pelajar, Jumat Berkah"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none"
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                 />
               </div>
 
@@ -156,7 +156,7 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
                       onClick={() => setType('percentage')}
                       className={`py-1 text-xs font-semibold rounded flex items-center justify-center gap-1 cursor-pointer ${
                         type === 'percentage'
-                          ? 'bg-[#1854BA] text-white shadow-xs'
+                          ? 'bg-amber-600 text-white shadow-xs'
                           : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
@@ -168,7 +168,7 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
                       onClick={() => setType('nominal')}
                       className={`py-1 text-xs font-semibold rounded flex items-center justify-center gap-1 cursor-pointer ${
                         type === 'nominal'
-                          ? 'bg-[#1854BA] text-white shadow-xs'
+                          ? 'bg-amber-600 text-white shadow-xs'
                           : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
@@ -189,7 +189,7 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
                     required
                     value={value || ''}
                     onChange={(e) => setValue(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none font-mono font-bold"
+                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none font-mono font-bold"
                   />
                 </div>
               </div>
@@ -204,7 +204,7 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
                   placeholder="0 (Tanpa minimal)"
                   value={minPurchase || ''}
                   onChange={(e) => setMinPurchase(parseFloat(e.target.value) || undefined)}
-                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none font-mono"
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none font-mono"
                 />
               </div>
 
@@ -217,7 +217,7 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
                   placeholder="Cth: Khusus hari Jumat, Member aktif, dll."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:border-[#1854BA] focus:outline-none"
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                 />
               </div>
 
@@ -231,7 +231,7 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 text-xs font-bold text-white bg-[#1854BA] hover:bg-[#12408F] rounded shadow-xs cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-1.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded shadow-md shadow-amber-600/20 cursor-pointer flex items-center gap-1.5"
                 >
                   <Check className="w-3.5 h-3.5" />
                   <span>Simpan Diskon</span>
@@ -246,7 +246,7 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
               <button
                 type="button"
                 onClick={handleOpenCreate}
-                className="px-3 py-1.5 bg-[#1854BA] text-white hover:bg-[#12408F] text-xs font-bold rounded flex items-center gap-1 cursor-pointer transition-colors"
+                className="px-3 py-1.5 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold rounded flex items-center gap-1 cursor-pointer transition-colors shadow-sm shadow-amber-600/20"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Buat Diskon Baru</span>
@@ -268,7 +268,7 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
                     key={preset.id}
                     className={`p-3.5 border rounded-lg transition-all flex items-start justify-between gap-3 ${
                       isSelected
-                        ? 'border-[#1854BA] bg-blue-50/50 shadow-xs'
+                        ? 'border-amber-500 bg-amber-50/50 shadow-xs'
                         : 'border-slate-200 bg-white hover:border-slate-300'
                     }`}
                   >
@@ -308,7 +308,7 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
                           className={`px-2.5 py-1 text-xs font-bold rounded cursor-pointer transition-colors ${
                             isSelected
                               ? 'bg-emerald-600 text-white'
-                              : 'bg-slate-100 text-slate-700 hover:bg-[#1854BA] hover:text-white'
+                              : 'bg-slate-100 text-slate-700 hover:bg-amber-600 hover:text-white'
                           }`}
                         >
                           {isSelected ? 'Terpasang' : 'Pilih'}
@@ -318,7 +318,7 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
                       <button
                         type="button"
                         onClick={() => handleOpenEdit(preset)}
-                        className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded cursor-pointer"
+                        className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-slate-100 rounded cursor-pointer"
                         title="Edit diskon"
                       >
                         <Edit2 className="w-3.5 h-3.5" />

@@ -107,7 +107,7 @@ export const PinScreen: React.FC = () => {
                 key={index}
                 className={`w-4 h-4 rounded-full transition-all duration-150 ${
                   isFilled
-                    ? 'bg-[#1854BA] scale-110 shadow-sm'
+                    ? 'bg-amber-600 scale-110 shadow-sm shadow-amber-600/25'
                     : 'border-2 border-[#CCCCCC] bg-transparent'
                 }`}
                 aria-label={`Digit ${index + 1}`}
@@ -134,7 +134,7 @@ export const PinScreen: React.FC = () => {
               key={digit}
               type="button"
               onClick={() => handleDigit(digit)}
-              className="h-14 text-xl font-medium text-black bg-[#F9F9F9] border border-[#E5E5E5] hover:bg-[#1854BA] hover:text-white hover:border-[#1854BA] transition-colors flex items-center justify-center cursor-pointer active:scale-95"
+              className="h-14 text-xl font-medium text-black bg-[#F9F9F9] border border-[#E5E5E5] hover:bg-amber-600 hover:text-white hover:border-amber-600 transition-colors flex items-center justify-center cursor-pointer active:scale-95"
             >
               {digit}
             </button>
@@ -153,7 +153,7 @@ export const PinScreen: React.FC = () => {
           <button
             type="button"
             onClick={() => handleDigit('0')}
-            className="h-14 text-xl font-medium text-black bg-[#F9F9F9] border border-[#E5E5E5] hover:bg-[#1854BA] hover:text-white hover:border-[#1854BA] transition-colors flex items-center justify-center cursor-pointer active:scale-95"
+            className="h-14 text-xl font-medium text-black bg-[#F9F9F9] border border-[#E5E5E5] hover:bg-amber-600 hover:text-white hover:border-amber-600 transition-colors flex items-center justify-center cursor-pointer active:scale-95"
           >
             0
           </button>
@@ -174,7 +174,7 @@ export const PinScreen: React.FC = () => {
           type="button"
           onClick={() => handleSubmit()}
           disabled={pin.length === 0}
-          className="w-full h-12 bg-[#1854BA] text-white text-sm font-semibold tracking-wider uppercase flex items-center justify-center gap-2 hover:bg-[#12408F] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+          className="w-full h-12 bg-amber-600 text-white text-sm font-semibold tracking-wider uppercase flex items-center justify-center gap-2 hover:bg-amber-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-amber-600/25"
         >
           <span>Masuk Kasir</span>
           <ArrowRight className="w-4 h-4" />
