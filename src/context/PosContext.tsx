@@ -1059,9 +1059,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       total,
       paymentMethod,
       ...(paymentMethod === 'CASH' ? { cashTendered: tendered, cashChange: change } : {}),
-      cashierName: activeCashier || 'Kasir',
-      shift: 'Shift 1',
-      cashierShift: 'Shift 1',
+      cashierName: activeCashier || 'Harits',
+      cashier: activeCashier || 'Harits',
+      pic: activeCashier || 'Harits',
       notes: '',
       status: 'PAID',
     };
@@ -1218,15 +1218,24 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newTransaction;
   };
 
-  // Fungsi Perbarui Transaksi (`updateTransaction`) langsung ke Cloud Firestore (termasuk shift kasir)
+  // Fungsi Perbarui Transaksi (`updateTransaction`) langsung ke Cloud Firestore (termasuk Kasir / PIC Shift)
   const updateTransaction = async (
     transactionId: string,
     updatedData: Partial<Transaction>
   ): Promise<void> => {
     try {
+      const syncedCashier =
+        updatedData.cashierName ?? updatedData.cashier ?? updatedData.pic;
       const syncedShift = updatedData.shift ?? updatedData.cashierShift;
       const normalizedData: Partial<Transaction> = {
         ...updatedData,
+        ...(syncedCashier !== undefined
+          ? {
+              cashierName: syncedCashier,
+              cashier: syncedCashier,
+              pic: syncedCashier,
+            }
+          : {}),
         ...(syncedShift !== undefined ? { shift: syncedShift, cashierShift: syncedShift } : {}),
         updatedAt: Date.now(),
       };

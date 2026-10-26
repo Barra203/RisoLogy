@@ -108,7 +108,9 @@ export interface Transaction {
   cashTendered?: number;
   cashChange?: number;
   cashierName: string; // Harits, Rafi, Barra, Dimas, Akhyar
-  shift?: string; // Shift 1, Shift 2, Full Day
+  cashier?: string;
+  pic?: string;
+  shift?: string;
   cashierShift?: string;
   customerEmail?: string;
   emailSent?: boolean;

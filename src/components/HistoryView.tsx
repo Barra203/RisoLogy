@@ -18,28 +18,38 @@ import {
   Loader2,
   AlertTriangle,
   StickyNote,
-  Clock,
+  UserCheck,
 } from 'lucide-react';
 
 interface EditFormState {
   customerName: string;
   paymentMethod: PaymentMethod;
-  shift: string;
+  cashierName: string;
+  cashier: string;
   status: 'PAID' | 'REFUNDED';
   notes: string;
 }
 
+const DEFAULT_TEAM_CASHIERS = ['Barra', 'Harits', 'Dimas', 'Akhyar', 'Rafi'];
+
 export const HistoryView: React.FC = () => {
-  const { transactions, viewReceipt, updateTransaction, deleteTransaction } = usePos();
+  const {
+    transactions,
+    viewReceipt,
+    updateTransaction,
+    deleteTransaction,
+    cashierList,
+  } = usePos();
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [methodFilter, setMethodFilter] = useState<'ALL' | 'CASH' | 'QRIS' | 'TRANSFER'>('ALL');
 
-  // State Modal Edit Transaksi (Light Mode + Shift Kasir)
+  // State Modal Edit Transaksi (Light Mode + Kasir / PIC Shift)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editFormData, setEditFormData] = useState<EditFormState>({
     customerName: '',
     paymentMethod: 'CASH',
-    shift: 'Shift 1',
+    cashierName: 'Harits',
+    cashier: 'Harits',
     status: 'PAID',
     notes: '',
   });
@@ -62,14 +72,24 @@ export const HistoryView: React.FC = () => {
     }, 3500);
   };
 
+  // Gabungan daftar Kasir / PIC dari tim utama (Barra, Harits, Dimas, Akhyar, Rafi) + context cashierList
+  const availableCashiers = useMemo(() => {
+    const set = new Set<string>([...DEFAULT_TEAM_CASHIERS, ...(cashierList || [])]);
+    if (editFormData.cashierName && editFormData.cashierName.trim()) {
+      set.add(editFormData.cashierName.trim());
+    }
+    return Array.from(set);
+  }, [cashierList, editFormData.cashierName]);
+
   // Filter transactions
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
       const q = searchQuery.toLowerCase();
+      const txCashier = (tx.cashierName || tx.cashier || tx.pic || '').toLowerCase();
       const matchSearch =
         tx.transactionNumber.toLowerCase().includes(q) ||
         tx.customerName.toLowerCase().includes(q) ||
-        (tx.shift && tx.shift.toLowerCase().includes(q)) ||
+        txCashier.includes(q) ||
         (tx.notes && tx.notes.toLowerCase().includes(q));
       const matchMethod = methodFilter === 'ALL' || tx.paymentMethod === methodFilter;
       return matchSearch && matchMethod;
@@ -94,36 +114,43 @@ export const HistoryView: React.FC = () => {
 
   // Buka Modal Edit Transaksi
   const handleOpenEditModal = (tx: Transaction) => {
+    const currentCashier = tx.cashierName || tx.cashier || tx.pic || 'Harits';
     setEditingTransaction(tx);
     setEditFormData({
       customerName: tx.customerName || 'Pelanggan',
       paymentMethod: tx.paymentMethod || 'CASH',
-      shift: tx.shift || tx.cashierShift || 'Shift 1',
+      cashierName: currentCashier,
+      cashier: currentCashier,
       status: tx.status || 'PAID',
       notes: tx.notes || '',
     });
   };
 
-  // Simpan Perubahan Edit Transaksi (termasuk Shift Kasir) ke Cloud Firestore
+  // Simpan Perubahan Edit Transaksi (termasuk Kasir / PIC Shift) ke Cloud Firestore
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTransaction) return;
 
     setIsSaving(true);
     try {
-      const resolvedShift = editFormData.shift || 'Shift 1';
+      const resolvedCashier =
+        (editFormData.cashierName || editFormData.cashier || '').trim() ||
+        editingTransaction.cashierName ||
+        'Harits';
+
       await updateTransaction(editingTransaction.id, {
         customerName: editFormData.customerName.trim() || 'Pelanggan',
         paymentMethod: editFormData.paymentMethod,
-        shift: resolvedShift,
-        cashierShift: resolvedShift,
+        cashierName: resolvedCashier,
+        cashier: resolvedCashier,
+        pic: resolvedCashier,
         status: editFormData.status,
         notes: editFormData.notes.trim(),
       });
       setEditingTransaction(null);
       showFeedback(
         'success',
-        `Transaksi ${editingTransaction.transactionNumber} berhasil diperbarui (${resolvedShift}).`
+        `Transaksi ${editingTransaction.transactionNumber} berhasil diperbarui (Kasir/PIC: ${resolvedCashier}).`
       );
     } catch (err) {
       showFeedback('error', 'Gagal memperbarui transaksi. Periksa koneksi database.');
@@ -162,7 +189,7 @@ export const HistoryView: React.FC = () => {
               </h1>
             </div>
             <p className="text-xs text-[#666666] mt-0.5">
-              Daftar seluruh transaksi kasir RisoLogy dengan manajemen edit shift, metode bayar &amp; hapus langsung ke Cloud Firestore
+              Daftar seluruh transaksi kasir RisoLogy dengan manajemen edit Kasir / PIC Shift, metode bayar &amp; hapus langsung ke Cloud Firestore
             </p>
           </div>
 
@@ -231,7 +258,7 @@ export const HistoryView: React.FC = () => {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#888888]" />
             <input
               type="text"
-              placeholder="Cari No. Transaksi (#RSL-...), Nama, Shift, atau Catatan..."
+              placeholder="Cari No. Transaksi (#RSL-...), Nama, Kasir/PIC, atau Catatan..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-8 py-2 text-xs bg-[#F5F5F5] border border-[#E5E5E5] text-slate-900 focus:outline-none focus:border-[#1854BA] focus:bg-white transition-colors rounded-sm"
@@ -295,7 +322,7 @@ export const HistoryView: React.FC = () => {
                 <tr className="bg-[#F8FAFC] border-b border-[#E5E5E5] text-slate-600 uppercase text-[10px] tracking-wider font-semibold">
                   <th className="py-3 px-4">No. Transaksi</th>
                   <th className="py-3 px-4">Waktu</th>
-                  <th className="py-3 px-4">Pelanggan &amp; Shift</th>
+                  <th className="py-3 px-4">Pelanggan &amp; Kasir / PIC</th>
                   <th className="py-3 px-4">Pesanan &amp; Catatan</th>
                   <th className="py-3 px-4">Metode</th>
                   <th className="py-3 px-4 text-right">Subtotal</th>
@@ -310,7 +337,7 @@ export const HistoryView: React.FC = () => {
                   const dt = formatDateTime(tx.timestamp);
                   const isRefund = tx.status === 'REFUNDED';
                   const totalItems = tx.items.reduce((a, b) => a + b.quantity, 0);
-                  const shiftLabel = tx.shift || tx.cashierShift || 'Shift 1';
+                  const cashierPic = tx.cashierName || tx.cashier || tx.pic || 'Harits';
 
                   return (
                     <tr key={tx.id} className="hover:bg-blue-50/30 transition-colors group">
@@ -327,16 +354,13 @@ export const HistoryView: React.FC = () => {
                         <div className="text-[10px] font-mono text-slate-500">{dt.time}</div>
                       </td>
 
-                      {/* Customer Name & Cashier Shift */}
+                      {/* Customer Name & Kasir / PIC Shift Badge */}
                       <td className="py-3.5 px-4 font-medium text-slate-900 whitespace-nowrap">
-                        <div className="font-semibold">{tx.customerName}</div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[10px] text-slate-500">
-                            Kasir: {tx.cashierName}
-                          </span>
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded text-[10px] font-semibold">
-                            <Clock className="w-2.5 h-2.5 text-blue-600" />
-                            <span>{shiftLabel}</span>
+                        <div className="font-semibold text-slate-900">{tx.customerName}</div>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 text-blue-800 rounded text-[10px] font-bold">
+                            <UserCheck className="w-3 h-3 text-blue-600" />
+                            <span>Kasir / PIC: {cashierPic}</span>
                           </span>
                         </div>
                         {tx.customerEmail && (
@@ -504,7 +528,7 @@ export const HistoryView: React.FC = () => {
                   <span>Edit Transaksi {editingTransaction.transactionNumber}</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Perbarui metode pembayaran, shift kasir, pelanggan, atau catatan langsung ke Firestore
+                  Perbarui metode pembayaran, Kasir / PIC Shift, pelanggan, atau catatan langsung ke Firestore
                 </p>
               </div>
               <button
@@ -561,25 +585,34 @@ export const HistoryView: React.FC = () => {
                 </select>
               </div>
 
-              {/* Pilihan Dropdown Shift Kasir */}
+              {/* Pilihan Dropdown Kasir / PIC Shift */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Shift Kasir
+                  Kasir / PIC Shift
                 </label>
                 <select
-                  value={editFormData.shift || 'Shift 1'}
-                  onChange={(e) => setEditFormData({ ...editFormData, shift: e.target.value })}
+                  value={editFormData.cashierName || editFormData.cashier || ''}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      cashierName: e.target.value,
+                      cashier: e.target.value,
+                    })
+                  }
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
                 >
-                  <option value="Shift 1" className="bg-white text-slate-900">
-                    Shift 1 (Pagi)
+                  <option value="" className="bg-white text-slate-400">
+                    Pilih Kasir / PIC
                   </option>
-                  <option value="Shift 2" className="bg-white text-slate-900">
-                    Shift 2 (Sore)
-                  </option>
-                  <option value="Full Day" className="bg-white text-slate-900">
-                    Full Day
-                  </option>
+                  {availableCashiers.map((cashierName) => (
+                    <option
+                      key={cashierName}
+                      value={cashierName}
+                      className="bg-white text-slate-900"
+                    >
+                      {cashierName}
+                    </option>
+                  ))}
                 </select>
               </div>
 
