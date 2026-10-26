@@ -183,7 +183,7 @@ export const HistoryView: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <Receipt className="w-5 h-5 text-[#1854BA] stroke-[2]" />
+              <Receipt className="w-5 h-5 text-amber-600 stroke-[2]" />
               <h1 className="text-xl font-bold tracking-tight text-slate-900">
                 Riwayat Transaksi
               </h1>
@@ -196,11 +196,11 @@ export const HistoryView: React.FC = () => {
           {/* Quick Metrics with Color Coding */}
           <div className="flex flex-wrap items-center gap-3">
             {/* Total Transaksi */}
-            <div className="px-3.5 py-2 bg-blue-50/70 border border-blue-200/80 rounded text-right shadow-xs">
-              <span className="text-[10px] text-[#1854BA] uppercase tracking-wider font-semibold block">
+            <div className="px-3.5 py-2 bg-amber-50/70 border border-amber-200/80 rounded text-right shadow-xs">
+              <span className="text-[10px] text-amber-700 uppercase tracking-wider font-semibold block">
                 Total Transaksi
               </span>
-              <span className="font-mono font-bold text-sm text-[#1854BA] tabular-nums">
+              <span className="font-mono font-bold text-sm text-amber-700 tabular-nums">
                 {stats.count} Pesanan
               </span>
             </div>
@@ -261,7 +261,7 @@ export const HistoryView: React.FC = () => {
               placeholder="Cari No. Transaksi (#RSL-...), Nama, Kasir/PIC, atau Catatan..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 text-xs bg-[#F5F5F5] border border-[#E5E5E5] text-slate-900 focus:outline-none focus:border-[#1854BA] focus:bg-white transition-colors rounded-sm"
+              className="w-full pl-9 pr-8 py-2 text-xs bg-[#F5F5F5] border border-[#E5E5E5] text-slate-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:bg-white transition-all rounded-sm"
             />
             {searchQuery && (
               <button
@@ -293,8 +293,8 @@ export const HistoryView: React.FC = () => {
                   onClick={() => setMethodFilter(m)}
                   className={`px-3 py-1.5 text-xs font-medium border cursor-pointer transition-all rounded-sm ${
                     isSelected
-                      ? 'bg-[#1854BA] text-white border-[#1854BA] font-semibold shadow-xs'
-                      : 'bg-white text-slate-700 border-[#E5E5E5] hover:border-[#1854BA] hover:text-[#1854BA]'
+                      ? 'bg-amber-600 text-white border-amber-600 font-semibold shadow-xs'
+                      : 'bg-white text-slate-700 border-[#E5E5E5] hover:border-amber-500 hover:text-amber-600'
                   }`}
                 >
                   {label}
@@ -340,10 +340,10 @@ export const HistoryView: React.FC = () => {
                   const cashierPic = tx.cashierName || tx.cashier || tx.pic || 'Harits';
 
                   return (
-                    <tr key={tx.id} className="hover:bg-blue-50/30 transition-colors group">
+                    <tr key={tx.id} className="hover:bg-amber-50/30 transition-colors group">
                       {/* Transaction # */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className="font-mono font-bold text-xs text-[#1854BA] bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded">
+                        <span className="font-mono font-bold text-xs text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded">
                           {tx.transactionNumber}
                         </span>
                       </td>
@@ -358,14 +358,14 @@ export const HistoryView: React.FC = () => {
                       <td className="py-3.5 px-4 font-medium text-slate-900 whitespace-nowrap">
                         <div className="font-semibold text-slate-900">{tx.customerName}</div>
                         <div className="flex items-center gap-1.5 mt-1">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 text-blue-800 rounded text-[10px] font-bold">
-                            <UserCheck className="w-3 h-3 text-blue-600" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-800 rounded text-[10px] font-bold">
+                            <UserCheck className="w-3 h-3 text-amber-600" />
                             <span>Kasir / PIC: {cashierPic}</span>
                           </span>
                         </div>
                         {tx.customerEmail && (
-                          <div className="text-[10px] text-blue-600 flex items-center gap-1 mt-0.5">
-                            <CheckCircle className="w-2.5 h-2.5 text-blue-600" />
+                          <div className="text-[10px] text-amber-600 flex items-center gap-1 mt-0.5">
+                            <CheckCircle className="w-2.5 h-2.5 text-amber-600" />
                             <span>{tx.customerEmail}</span>
                           </div>
                         )}
@@ -416,8 +416,8 @@ export const HistoryView: React.FC = () => {
                             <span>Transfer</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-[#1854BA] border border-blue-200 rounded text-[11px] font-semibold">
-                            <QrCode className="w-3.5 h-3.5 text-[#1854BA]" />
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 text-amber-700 border border-amber-500/20 rounded text-[11px] font-semibold">
+                            <QrCode className="w-3.5 h-3.5 text-amber-600" />
                             <span>QRIS</span>
                           </span>
                         )}
@@ -476,7 +476,7 @@ export const HistoryView: React.FC = () => {
                             type="button"
                             onClick={() => viewReceipt(tx)}
                             title="Lihat Struk"
-                            className="px-2.5 py-1.5 bg-[#1854BA] text-white hover:bg-[#12408F] text-[11px] font-semibold uppercase tracking-wider transition-colors cursor-pointer inline-flex items-center gap-1 rounded-sm shadow-xs active:scale-95"
+                            className="px-2.5 py-1.5 bg-amber-600 text-white hover:bg-amber-700 text-[11px] font-semibold uppercase tracking-wider transition-colors cursor-pointer inline-flex items-center gap-1 rounded-sm shadow-xs active:scale-95"
                           >
                             <FileText className="w-3 h-3" />
                             <span>Struk</span>
@@ -524,7 +524,7 @@ export const HistoryView: React.FC = () => {
             <div className="flex items-start justify-between border-b border-slate-100 pb-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <Pencil className="w-4 h-4 text-blue-600" />
+                  <Pencil className="w-4 h-4 text-amber-600" />
                   <span>Edit Transaksi {editingTransaction.transactionNumber}</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -554,7 +554,7 @@ export const HistoryView: React.FC = () => {
                     setEditFormData({ ...editFormData, customerName: e.target.value })
                   }
                   placeholder="Nama pelanggan..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
                 />
               </div>
 
@@ -571,7 +571,7 @@ export const HistoryView: React.FC = () => {
                       paymentMethod: e.target.value as PaymentMethod,
                     })
                   }
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
                 >
                   <option value="CASH" className="bg-white text-slate-900">
                     Cash (Tunai)
@@ -599,7 +599,7 @@ export const HistoryView: React.FC = () => {
                       cashier: e.target.value,
                     })
                   }
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
                 >
                   <option value="" className="bg-white text-slate-400">
                     Pilih Kasir / PIC
@@ -629,7 +629,7 @@ export const HistoryView: React.FC = () => {
                       status: e.target.value as 'PAID' | 'REFUNDED',
                     })
                   }
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
                 >
                   <option value="PAID" className="bg-white text-slate-900">
                     Lunas (PAID)
@@ -649,7 +649,7 @@ export const HistoryView: React.FC = () => {
                   value={editFormData.notes}
                   onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
                   placeholder="Tambahkan catatan transaksi (misal: pembayaran via transfer BCA, pesanan khusus, dll)..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none h-24"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all resize-none h-24"
                 />
               </div>
 
@@ -666,7 +666,7 @@ export const HistoryView: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-medium text-sm transition-all shadow-md shadow-blue-500/20 cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-60"
+                  className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-medium text-sm transition-all shadow-md shadow-amber-500/20 cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-60"
                 >
                   {isSaving ? (
                     <>

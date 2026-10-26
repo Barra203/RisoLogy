@@ -93,7 +93,7 @@ export const PosView: React.FC = () => {
   const getProductIcon = (category: string) => {
     const cat = category.toLowerCase();
     if (cat.includes('signature') || cat.includes('spesial')) {
-      return <Sparkles className="w-5 h-5 text-[#1854BA] stroke-[1.5]" />;
+      return <Sparkles className="w-5 h-5 text-amber-600 stroke-[1.5]" />;
     }
     return <RisolIcon className="w-5 h-5 text-black stroke-[1.8]" />;
   };
@@ -106,7 +106,7 @@ export const PosView: React.FC = () => {
       {/* Cart Header */}
       <div className="p-4 border-b border-[#E5E5E5] bg-white flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <ShoppingBag className="w-4 h-4 text-[#1854BA] stroke-[1.8]" />
+          <ShoppingBag className="w-4 h-4 text-amber-600 stroke-[1.8]" />
           <h2 className="text-sm font-bold tracking-tight text-black uppercase">
             Pesanan ({totalCartQty})
           </h2>
@@ -157,7 +157,7 @@ export const PosView: React.FC = () => {
             value={customerName}
             onChange={(e) => setCustomerName(e.target.value)}
             placeholder="Ketik nama pelanggan..."
-            className="w-full pl-3 pr-8 py-2 text-xs bg-white border border-[#CCCCCC] text-black focus:outline-none focus:border-[#1854BA] font-medium rounded-sm"
+            className="w-full pl-3 pr-8 py-2 text-xs bg-white border border-[#CCCCCC] text-black focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 font-medium rounded-sm transition-all"
           />
           {customerName && customerName !== 'Pelanggan' && (
             <button
@@ -178,7 +178,7 @@ export const PosView: React.FC = () => {
               key={quickName}
               type="button"
               onClick={() => setCustomerName(quickName)}
-              className="px-2 py-0.5 text-[10px] font-medium bg-white border border-slate-200 hover:border-[#1854BA] hover:text-[#1854BA] text-slate-600 rounded-full whitespace-nowrap cursor-pointer transition-colors"
+              className="px-2 py-0.5 text-[10px] font-medium bg-white border border-slate-200 hover:border-amber-500 hover:text-amber-600 text-slate-600 rounded-full whitespace-nowrap cursor-pointer transition-colors"
             >
               +{quickName}
             </button>
@@ -264,7 +264,7 @@ export const PosView: React.FC = () => {
                     placeholder="Tambah catatan (cth: jangan terlalu pedas, bungkus pisah)..."
                     value={item.note || ''}
                     onChange={(e) => updateCartItemNote(item.id || cartItemId, e.target.value)}
-                    className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all shadow-sm"
+                    className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-amber-500 rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all shadow-sm"
                   />
                 </div>
               </div>
@@ -290,7 +290,7 @@ export const PosView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowDiscountInput(!showDiscountInput)}
-                className="text-xs font-bold text-[#1854BA] hover:underline cursor-pointer flex items-center gap-1"
+                className="text-xs font-bold text-amber-600 hover:underline cursor-pointer flex items-center gap-1"
               >
                 <Tag className="w-3 h-3" />
                 <span>
@@ -356,7 +356,7 @@ export const PosView: React.FC = () => {
                   onClick={() => setDiscount('percentage', discountValue)}
                   className={`flex-1 py-1 text-[11px] font-semibold border cursor-pointer rounded-xs ${
                     discountType === 'percentage'
-                      ? 'bg-[#1854BA] text-white border-[#1854BA]'
+                      ? 'bg-amber-600 text-white border-amber-600'
                       : 'bg-white text-black border-[#E5E5E5]'
                   }`}
                 >
@@ -367,7 +367,7 @@ export const PosView: React.FC = () => {
                   onClick={() => setDiscount('nominal', discountValue)}
                   className={`flex-1 py-1 text-[11px] font-semibold border cursor-pointer rounded-xs ${
                     discountType === 'nominal'
-                      ? 'bg-[#1854BA] text-white border-[#1854BA]'
+                      ? 'bg-amber-600 text-white border-amber-600'
                       : 'bg-white text-black border-[#E5E5E5]'
                   }`}
                 >
@@ -382,7 +382,7 @@ export const PosView: React.FC = () => {
                   value={discountValue || ''}
                   onChange={(e) => setDiscount(discountType, parseFloat(e.target.value) || 0)}
                   placeholder={discountType === 'percentage' ? 'Cth: 10' : 'Cth: 5000'}
-                  className="flex-1 px-2.5 py-1 text-xs border border-[#CCCCCC] font-mono rounded-xs"
+                  className="flex-1 px-2.5 py-1 text-xs border border-[#CCCCCC] focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none font-mono rounded-xs"
                 />
                 {discountValue > 0 && (
                   <button
@@ -413,7 +413,7 @@ export const PosView: React.FC = () => {
           type="button"
           disabled={cart.length === 0}
           onClick={() => setShowPaymentModal(true)}
-          className="w-full py-3.5 bg-[#1854BA] text-white font-bold text-xs uppercase tracking-wider hover:bg-[#12408F] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs rounded-sm"
+          className="w-full py-3.5 bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-amber-600/20 rounded-sm"
         >
           <CreditCard className="w-4 h-4 stroke-[2]" />
           <span>Bayar Sekarang ({totalCartQty})</span>
@@ -431,7 +431,7 @@ export const PosView: React.FC = () => {
           {/* Shift Kasir Switcher Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
             <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#1854BA]" />
+              <Users className="w-4 h-4 text-amber-600" />
               <span className="text-xs font-bold text-slate-800 uppercase tracking-tight">
                 Shift Kasir:
               </span>
@@ -443,7 +443,7 @@ export const PosView: React.FC = () => {
                     onClick={() => setActiveCashier(cashier)}
                     className={`px-2.5 py-0.5 text-xs font-bold rounded cursor-pointer transition-colors ${
                       activeCashier === cashier
-                        ? 'bg-[#1854BA] text-white shadow-xs'
+                        ? 'bg-amber-600 text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -470,7 +470,7 @@ export const PosView: React.FC = () => {
                 placeholder="Cari menu risol lezat..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-[#1854BA] focus:outline-none"
+                className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all"
               />
               {searchQuery && (
                 <button
@@ -504,7 +504,7 @@ export const PosView: React.FC = () => {
                   onClick={() => setSelectedCategory(category)}
                   className={`px-3 py-1.5 text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors rounded ${
                     isSelected
-                      ? 'bg-[#1854BA] text-white shadow-xs'
+                      ? 'bg-amber-600 text-white shadow-xs'
                       : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300'
                   }`}
                 >
@@ -518,7 +518,7 @@ export const PosView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowQuickAddCat(true)}
-                className="px-2.5 py-1.5 text-xs text-slate-500 hover:text-[#1854BA] border border-dashed border-slate-300 hover:border-[#1854BA] rounded whitespace-nowrap cursor-pointer flex items-center gap-1"
+                className="px-2.5 py-1.5 text-xs text-slate-500 hover:text-amber-600 border border-dashed border-slate-300 hover:border-amber-500 rounded whitespace-nowrap cursor-pointer flex items-center gap-1"
                 title="Tambah kategori baru"
               >
                 <Plus className="w-3 h-3" />
@@ -531,12 +531,12 @@ export const PosView: React.FC = () => {
                   placeholder="Kategori baru..."
                   value={newCatInput}
                   onChange={(e) => setNewCatInput(e.target.value)}
-                  className="px-2 py-1 text-xs border border-[#1854BA] rounded bg-white w-28 focus:outline-none"
+                  className="px-2 py-1 text-xs border border-amber-500 rounded bg-white w-28 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
                   autoFocus
                 />
                 <button
                   type="submit"
-                  className="px-2 py-1 bg-[#1854BA] text-white text-xs font-bold rounded"
+                  className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded"
                 >
                   Simpan
                 </button>
@@ -590,11 +590,11 @@ export const PosView: React.FC = () => {
                         ? 'bg-slate-100 border-slate-200 opacity-60 cursor-not-allowed'
                         : isLowStock
                         ? 'bg-amber-50/40 border-amber-400 hover:border-amber-600 hover:shadow-sm'
-                        : 'bg-white border-slate-200 hover:border-[#1854BA] hover:shadow-sm'
+                        : 'bg-white border-slate-200 hover:border-amber-500 hover:shadow-sm'
                     }`}
                   >
                     {inCart && (
-                      <div className="absolute top-2 right-2 bg-[#1854BA] text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center shadow-xs">
+                      <div className="absolute top-2 right-2 bg-amber-600 text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center shadow-xs">
                         {inCart.quantity}
                       </div>
                     )}
@@ -621,10 +621,10 @@ export const PosView: React.FC = () => {
                         </span>
                       </div>
 
-                      <span className="text-[10px] font-bold text-[#1854BA] uppercase tracking-wider block">
+                      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">
                         {product.category}
                       </span>
-                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#1854BA] transition-colors mt-0.5 line-clamp-1">
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-amber-600 transition-colors mt-0.5 line-clamp-1">
                         {product.name}
                       </h3>
                       {product.description && (
@@ -644,7 +644,7 @@ export const PosView: React.FC = () => {
                       <span className="font-mono text-sm font-extrabold text-emerald-700">
                         {formatCurrency(product.price)}
                       </span>
-                      <span className="text-[11px] font-bold text-[#1854BA] group-hover:underline">
+                      <span className="text-[11px] font-bold text-amber-600 group-hover:underline">
                         {isOutOfStock ? 'Habis' : '+ Tambah'}
                       </span>
                     </div>
@@ -668,7 +668,7 @@ export const PosView: React.FC = () => {
           onClick={() => setMobileCartOpen(true)}
           className="flex items-center gap-2 text-left cursor-pointer"
         >
-          <div className="w-9 h-9 rounded bg-[#1854BA] text-white flex items-center justify-center font-bold text-xs">
+          <div className="w-9 h-9 rounded bg-amber-600 text-white flex items-center justify-center font-bold text-xs shadow-sm shadow-amber-600/20">
             {totalCartQty}
           </div>
           <div>
@@ -683,7 +683,7 @@ export const PosView: React.FC = () => {
           type="button"
           disabled={cart.length === 0}
           onClick={() => setShowPaymentModal(true)}
-          className="px-4 py-2 bg-[#1854BA] text-white text-xs font-bold uppercase rounded hover:bg-[#12408F] disabled:opacity-40 cursor-pointer"
+          className="px-4 py-2 bg-amber-600 text-white text-xs font-bold uppercase rounded hover:bg-amber-700 active:scale-[0.98] shadow-md shadow-amber-600/20 disabled:opacity-40 cursor-pointer"
         >
           Bayar
         </button>

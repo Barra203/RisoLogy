@@ -89,7 +89,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
         <div className="p-5 border-b border-[#E5E5E5] flex items-center justify-between bg-white shrink-0">
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-bold bg-[#1854BA] text-white px-2 py-0.5">
+              <span className="font-mono text-xs font-bold bg-amber-600 text-white px-2 py-0.5">
                 {nextTransactionNumber}
               </span>
               <h2 className="text-base font-bold text-black uppercase tracking-tight">
@@ -123,7 +123,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder="Pelanggan"
-              className="text-xs font-semibold text-right bg-transparent border-b border-[#CCCCCC] focus:border-[#1854BA] focus:outline-none px-1 py-0.5 w-44 text-slate-900"
+              className="text-xs font-semibold text-right bg-transparent border-b border-[#CCCCCC] focus:border-amber-500 focus:outline-none px-1 py-0.5 w-44 text-slate-900"
             />
           </div>
 
@@ -151,8 +151,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
                 }}
                 className={`p-3.5 border text-center transition-colors cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                   method === 'CASH'
-                    ? 'border-[#1854BA] bg-[#1854BA] text-white font-bold shadow-sm'
-                    : 'border-[#E5E5E5] bg-white text-black hover:border-[#1854BA]'
+                    ? 'border-amber-600 bg-amber-600 text-white font-bold shadow-sm'
+                    : 'border-[#E5E5E5] bg-white text-black hover:border-amber-500'
                 }`}
               >
                 <Banknote className="w-5 h-5 stroke-[1.5]" />
@@ -167,8 +167,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
                 }}
                 className={`p-3.5 border text-center transition-colors cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                   method === 'QRIS'
-                    ? 'border-[#1854BA] bg-[#1854BA] text-white font-bold shadow-sm'
-                    : 'border-[#E5E5E5] bg-white text-black hover:border-[#1854BA]'
+                    ? 'border-amber-600 bg-amber-600 text-white font-bold shadow-sm'
+                    : 'border-[#E5E5E5] bg-white text-black hover:border-amber-500'
                 }`}
               >
                 <QrCode className="w-5 h-5 stroke-[1.5]" />
@@ -278,7 +278,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
             type="button"
             onClick={handleCompletePayment}
             disabled={isSubmitting || !paymentValid}
-            className="px-6 py-2.5 bg-[#1854BA] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 hover:bg-[#12408F] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+            className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-md shadow-amber-600/25"
           >
             {isSubmitting ? (
               <>

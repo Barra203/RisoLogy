@@ -90,7 +90,13 @@ export const Sidebar: React.FC = () => {
         <div>
           <div className="border-b border-[#E5E5E5]">
             <div className="flex items-center gap-3 px-4 py-4">
-              <div className="w-10 h-10 min-w-10 min-h-10 aspect-square rounded-xl overflow-hidden border border-slate-200 bg-white flex items-center justify-center shadow-sm shrink-0">
+              <div
+                className={`w-10 h-10 min-w-10 min-h-10 aspect-square rounded-xl overflow-hidden border flex items-center justify-center shadow-sm shrink-0 ${
+                  activeLogoSrc && !logoLoadError
+                    ? 'border-slate-200 bg-white'
+                    : 'bg-amber-500/10 border-amber-500/20'
+                }`}
+              >
                 {activeLogoSrc && !logoLoadError ? (
                   <img
                     key={activeLogoSrc}
@@ -100,7 +106,7 @@ export const Sidebar: React.FC = () => {
                     onError={() => setLogoLoadError(true)}
                   />
                 ) : (
-                  <span className="font-bold text-blue-600 text-base">
+                  <span className="font-bold text-amber-600 text-base">
                     {settings?.storeName?.charAt(0) || 'R'}
                   </span>
                 )}
@@ -127,7 +133,7 @@ export const Sidebar: React.FC = () => {
                   onClick={() => setActiveTab(item.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors cursor-pointer border rounded-md ${
                     isActive
-                      ? 'bg-[#1854BA] text-white border-[#1854BA] font-semibold shadow-xs'
+                      ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600 font-semibold shadow-md shadow-amber-600/20'
                       : 'bg-transparent text-slate-800 border-transparent hover:bg-slate-100 hover:border-slate-200'
                   }`}
                 >
@@ -169,7 +175,7 @@ export const Sidebar: React.FC = () => {
               className="w-full flex items-center justify-between p-2 text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded text-left cursor-pointer"
             >
               <div className="flex items-center gap-2 min-w-0">
-                <UserCheck className="w-3.5 h-3.5 text-[#1854BA] shrink-0" />
+                <UserCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                 <div className="min-w-0">
                   <span className="text-[9px] text-slate-500 uppercase font-bold block leading-none">
                     Shift Aktif:
@@ -197,7 +203,7 @@ export const Sidebar: React.FC = () => {
                     }}
                     className={`w-full text-left px-2 py-1.5 text-xs rounded cursor-pointer flex items-center justify-between ${
                       activeCashier === cashier
-                        ? 'bg-[#1854BA] text-white font-bold'
+                        ? 'bg-amber-600 text-white font-bold'
                         : 'text-slate-700 hover:bg-slate-100'
                     }`}
                   >
@@ -224,7 +230,13 @@ export const Sidebar: React.FC = () => {
       <div className="lg:hidden w-full bg-white border-b border-[#E5E5E5] flex flex-col px-4 py-2 shrink-0 print:hidden z-30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 min-w-8 min-h-8 aspect-square rounded-lg overflow-hidden border border-slate-200 bg-white flex items-center justify-center shadow-sm shrink-0">
+            <div
+              className={`w-8 h-8 min-w-8 min-h-8 aspect-square rounded-lg overflow-hidden border flex items-center justify-center shadow-sm shrink-0 ${
+                activeLogoSrc && !logoLoadError
+                  ? 'border-slate-200 bg-white'
+                  : 'bg-amber-500/10 border-amber-500/20'
+              }`}
+            >
               {activeLogoSrc && !logoLoadError ? (
                 <img
                   key={activeLogoSrc}
@@ -234,7 +246,7 @@ export const Sidebar: React.FC = () => {
                   onError={() => setLogoLoadError(true)}
                 />
               ) : (
-                <span className="font-bold text-blue-600 text-xs">
+                <span className="font-bold text-amber-600 text-xs">
                   {settings?.storeName?.charAt(0) || 'R'}
                 </span>
               )}
@@ -259,7 +271,7 @@ export const Sidebar: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setMobileShiftOpen(!mobileShiftOpen)}
-                className="flex items-center gap-1 text-[10px] font-bold bg-blue-50 text-[#1854BA] border border-blue-200 px-2 py-0.5 rounded cursor-pointer"
+                className="flex items-center gap-1 text-[10px] font-bold bg-amber-500/10 text-amber-700 border border-amber-500/20 px-2 py-0.5 rounded cursor-pointer"
                 title="Klik untuk ganti shift kasir"
               >
                 <span>Kasir: {activeCashier}</span>
@@ -281,7 +293,7 @@ export const Sidebar: React.FC = () => {
                       }}
                       className={`w-full text-left px-2 py-1 text-xs rounded flex items-center justify-between cursor-pointer ${
                         activeCashier === cashier
-                          ? 'bg-[#1854BA] text-white font-bold'
+                          ? 'bg-amber-600 text-white font-bold'
                           : 'text-slate-700 hover:bg-slate-100'
                       }`}
                     >
@@ -313,7 +325,7 @@ export const Sidebar: React.FC = () => {
               onClick={() => setActiveTab(item.id)}
               className={`px-2.5 py-1 text-xs font-semibold whitespace-nowrap cursor-pointer rounded transition-colors ${
                 activeTab === item.id
-                  ? 'bg-[#1854BA] text-white shadow-xs'
+                  ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/20'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >

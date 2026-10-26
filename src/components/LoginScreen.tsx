@@ -125,7 +125,7 @@ export const LoginScreen: React.FC = () => {
                 }}
                 placeholder="Masukkan username..."
                 autoComplete="username"
-                className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded focus:border-[#1854BA] focus:ring-1 focus:ring-[#1854BA] focus:outline-none bg-white font-medium text-slate-900 placeholder:text-slate-400"
+                className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/25 focus:outline-none bg-white font-medium text-slate-900 placeholder:text-slate-400 transition-all"
                 autoFocus
               />
             </div>
@@ -149,7 +149,7 @@ export const LoginScreen: React.FC = () => {
                 }}
                 placeholder="Masukkan password..."
                 autoComplete="current-password"
-                className="w-full pl-9 pr-10 py-2.5 text-sm border border-slate-300 rounded focus:border-[#1854BA] focus:ring-1 focus:ring-[#1854BA] focus:outline-none bg-white font-medium text-slate-900 placeholder:text-slate-400"
+                className="w-full pl-9 pr-10 py-2.5 text-sm border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/25 focus:outline-none bg-white font-medium text-slate-900 placeholder:text-slate-400 transition-all"
               />
               <button
                 type="button"
@@ -166,7 +166,7 @@ export const LoginScreen: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full mt-2 py-3 bg-[#1854BA] text-white text-xs sm:text-sm font-bold tracking-wider uppercase flex items-center justify-center gap-2 hover:bg-[#12408F] transition-colors rounded cursor-pointer shadow-sm active:scale-[0.99] disabled:opacity-70"
+            className="w-full mt-2 py-3 bg-amber-600 hover:bg-amber-500 text-white text-xs sm:text-sm font-bold tracking-wider uppercase flex items-center justify-center gap-2 transition-colors rounded cursor-pointer shadow-md shadow-amber-600/25 active:scale-[0.99] disabled:opacity-70"
           >
             <LogIn className="w-4 h-4" />
             <span>{isSubmitting ? 'Memverifikasi...' : 'Masuk ke Sistem'}</span>
