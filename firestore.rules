@@ -2,43 +2,49 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isValidId(id) {
-      return id is string && id.size() > 0 && id.size() <= 128;
-    }
-
-    // Store settings (Brand identity, logo, QRIS, store info)
+    // Store settings (Brand identity, logo, QRIS, store info, shift configuration)
     match /store_settings/{settingId} {
-      allow read, write: if isValidId(settingId);
+      allow get, list, write: if true;
     }
 
     // Products catalog & inventory stock
     match /products/{productId} {
-      allow read, write: if isValidId(productId);
+      allow get, list, write: if true;
     }
 
     // Categories
     match /categories/{categoryId} {
-      allow read, write: if isValidId(categoryId);
+      allow get, list, write: if true;
     }
 
     // Transactions
     match /transactions/{transactionId} {
-      allow read, write: if isValidId(transactionId);
+      allow get, list, write: if true;
     }
 
     // Customer directory
     match /customers/{customerId} {
-      allow read, write: if isValidId(customerId);
+      allow get, list, write: if true;
     }
 
-    // Supplier expenses
+    // Supplier expenses (Belanja supplier)
     match /expenses/{expenseId} {
-      allow read, write: if isValidId(expenseId);
+      allow get, list, write: if true;
     }
 
-    // Discounts
+    // Discounts presets
     match /discounts/{discountId} {
-      allow read, write: if isValidId(discountId);
+      allow get, list, write: if true;
+    }
+
+    // Cashier shifts & handover logs (Sync shift antar kasir & perangkat)
+    match /shifts/{shiftId} {
+      allow get, list, write: if true;
+    }
+
+    // Cashiers team
+    match /cashiers/{cashierId} {
+      allow get, list, write: if true;
     }
 
     // Test connection doc

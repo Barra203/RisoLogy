@@ -124,12 +124,38 @@
         "isActive": { "type": "boolean" }
       },
       "required": ["name", "type", "value", "isActive"]
+    },
+    "Shift": {
+      "title": "Cashier Shift",
+      "description": "Active shift and cashier handover log synced across all devices",
+      "type": "object",
+      "properties": {
+        "activeCashier": { "type": "string" },
+        "startedAt": { "type": "number" },
+        "endedAt": { "type": "number" },
+        "totalOrders": { "type": "number" },
+        "totalSales": { "type": "number" },
+        "status": { "type": "string" },
+        "cashierList": { "type": "array" }
+      },
+      "required": ["activeCashier", "startedAt"]
+    },
+    "Cashier": {
+      "title": "Cashier Profile",
+      "description": "Authorized staff cashier profile",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["name"]
     }
   },
   "firestore": {
     "/store_settings/{settingId}": {
       "schema": "StoreSetting",
-      "description": "Store settings and branding"
+      "description": "Store settings, shift configuration, and branding"
     },
     "/products/{productId}": {
       "schema": "Product",
@@ -154,6 +180,14 @@
     "/discounts/{discountId}": {
       "schema": "Discount",
       "description": "Discount presets"
+    },
+    "/shifts/{shiftId}": {
+      "schema": "Shift",
+      "description": "Cashier shift sessions and history"
+    },
+    "/cashiers/{cashierId}": {
+      "schema": "Cashier",
+      "description": "Cashier team directory"
     }
   }
 }

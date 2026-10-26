@@ -12,19 +12,19 @@ import { SettingsView } from './components/SettingsView';
 import { SuccessReceiptModal } from './components/SuccessReceiptModal';
 
 const PosMainApp: React.FC = () => {
-  const { isAuthenticated, activeTab, login } = usePos();
+  const { isAuthenticated, activeTab, login, isLoading, dbError, clearDbError } = usePos();
 
   // Support ?autostart=1 for headless testing & preview
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('autostart') === '1' && !isAuthenticated) {
-        login('Harits', 'RisoLogyKeren');
+        login('RisoLogy', 'kelompokrisol6');
       }
     }
   }, [isAuthenticated, login]);
 
-  // If not authenticated, show Login Screen (Cashier user + Password RisoLogyKeren)
+  // If not authenticated, show Login Screen
   if (!isAuthenticated) {
     return <LoginScreen />;
   }
@@ -35,7 +35,28 @@ const PosMainApp: React.FC = () => {
       <Sidebar />
 
       {/* Main View Area */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden" role="main">
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative" role="main">
+        {/* Database Loading Banner */}
+        {isLoading && (
+          <div className="bg-[#FFD100] text-black px-4 py-1.5 text-xs font-bold uppercase tracking-wider border-b-2 border-black flex items-center justify-between">
+            <span>Memuat & menyinkronkan data dari Cloud Firestore...</span>
+            <span className="animate-pulse">● LIVE SYNC</span>
+          </div>
+        )}
+
+        {/* Database Error Banner */}
+        {dbError && (
+          <div className="bg-[#E02424] text-white px-4 py-2 text-xs font-bold border-b-2 border-black flex items-center justify-between">
+            <span>{dbError}</span>
+            <button
+              onClick={clearDbError}
+              className="ml-4 px-2 py-0.5 bg-black text-white text-[10px] uppercase font-bold"
+            >
+              Tutup
+            </button>
+          </div>
+        )}
+
         {activeTab === 'pos' && <PosView />}
         {activeTab === 'dashboard' && <DashboardView />}
         {activeTab === 'history' && <HistoryView />}

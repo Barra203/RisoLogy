@@ -48,6 +48,18 @@ export const SettingsView: React.FC = () => {
   const [qrisUrl, setQrisUrl] = useState(settings.qrisUrl);
   const [logoUrl, setLogoUrl] = useState(settings.logoUrl);
 
+  // Sync state with real-time Firestore settings
+  React.useEffect(() => {
+    setStoreName(settings.storeName);
+    setBrandName(settings.brandName || 'RisoLogy');
+    setAddress(settings.address);
+    setPhone(settings.phone);
+    setEmail(settings.email);
+    setFooterText(settings.footerText);
+    setQrisUrl(settings.qrisUrl);
+    setLogoUrl(settings.logoUrl);
+  }, [settings]);
+
   // Hidden file input refs for direct uploads
   const logoFileInputRef = useRef<HTMLInputElement>(null);
   const qrisFileInputRef = useRef<HTMLInputElement>(null);

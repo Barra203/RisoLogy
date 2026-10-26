@@ -113,3 +113,22 @@ export type ActiveTab =
   | 'expenses'
   | 'export'
   | 'settings';
+
+export interface CashierShiftRecord {
+  id: string;
+  cashierName: string;
+  startedAt: number;
+  endedAt?: number;
+  totalOrders: number;
+  totalSales: number;
+  status: 'ACTIVE' | 'CLOSED';
+}
+
+export interface ShiftConfig {
+  activeCashier: string;
+  cashierList: string[];
+  activeShiftId?: string;
+  shiftStartedAt?: number;
+  updatedAt?: number;
+}
+
