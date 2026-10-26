@@ -326,8 +326,22 @@ export const HistoryView: React.FC = () => {
                             {totalItems} item
                           </span>
                         </div>
-                        <div className="truncate text-slate-700 text-[11px] leading-tight">
-                          {tx.items.map((i) => `${i.name} (${i.quantity}x)`).join(', ')}
+                        <div className="space-y-1 text-slate-700 text-[11px] leading-tight">
+                          {tx.items.map((i, idx) => {
+                            const itemNote = i.note || i.description;
+                            return (
+                              <div key={`${i.productId}-${idx}`}>
+                                <div className="font-medium">
+                                  {i.name} ({i.quantity}x)
+                                </div>
+                                {itemNote && (
+                                  <div className="text-xs text-zinc-400 italic">
+                                    Catatan: {itemNote}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                         {tx.notes && (
                           <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-800 rounded text-[10px] font-medium max-w-full truncate">

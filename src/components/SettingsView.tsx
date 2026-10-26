@@ -150,7 +150,7 @@ export const SettingsView: React.FC = () => {
     if (file) {
       readFileAsDataUrl(file, (dataUrl) => {
         setLogoUrl(dataUrl);
-        updateSettings({ logoUrl: dataUrl });
+        updateSettings({ logoUrl: dataUrl, storeLogo: dataUrl });
       });
     }
   };
@@ -178,6 +178,7 @@ export const SettingsView: React.FC = () => {
       footerText,
       qrisUrl,
       logoUrl,
+      storeLogo: logoUrl,
     });
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);

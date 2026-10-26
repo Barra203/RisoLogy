@@ -11,8 +11,15 @@ export interface Product {
 }
 
 export interface CartItem {
-  product: Product;
+  id: string;
+  productId: string;
+  name: string;
+  price: number;
   quantity: number;
+  note?: string; // Deskripsi/catatan khusus pesanan per-item
+  description?: string;
+  subtotal: number;
+  product: Product;
 }
 
 export type PaymentMethod = 'CASH' | 'QRIS' | 'TRANSFER';
@@ -75,7 +82,11 @@ export interface TransactionItem {
   price: number;
   quantity: number;
   subtotal: number;
+  note?: string; // Catatan/deskripsi khusus per-item pesanan
+  description?: string;
 }
+
+export type OrderItem = TransactionItem;
 
 export interface Transaction {
   id: string;
@@ -109,6 +120,7 @@ export interface StoreSettings {
   email: string;
   footerText: string;
   logoUrl: string;
+  storeLogo?: string; // Alias sinkron untuk logoUrl (URL / base64 image string)
   qrisUrl: string;
   qrisNmid?: string;
   pinCode: string;

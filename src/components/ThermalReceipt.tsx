@@ -41,7 +41,9 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ transaction, set
         </div>
         <div className="flex justify-between">
           <span>TANGGAL</span>
-          <span>{dt.date} {dt.time}</span>
+          <span>
+            {dt.date} {dt.time}
+          </span>
         </div>
         <div className="flex justify-between">
           <span>KASIR</span>
@@ -66,19 +68,27 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ transaction, set
 
       {/* Items */}
       <div className="space-y-1.5 py-1">
-        {transaction.items.map((item, idx) => (
-          <div key={`${item.productId}-${idx}`} className="text-[10px]">
-            <div className="font-semibold text-black">{item.name}</div>
-            <div className="flex justify-between text-[#444444] print:text-black pl-1">
-              <span>
-                {item.quantity} x {formatCurrency(item.price).replace('Rp ', '')}
-              </span>
-              <span className="font-mono">
-                {formatCurrency(item.subtotal).replace('Rp ', '')}
-              </span>
+        {transaction.items.map((item, idx) => {
+          const itemNote = item.note || item.description;
+          return (
+            <div key={`${item.productId}-${idx}`} className="text-[10px]">
+              <div className="font-semibold text-black">{item.name}</div>
+              {itemNote && (
+                <div className="text-xs text-zinc-400 print:text-black italic pl-1 leading-snug">
+                  * {itemNote}
+                </div>
+              )}
+              <div className="flex justify-between text-[#444444] print:text-black pl-1">
+                <span>
+                  {item.quantity} x {formatCurrency(item.price).replace('Rp ', '')}
+                </span>
+                <span className="font-mono">
+                  {formatCurrency(item.subtotal).replace('Rp ', '')}
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Dashed line */}
@@ -92,7 +102,10 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ transaction, set
         </div>
         {transaction.discountAmount > 0 && (
           <div className="flex justify-between">
-            <span>DISKON {transaction.discountType === 'percentage' ? `(${transaction.discountValue}%)` : ''}</span>
+            <span>
+              DISKON{' '}
+              {transaction.discountType === 'percentage' ? `(${transaction.discountValue}%)` : ''}
+            </span>
             <span>- {formatCurrency(transaction.discountAmount)}</span>
           </div>
         )}
@@ -127,6 +140,16 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ transaction, set
           )}
         </div>
       </div>
+
+      {/* Transaction Note if any */}
+      {transaction.notes && (
+        <>
+          <div className="border-t border-dashed border-black my-2" />
+          <div className="text-[10px] text-[#444444] print:text-black italic">
+            Catatan: {transaction.notes}
+          </div>
+        </>
+      )}
 
       {/* Dashed line */}
       <div className="border-t border-dashed border-black my-2" />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePos } from '../context/PosContext';
 import { ActiveTab } from '../types/pos';
 import {
@@ -14,12 +14,28 @@ import {
   UserCheck,
   Cloud,
 } from 'lucide-react';
-import { RisolIcon } from './RisolIcon';
 
 export const Sidebar: React.FC = () => {
-  const { activeTab, setActiveTab, settings, logout, activeCashier, setActiveCashier, cashierList, currentUser } = usePos();
+  const {
+    activeTab,
+    setActiveTab,
+    settings,
+    logout,
+    activeCashier,
+    setActiveCashier,
+    cashierList,
+    currentUser,
+  } = usePos();
   const [cashierDropdownOpen, setCashierDropdownOpen] = useState(false);
   const [mobileShiftOpen, setMobileShiftOpen] = useState(false);
+  const [logoLoadError, setLogoLoadError] = useState(false);
+
+  const activeLogoSrc = settings?.storeLogo || settings?.logoUrl || '';
+
+  // Reset status error gambar setiap kali pengguna mengganti/mengunggah logo baru di SettingsView
+  useEffect(() => {
+    setLogoLoadError(false);
+  }, [activeLogoSrc]);
 
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; description?: string }[] = [
     {
@@ -70,27 +86,30 @@ export const Sidebar: React.FC = () => {
     <>
       {/* DESKTOP SIDEBAR (lg and up) */}
       <aside className="hidden lg:flex w-64 bg-white border-r border-[#E5E5E5] flex-col justify-between h-screen shrink-0 select-none print:hidden">
-        {/* Top Header & Store Identity */}
+        {/* Top Header & Dynamic Store Identity */}
         <div>
-          <div className="p-5 border-b border-[#E5E5E5]">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 border border-black/10 rounded-full flex items-center justify-center p-0.5 bg-[#FAFAFA] overflow-hidden shrink-0">
+          <div className="border-b border-[#E5E5E5]">
+            <div className="flex items-center gap-3 px-4 py-4">
+              {activeLogoSrc && !logoLoadError ? (
                 <img
-                  src={settings.logoUrl || '/assets/logo.png'}
-                  alt={settings.storeName}
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
+                  key={activeLogoSrc}
+                  src={activeLogoSrc}
+                  alt={settings?.storeName || 'Store Logo'}
+                  className="w-10 h-10 object-contain rounded-xl border border-zinc-800 bg-zinc-900 p-0.5 shrink-0"
+                  onError={() => setLogoLoadError(true)}
                 />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-base font-bold text-black tracking-tight uppercase truncate">
-                  {settings.storeName}
-                </h2>
-                <p className="text-[10px] text-[#666666] uppercase tracking-[0.18em] truncate">
-                  Point of Sale System
-                </p>
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500 font-bold shrink-0">
+                  {settings?.storeName?.charAt(0) || 'R'}
+                </div>
+              )}
+              <div className="flex flex-col overflow-hidden min-w-0">
+                <span className="font-bold text-sm text-zinc-900 uppercase tracking-tight truncate">
+                  {settings?.storeName || 'RisoLogy POS'}
+                </span>
+                <span className="text-xs text-zinc-500 truncate">
+                  {settings?.brandName || 'Artisan Risol'}
+                </span>
               </div>
             </div>
           </div>
@@ -203,21 +222,30 @@ export const Sidebar: React.FC = () => {
       <div className="lg:hidden w-full bg-white border-b border-[#E5E5E5] flex flex-col px-4 py-2 shrink-0 print:hidden z-30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full border border-black/10 overflow-hidden flex items-center justify-center p-0.5">
+            {activeLogoSrc && !logoLoadError ? (
               <img
-                src={settings.logoUrl || '/assets/logo.png'}
-                alt={settings.storeName}
-                className="w-full h-full object-contain"
+                key={activeLogoSrc}
+                src={activeLogoSrc}
+                alt={settings?.storeName || 'Store Logo'}
+                className="w-7 h-7 object-contain rounded-lg border border-zinc-800 bg-zinc-900 p-0.5 shrink-0"
+                onError={() => setLogoLoadError(true)}
               />
-            </div>
-            <span className="text-xs font-bold text-black uppercase tracking-tight">
-              {settings.storeName}
+            ) : (
+              <div className="w-7 h-7 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500 font-bold text-xs shrink-0">
+                {settings?.storeName?.charAt(0) || 'R'}
+              </div>
+            )}
+            <span className="text-xs font-bold text-black uppercase tracking-tight truncate">
+              {settings?.storeName || 'RisoLogy POS'}
             </span>
           </div>
 
           <div className="flex items-center gap-1.5">
             {/* Cloud Sync indicator */}
-            <span className="flex items-center gap-1 text-[9px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded" title="Tersinkronisasi Real-Time dengan Firebase Firestore">
+            <span
+              className="flex items-center gap-1 text-[9px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded"
+              title="Tersinkronisasi Real-Time dengan Firebase Firestore"
+            >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>Cloud</span>
             </span>

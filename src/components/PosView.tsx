@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { usePos } from '../context/PosContext';
-import { Product, DiscountPreset } from '../types/pos';
 import { formatCurrency } from '../utils/pos-logic';
 import {
   Search,
@@ -12,13 +11,10 @@ import {
   CreditCard,
   User,
   ShoppingBag,
-  ChevronUp,
   X,
   Users,
-  Settings,
-  Percent,
-  Banknote,
   Clock,
+  AlertTriangle,
 } from 'lucide-react';
 import { RisolIcon } from './RisolIcon';
 import { PaymentModal } from './PaymentModal';
@@ -32,6 +28,7 @@ export const PosView: React.FC = () => {
     cart,
     addToCart,
     updateCartQty,
+    updateCartItemNote,
     removeFromCart,
     clearCart,
     customerName,
@@ -148,7 +145,9 @@ export const PosView: React.FC = () => {
           </label>
           <div className="flex items-center gap-1 text-[11px] text-slate-500">
             <Clock className="w-3 h-3 text-slate-400" />
-            <span>Kasir: <strong className="text-slate-900">{activeCashier}</strong></span>
+            <span>
+              Kasir: <strong className="text-slate-900">{activeCashier}</strong>
+            </span>
           </div>
         </div>
 
@@ -203,10 +202,11 @@ export const PosView: React.FC = () => {
           </div>
         ) : (
           cart.map((item) => {
+            const cartItemId = item.id || item.product.id;
             const itemTotal = item.product.price * item.quantity;
             return (
               <div
-                key={item.product.id}
+                key={cartItemId}
                 className="p-3 border border-[#E5E5E5] bg-white flex flex-col justify-between rounded-sm"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
@@ -220,7 +220,7 @@ export const PosView: React.FC = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={() => removeFromCart(item.product.id)}
+                    onClick={() => removeFromCart(cartItemId)}
                     className="text-[#999999] hover:text-rose-600 p-1 transition-colors cursor-pointer"
                     title="Hapus menu"
                   >
@@ -233,7 +233,7 @@ export const PosView: React.FC = () => {
                   <div className="flex items-center border border-[#E5E5E5] rounded-xs overflow-hidden">
                     <button
                       type="button"
-                      onClick={() => updateCartQty(item.product.id, item.quantity - 1)}
+                      onClick={() => updateCartQty(cartItemId, item.quantity - 1)}
                       className="w-7 h-7 flex items-center justify-center text-black hover:bg-[#F5F5F5] cursor-pointer"
                       title="Kurangi"
                     >
@@ -244,7 +244,7 @@ export const PosView: React.FC = () => {
                     </span>
                     <button
                       type="button"
-                      onClick={() => updateCartQty(item.product.id, item.quantity + 1)}
+                      onClick={() => updateCartQty(cartItemId, item.quantity + 1)}
                       className="w-7 h-7 flex items-center justify-center text-black hover:bg-[#F5F5F5] cursor-pointer"
                       title="Tambah"
                     >
@@ -255,6 +255,17 @@ export const PosView: React.FC = () => {
                   <div className="font-mono text-xs font-bold text-black tabular-nums">
                     {formatCurrency(itemTotal)}
                   </div>
+                </div>
+
+                {/* Input Catatan / Deskripsi Khusus Pesanan Per-Item */}
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Tambah catatan (cth: jangan terlalu pedas, bungkus pisah)..."
+                    value={item.note || ''}
+                    onChange={(e) => updateCartItemNote(cartItemId, e.target.value)}
+                    className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-2.5 py-1 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                  />
                 </div>
               </div>
             );
@@ -564,12 +575,23 @@ export const PosView: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredProducts.map((product) => {
                 const inCart = cart.find((i) => i.product.id === product.id);
+                const stock = product.stockQuantity ?? 0;
+                const isOutOfStock = stock <= 0;
+                const isLowStock = stock > 0 && stock < 5;
+
                 return (
                   <button
                     key={product.id}
                     type="button"
+                    disabled={isOutOfStock}
                     onClick={() => addToCart(product)}
-                    className="p-4 bg-white border border-slate-200 rounded-lg hover:border-[#1854BA] hover:shadow-sm transition-all text-left flex flex-col justify-between cursor-pointer group relative overflow-hidden"
+                    className={`p-4 border rounded-lg transition-all text-left flex flex-col justify-between cursor-pointer group relative overflow-hidden ${
+                      isOutOfStock
+                        ? 'bg-slate-100 border-slate-200 opacity-60 cursor-not-allowed'
+                        : isLowStock
+                        ? 'bg-amber-50/40 border-amber-400 hover:border-amber-600 hover:shadow-sm'
+                        : 'bg-white border-slate-200 hover:border-[#1854BA] hover:shadow-sm'
+                    }`}
                   >
                     {inCart && (
                       <div className="absolute top-2 right-2 bg-[#1854BA] text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center shadow-xs">
@@ -578,9 +600,25 @@ export const PosView: React.FC = () => {
                     )}
 
                     <div>
-                      {/* Authentic Risol Icon Header */}
-                      <div className="w-10 h-10 rounded-md bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-700 mb-3 group-hover:scale-105 transition-transform">
-                        {getProductIcon(product.category)}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="w-10 h-10 rounded-md bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-700 group-hover:scale-105 transition-transform">
+                          {getProductIcon(product.category)}
+                        </div>
+                        <span
+                          className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                            isOutOfStock
+                              ? 'bg-rose-100 text-rose-700 border-rose-300'
+                              : isLowStock
+                              ? 'bg-rose-600 text-white border-rose-700 animate-pulse'
+                              : 'bg-slate-100 text-slate-700 border-slate-200'
+                          }`}
+                        >
+                          {isOutOfStock
+                            ? 'Stok Habis'
+                            : isLowStock
+                            ? `Sisa ${stock} (Restock!)`
+                            : `Stok: ${stock}`}
+                        </span>
                       </div>
 
                       <span className="text-[10px] font-bold text-[#1854BA] uppercase tracking-wider block">
@@ -594,6 +632,12 @@ export const PosView: React.FC = () => {
                           {product.description}
                         </p>
                       )}
+                      {isLowStock && (
+                        <div className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-rose-600">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                          <span>Stok menipis (&lt; 5 buah)!</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
@@ -601,7 +645,7 @@ export const PosView: React.FC = () => {
                         {formatCurrency(product.price)}
                       </span>
                       <span className="text-[11px] font-bold text-[#1854BA] group-hover:underline">
-                        + Tambah
+                        {isOutOfStock ? 'Habis' : '+ Tambah'}
                       </span>
                     </div>
                   </button>
@@ -655,10 +699,7 @@ export const PosView: React.FC = () => {
       )}
 
       {/* PAYMENT MODAL */}
-      <PaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-      />
+      <PaymentModal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} />
 
       {/* DISCOUNT CRUD MODAL */}
       <DiscountModal

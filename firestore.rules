@@ -7,6 +7,11 @@ service cloud.firestore {
       allow get, list, write: if true;
     }
 
+    // General settings collection alias
+    match /settings/{settingId} {
+      allow get, list, write: if true;
+    }
+
     // Products catalog & inventory stock
     match /products/{productId} {
       allow get, list, write: if true;

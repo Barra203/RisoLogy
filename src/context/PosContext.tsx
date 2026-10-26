@@ -79,12 +79,13 @@ interface PosContextType {
   updateProduct: (id: string, product: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
 
-  // Cart
+  // Cart & Item Notes
   cart: CartItem[];
   customerName: string;
   setCustomerName: (name: string) => void;
   addToCart: (product: Product) => void;
   updateCartQty: (productId: string, qty: number) => void;
+  updateCartItemNote: (cartItemId: string, note: string) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
 
@@ -190,8 +191,33 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [cashierList, setCashierList] = useState<string[]>(Array.from(INITIAL_CASHIERS));
   const [shiftInfo, setShiftInfo] = useState<ShiftConfig | null>(null);
 
-  // Store Settings (Brand Identity, Logo & QRIS) - Cloud Firestore
-  const [settings, setSettings] = useState<StoreSettings>(INITIAL_STORE_SETTINGS);
+  // Store Settings (Brand Identity, Logo & QRIS) - Cloud Firestore dengan fallback localStorage
+  const [settings, setSettings] = useState<StoreSettings>(() => {
+    const baseSettings: StoreSettings = {
+      ...INITIAL_STORE_SETTINGS,
+      storeLogo: INITIAL_STORE_SETTINGS.logoUrl,
+    };
+    try {
+      const cached = localStorage.getItem('pos_store_settings');
+      if (cached) {
+        const parsed = JSON.parse(cached) as Partial<StoreSettings>;
+        const resolvedLogo =
+          parsed.storeLogo || parsed.logoUrl || INITIAL_STORE_SETTINGS.logoUrl;
+        return {
+          ...baseSettings,
+          ...parsed,
+          logoUrl: resolvedLogo,
+          storeLogo: resolvedLogo,
+          qrisUrl: parsed.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl,
+          storeName: parsed.storeName || INITIAL_STORE_SETTINGS.storeName,
+          brandName: parsed.brandName || INITIAL_STORE_SETTINGS.brandName,
+        };
+      }
+    } catch {
+      // Fallback ke INITIAL_STORE_SETTINGS jika parsing gagal
+    }
+    return baseSettings;
+  });
 
   // Products Catalog & Inventory Stock - Cloud Firestore
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
@@ -494,39 +520,62 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => unsubscribe();
   }, []);
 
-  // 7. Dokumen `store_settings/store_config`: Pengaturan Toko, Logo & QRIS
+  // 7. Dokumen Pengaturan Toko & Logo (`store_settings/store_config` & `settings/general`)
   useEffect(() => {
     const settingsDocRef = doc(
       db,
       FIRESTORE_COLLECTIONS.SETTINGS,
       FIRESTORE_COLLECTIONS.SETTINGS_DOC
     );
-    const unsubscribe = onSnapshot(
+    const generalDocRef = doc(db, 'settings', 'general');
+
+    const applySettingsSnapshot = (data: Partial<StoreSettings>) => {
+      setSettings((prev) => {
+        const resolvedLogo =
+          data.storeLogo ||
+          data.logoUrl ||
+          prev.storeLogo ||
+          prev.logoUrl ||
+          INITIAL_STORE_SETTINGS.logoUrl;
+        const nextSettings: StoreSettings = {
+          ...prev,
+          ...data,
+          logoUrl: resolvedLogo,
+          storeLogo: resolvedLogo,
+          qrisUrl: data.qrisUrl || prev.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl,
+          storeName: data.storeName || prev.storeName || INITIAL_STORE_SETTINGS.storeName,
+          brandName: data.brandName || prev.brandName || INITIAL_STORE_SETTINGS.brandName,
+        };
+        try {
+          localStorage.setItem('pos_store_settings', JSON.stringify(nextSettings));
+        } catch {
+          // Ignore quota error
+        }
+        return nextSettings;
+      });
+    };
+
+    const unsubscribeStoreConfig = onSnapshot(
       settingsDocRef,
       (snapshot) => {
         setIsSyncing(false);
         if (snapshot.exists()) {
-          const data = snapshot.data() as Partial<StoreSettings>;
-          setSettings((prev) => ({
-            ...prev,
-            ...data,
-            logoUrl: data.logoUrl || prev.logoUrl || INITIAL_STORE_SETTINGS.logoUrl,
-            qrisUrl: data.qrisUrl || prev.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl,
-            storeName: data.storeName || prev.storeName || INITIAL_STORE_SETTINGS.storeName,
-            brandName: data.brandName || prev.brandName || INITIAL_STORE_SETTINGS.brandName,
-          }));
+          applySettingsSnapshot(snapshot.data() as Partial<StoreSettings>);
         } else if (!initialSettingsSeeded.current) {
           initialSettingsSeeded.current = true;
-          setDoc(
-            settingsDocRef,
-            cleanFirestoreData({ ...INITIAL_STORE_SETTINGS, updatedAt: Date.now() })
-          ).catch((err) =>
+          const seedPayload = cleanFirestoreData({
+            ...INITIAL_STORE_SETTINGS,
+            storeLogo: INITIAL_STORE_SETTINGS.logoUrl,
+            updatedAt: Date.now(),
+          });
+          setDoc(settingsDocRef, seedPayload).catch((err) =>
             reportError(
               err,
               OperationType.WRITE,
               `${FIRESTORE_COLLECTIONS.SETTINGS}/${FIRESTORE_COLLECTIONS.SETTINGS_DOC}`
             )
           );
+          setDoc(generalDocRef, seedPayload).catch(() => {});
         }
       },
       (error) => {
@@ -539,7 +588,20 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     );
 
-    return () => unsubscribe();
+    const unsubscribeGeneral = onSnapshot(
+      generalDocRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          applySettingsSnapshot(snapshot.data() as Partial<StoreSettings>);
+        }
+      },
+      () => {}
+    );
+
+    return () => {
+      unsubscribeStoreConfig();
+      unsubscribeGeneral();
+    };
   }, []);
 
   // 8. Dokumen `store_settings/shift_config`: Sinkronisasi Shift Kasir Aktif Antar Perangkat
@@ -721,16 +783,39 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  // Operasi Keranjang Belanja
+  // Operasi Keranjang Belanja & Catatan/Deskripsi Item
   const addToCart = (product: Product) => {
     setCart((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
+      const existing = prev.find(
+        (item) => item.id === product.id || item.productId === product.id || item.product.id === product.id
+      );
       if (existing) {
-        return prev.map((item) =>
-          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
+        return prev.map((item) => {
+          if (item.id === product.id || item.productId === product.id || item.product.id === product.id) {
+            const nextQty = item.quantity + 1;
+            return {
+              ...item,
+              quantity: nextQty,
+              subtotal: nextQty * item.price,
+            };
+          }
+          return item;
+        });
       }
-      return [...prev, { product, quantity: 1 }];
+      return [
+        ...prev,
+        {
+          id: product.id,
+          productId: product.id,
+          name: product.name,
+          price: product.price,
+          quantity: 1,
+          note: '',
+          description: '',
+          subtotal: product.price,
+          product,
+        },
+      ];
     });
   };
 
@@ -740,12 +825,36 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
     setCart((prev) =>
-      prev.map((item) => (item.product.id === productId ? { ...item, quantity: qty } : item))
+      prev.map((item) =>
+        item.id === productId || item.productId === productId || item.product.id === productId
+          ? {
+              ...item,
+              quantity: qty,
+              subtotal: qty * item.price,
+            }
+          : item
+      )
+    );
+  };
+
+  // Memperbarui catatan/deskripsi khusus per-item di keranjang
+  const updateCartItemNote = (cartItemId: string, note: string) => {
+    setCart((prev) =>
+      prev.map((item) =>
+        item.id === cartItemId || item.productId === cartItemId || item.product.id === cartItemId
+          ? { ...item, note, description: note }
+          : item
+      )
     );
   };
 
   const removeFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((item) => item.product.id !== productId));
+    setCart((prev) =>
+      prev.filter(
+        (item) =>
+          item.id !== productId && item.productId !== productId && item.product.id !== productId
+      )
+    );
   };
 
   const clearCart = () => {
@@ -871,14 +980,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       transactionNumber: txNumber,
       timestamp: Date.now(),
       customerName: customerName.trim() || 'Pelanggan',
-      items: cart.map((item) => ({
-        productId: item.product.id,
-        name: item.product.name,
-        category: item.product.category,
-        price: item.product.price,
-        quantity: item.quantity,
-        subtotal: item.product.price * item.quantity,
-      })),
+      items: cart.map((item) => {
+        const trimmedNote = item.note?.trim() || item.description?.trim() || undefined;
+        return {
+          productId: item.product.id,
+          name: item.product.name,
+          category: item.product.category,
+          price: item.product.price,
+          quantity: item.quantity,
+          subtotal: item.product.price * item.quantity,
+          note: trimmedNote,
+          description: trimmedNote,
+        };
+      }),
       subtotal,
       discountType,
       discountValue,
@@ -1204,13 +1318,32 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveReceipt(tx);
   };
 
-  // Pembaruan Pengaturan Toko, Logo & QRIS di Firestore
+  // Pembaruan Pengaturan Toko, Logo (`storeLogo` & `logoUrl`) & QRIS di Firestore + LocalStorage
   const updateSettings = (newSettings: Partial<StoreSettings>) => {
-    setSettings((prev) => ({ ...prev, ...newSettings }));
+    const syncedLogo = newSettings.storeLogo ?? newSettings.logoUrl;
+    const normalizedUpdates: Partial<StoreSettings> = {
+      ...newSettings,
+      ...(syncedLogo !== undefined ? { logoUrl: syncedLogo, storeLogo: syncedLogo } : {}),
+    };
+
+    setSettings((prev) => {
+      const next = { ...prev, ...normalizedUpdates };
+      try {
+        localStorage.setItem('pos_store_settings', JSON.stringify(next));
+      } catch {
+        // Ignore storage quota error
+      }
+      return next;
+    });
+
+    const payload = cleanFirestoreData({
+      ...normalizedUpdates,
+      updatedAt: Date.now(),
+    });
 
     setDoc(
       doc(db, FIRESTORE_COLLECTIONS.SETTINGS, FIRESTORE_COLLECTIONS.SETTINGS_DOC),
-      cleanFirestoreData({ ...newSettings, updatedAt: Date.now() }),
+      payload,
       { merge: true }
     ).catch((err) =>
       reportError(
@@ -1219,6 +1352,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         `${FIRESTORE_COLLECTIONS.SETTINGS}/${FIRESTORE_COLLECTIONS.SETTINGS_DOC}`
       )
     );
+
+    setDoc(doc(db, 'settings', 'general'), payload, { merge: true }).catch(() => {});
   };
 
   // Manajemen Produk di Firestore
@@ -1361,15 +1496,23 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
+    const preservedLogo =
+      settings.storeLogo || settings.logoUrl || INITIAL_STORE_SETTINGS.logoUrl;
     const preservedSettings: StoreSettings = {
       ...INITIAL_STORE_SETTINGS,
-      logoUrl: settings.logoUrl || INITIAL_STORE_SETTINGS.logoUrl,
+      logoUrl: preservedLogo,
+      storeLogo: preservedLogo,
       qrisUrl: settings.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl,
       storeName: settings.storeName || INITIAL_STORE_SETTINGS.storeName,
       brandName: settings.brandName || INITIAL_STORE_SETTINGS.brandName,
     };
 
     setSettings(preservedSettings);
+    try {
+      localStorage.setItem('pos_store_settings', JSON.stringify(preservedSettings));
+    } catch {
+      // Ignore storage error
+    }
     setProducts(INITIAL_PRODUCTS);
     setCategories(INITIAL_CATEGORIES);
     setTransactions(INITIAL_TRANSACTIONS);
@@ -1380,10 +1523,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveCashier(INITIAL_CASHIERS[0]);
     clearCart();
 
+    const preservedPayload = cleanFirestoreData({
+      ...preservedSettings,
+      updatedAt: Date.now(),
+    });
+
     setDoc(
       doc(db, FIRESTORE_COLLECTIONS.SETTINGS, FIRESTORE_COLLECTIONS.SETTINGS_DOC),
-      cleanFirestoreData({ ...preservedSettings, updatedAt: Date.now() })
+      preservedPayload
     ).catch(() => {});
+    setDoc(doc(db, 'settings', 'general'), preservedPayload).catch(() => {});
 
     setDoc(
       doc(db, FIRESTORE_COLLECTIONS.SETTINGS, FIRESTORE_COLLECTIONS.SHIFT_CONFIG_DOC),
@@ -1492,6 +1641,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCustomerName,
         addToCart,
         updateCartQty,
+        updateCartItemNote,
         removeFromCart,
         clearCart,
         discountType,
