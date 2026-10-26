@@ -39,6 +39,23 @@ export const LoginScreen: React.FC = () => {
       triggerShake();
       setIsSubmitting(false);
     } else {
+      // Simpan sesi autentikasi kasir ke localStorage agar tidak logout saat halaman dimuat ulang (refresh)
+      try {
+        const cashierData = {
+          username: 'RisoLogy',
+          role: 'admin_cashier',
+        };
+        localStorage.setItem(
+          'pos_cashier_session',
+          JSON.stringify({
+            isAuthenticated: true,
+            user: cashierData,
+            loginTime: Date.now(),
+          })
+        );
+      } catch (err) {
+        console.warn('Gagal menyimpan sesi login:', err);
+      }
       setIsSubmitting(false);
     }
   };

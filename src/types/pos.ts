@@ -15,7 +15,7 @@ export interface CartItem {
   quantity: number;
 }
 
-export type PaymentMethod = 'CASH' | 'QRIS';
+export type PaymentMethod = 'CASH' | 'QRIS' | 'TRANSFER';
 
 export const CASHIER_LIST = ['Harits', 'Rafi', 'Barra', 'Dimas', 'Akhyar'] as const;
 export type CashierName = typeof CASHIER_LIST[number] | string;
@@ -36,7 +36,14 @@ export interface SupplierExpense {
   date: string; // YYYY-MM-DD
   timestamp: number;
   itemName: string;
-  category: 'Bahan Utama' | 'Bumbu & Saus' | 'Keju & Dairy' | 'Minyak & Gas' | 'Kemasan & Plastik' | 'Operasional' | string;
+  category:
+    | 'Bahan Utama'
+    | 'Bumbu & Saus'
+    | 'Keju & Dairy'
+    | 'Minyak & Gas'
+    | 'Kemasan & Plastik'
+    | 'Operasional'
+    | string;
   quantity: number;
   unit: string; // kg, pack, pcs, liter, karton, tabung
   unitPrice: number;
@@ -89,6 +96,8 @@ export interface Transaction {
   cashierName: string; // Harits, Rafi, Barra, Dimas, Akhyar
   customerEmail?: string;
   emailSent?: boolean;
+  notes?: string;
+  updatedAt?: number;
   status: 'PAID' | 'REFUNDED';
 }
 
@@ -131,4 +140,3 @@ export interface ShiftConfig {
   shiftStartedAt?: number;
   updatedAt?: number;
 }
-

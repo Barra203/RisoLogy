@@ -49,11 +49,12 @@ import {
 } from '../lib/firebase';
 
 interface PosContextType {
-  // Auth
+  // Auth & Cashier Session Persistence
   isAuthenticated: boolean;
   currentUser: string | null;
   login: (username: string, password?: string) => boolean;
   logout: () => void;
+  logoutCashier: () => void;
 
   // Navigation
   activeTab: ActiveTab;
@@ -108,10 +109,12 @@ interface PosContextType {
   discountAmount: number;
   total: number;
 
-  // Checkout
+  // Checkout & Transactions Management (Create, Update, Delete in Firestore)
   nextTransactionNumber: string;
   processCheckout: (paymentMethod: PaymentMethod, cashTendered?: number) => Transaction;
   transactions: Transaction[];
+  updateTransaction: (transactionId: string, updatedData: Partial<Transaction>) => Promise<void>;
+  deleteTransaction: (transactionId: string) => Promise<void>;
 
   // Supplier Expenses
   expenses: SupplierExpense[];
@@ -154,9 +157,30 @@ interface PosContextType {
 const PosContext = createContext<PosContextType | undefined>(undefined);
 
 export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  // Lazy Initialization untuk Persistensi Sesi Kasir (Mencegah Logout saat Refresh)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const saved = localStorage.getItem('pos_cashier_session');
+    if (!saved) return false;
+    try {
+      return JSON.parse(saved).isAuthenticated ?? false;
+    } catch {
+      return false;
+    }
+  });
+
+  const [currentUser, setCurrentUser] = useState<string | null>(() => {
+    const saved = localStorage.getItem('pos_cashier_session');
+    if (!saved) return null;
+    try {
+      const parsed = JSON.parse(saved);
+      if (!parsed.isAuthenticated) return null;
+      return typeof parsed.user === 'string'
+        ? parsed.user
+        : parsed.user?.username || 'RisoLogy';
+    } catch {
+      return null;
+    }
+  });
 
   // Active navigation tab
   const [activeTab, setActiveTab] = useState<ActiveTab>('pos');
@@ -581,7 +605,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const total = calculateTotal(subtotal, discountAmount);
 
   // ============================================================================
-  // OPERASI PENULISAN DATA KE CLOUD FIRESTORE
+  // AUTENTIKASI & PERSISTENSI SESI KASIR
   // ============================================================================
 
   // Login Akun Utama (Username: RisoLogy, Password: kelompokrisol6)
@@ -593,6 +617,22 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const isPassValid = trimmedPass === 'kelompokrisol6';
 
     if (isUserValid && isPassValid) {
+      const cashierData = {
+        username: 'RisoLogy',
+        activeCashier,
+      };
+      try {
+        localStorage.setItem(
+          'pos_cashier_session',
+          JSON.stringify({
+            isAuthenticated: true,
+            user: cashierData,
+            loginTime: Date.now(),
+          })
+        );
+      } catch (err) {
+        console.warn('Gagal menyimpan sesi login:', err);
+      }
       setIsAuthenticated(true);
       setCurrentUser('RisoLogy');
       return true;
@@ -601,10 +641,24 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   };
 
-  const logout = () => {
+  // Mekanisme Logout Kasir: Menghapus pos_cashier_session dari localStorage & reset state
+  const logoutCashier = () => {
+    try {
+      localStorage.removeItem('pos_cashier_session');
+    } catch (err) {
+      console.warn('Gagal menghapus sesi login:', err);
+    }
     setIsAuthenticated(false);
     setCurrentUser(null);
   };
+
+  const logout = () => {
+    logoutCashier();
+  };
+
+  // ============================================================================
+  // OPERASI PENULISAN & MUTASI DATA KE CLOUD FIRESTORE
+  // ============================================================================
 
   // Pergantian Shift Kasir (Tersinkronisasi ke semua perangkat melalui Firestore)
   const setActiveCashier = (name: string) => {
@@ -836,6 +890,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cashTendered: paymentMethod === 'CASH' ? tendered : undefined,
       cashChange: paymentMethod === 'CASH' ? change : undefined,
       cashierName: activeCashier,
+      notes: '',
       status: 'PAID',
     };
 
@@ -972,6 +1027,55 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setActiveReceipt(newTransaction);
     return newTransaction;
+  };
+
+  // Fungsi Perbarui Transaksi (`updateTransaction`) langsung ke Cloud Firestore
+  const updateTransaction = async (
+    transactionId: string,
+    updatedData: Partial<Transaction>
+  ): Promise<void> => {
+    try {
+      const payload = cleanFirestoreData({
+        ...updatedData,
+        updatedAt: Date.now(),
+      });
+      await updateDoc(doc(db, 'transactions', transactionId), payload);
+      setTransactions((prev) =>
+        prev.map((t) =>
+          t.id === transactionId ? { ...t, ...updatedData, updatedAt: Date.now() } : t
+        )
+      );
+      if (activeReceipt?.id === transactionId) {
+        setActiveReceipt((prev) =>
+          prev ? { ...prev, ...updatedData, updatedAt: Date.now() } : null
+        );
+      }
+    } catch (err) {
+      reportError(
+        err,
+        OperationType.UPDATE,
+        `${FIRESTORE_COLLECTIONS.TRANSACTIONS}/${transactionId}`
+      );
+      throw err;
+    }
+  };
+
+  // Fungsi Hapus Transaksi (`deleteTransaction`) langsung dari Cloud Firestore
+  const deleteTransaction = async (transactionId: string): Promise<void> => {
+    try {
+      await deleteDoc(doc(db, 'transactions', transactionId));
+      setTransactions((prev) => prev.filter((t) => t.id !== transactionId));
+      if (activeReceipt?.id === transactionId) {
+        setActiveReceipt(null);
+      }
+    } catch (err) {
+      reportError(
+        err,
+        OperationType.DELETE,
+        `${FIRESTORE_COLLECTIONS.TRANSACTIONS}/${transactionId}`
+      );
+      throw err;
+    }
   };
 
   // Penambahan Pelanggan Baru ke Koleksi `customers` di Firestore menggunakan `addDoc`
@@ -1367,6 +1471,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentUser,
         login,
         logout,
+        logoutCashier,
         activeTab,
         setActiveTab,
         activeCashier,
@@ -1404,6 +1509,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         nextTransactionNumber,
         processCheckout,
         transactions,
+        updateTransaction,
+        deleteTransaction,
         expenses,
         addExpense,
         updateExpense,

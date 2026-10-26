@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { usePos } from '../context/PosContext';
+import { Transaction, PaymentMethod } from '../types/pos';
 import { formatCurrency, formatDateTime } from '../utils/pos-logic';
 import {
   Search,
@@ -7,34 +8,67 @@ import {
   FileText,
   Banknote,
   QrCode,
-  Calendar,
+  CreditCard,
   CheckCircle,
-  TrendingUp,
-  Tag,
   ArrowDownRight,
   ArrowUpRight,
+  Pencil,
+  Trash2,
+  X,
+  Loader2,
+  AlertTriangle,
+  StickyNote,
 } from 'lucide-react';
 
 export const HistoryView: React.FC = () => {
-  const { transactions, viewReceipt } = usePos();
+  const { transactions, viewReceipt, updateTransaction, deleteTransaction } = usePos();
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [methodFilter, setMethodFilter] = useState<'ALL' | 'CASH' | 'QRIS'>('ALL');
+  const [methodFilter, setMethodFilter] = useState<'ALL' | 'CASH' | 'QRIS' | 'TRANSFER'>('ALL');
+
+  // State Modal Edit Transaksi
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editCustomerName, setEditCustomerName] = useState<string>('');
+  const [editPaymentMethod, setEditPaymentMethod] = useState<PaymentMethod>('CASH');
+  const [editNotes, setEditNotes] = useState<string>('');
+  const [editStatus, setEditStatus] = useState<'PAID' | 'REFUNDED'>('PAID');
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+
+  // State Modal Konfirmasi Hapus Transaksi
+  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  // Notifikasi Umpan Balik Aksi
+  const [feedbackMsg, setFeedbackMsg] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+
+  const showFeedback = (type: 'success' | 'error', text: string) => {
+    setFeedbackMsg({ type, text });
+    setTimeout(() => {
+      setFeedbackMsg(null);
+    }, 3500);
+  };
 
   // Filter transactions
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
+      const q = searchQuery.toLowerCase();
       const matchSearch =
-        tx.transactionNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        tx.customerName.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchMethod =
-        methodFilter === 'ALL' || tx.paymentMethod === methodFilter;
+        tx.transactionNumber.toLowerCase().includes(q) ||
+        tx.customerName.toLowerCase().includes(q) ||
+        (tx.notes && tx.notes.toLowerCase().includes(q));
+      const matchMethod = methodFilter === 'ALL' || tx.paymentMethod === methodFilter;
       return matchSearch && matchMethod;
     });
   }, [transactions, searchQuery, methodFilter]);
 
   // Statistics
   const stats = useMemo(() => {
-    const totalRev = filteredTransactions.reduce((acc, t) => acc + (t.status === 'REFUNDED' ? -t.total : t.total), 0);
+    const totalRev = filteredTransactions.reduce(
+      (acc, t) => acc + (t.status === 'REFUNDED' ? -t.total : t.total),
+      0
+    );
     const totalSub = filteredTransactions.reduce((acc, t) => acc + t.subtotal, 0);
     const totalDisc = filteredTransactions.reduce((acc, t) => acc + t.discountAmount, 0);
     return {
@@ -44,6 +78,57 @@ export const HistoryView: React.FC = () => {
       count: filteredTransactions.length,
     };
   }, [filteredTransactions]);
+
+  // Buka Modal Edit Transaksi
+  const handleOpenEditModal = (tx: Transaction) => {
+    setEditingTransaction(tx);
+    setEditCustomerName(tx.customerName || 'Pelanggan');
+    setEditPaymentMethod(tx.paymentMethod || 'CASH');
+    setEditNotes(tx.notes || '');
+    setEditStatus(tx.status || 'PAID');
+  };
+
+  // Simpan Perubahan Edit Transaksi ke Cloud Firestore
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTransaction) return;
+
+    setIsSaving(true);
+    try {
+      await updateTransaction(editingTransaction.id, {
+        customerName: editCustomerName.trim() || 'Pelanggan',
+        paymentMethod: editPaymentMethod,
+        notes: editNotes.trim(),
+        status: editStatus,
+      });
+      setEditingTransaction(null);
+      showFeedback(
+        'success',
+        `Transaksi ${editingTransaction.transactionNumber} berhasil diperbarui di Cloud Firestore.`
+      );
+    } catch (err) {
+      showFeedback('error', 'Gagal memperbarui transaksi. Periksa koneksi database.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Konfirmasi & Jalankan Hapus Transaksi dari Cloud Firestore
+  const handleConfirmDelete = async () => {
+    if (!deletingTransaction) return;
+
+    setIsDeleting(true);
+    try {
+      const txNum = deletingTransaction.transactionNumber;
+      await deleteTransaction(deletingTransaction.id);
+      setDeletingTransaction(null);
+      showFeedback('success', `Transaksi ${txNum} telah dihapus dari Cloud Firestore.`);
+    } catch (err) {
+      showFeedback('error', 'Gagal menghapus transaksi dari database.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#F5F5F5]">
@@ -58,7 +143,7 @@ export const HistoryView: React.FC = () => {
               </h1>
             </div>
             <p className="text-xs text-[#666666] mt-0.5">
-              Daftar seluruh transaksi kasir RisoLogy dengan visualisasi uang masuk (hijau) &amp; diskon (merah)
+              Daftar seluruh transaksi kasir RisoLogy dengan manajemen edit &amp; hapus langsung ke Cloud Firestore
             </p>
           </div>
 
@@ -100,6 +185,26 @@ export const HistoryView: React.FC = () => {
           </div>
         </div>
 
+        {/* Feedback Toast Banner */}
+        {feedbackMsg && (
+          <div
+            className={`mt-4 px-4 py-2.5 rounded border text-xs font-semibold flex items-center justify-between ${
+              feedbackMsg.type === 'success'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-rose-50 border-rose-200 text-rose-800'
+            }`}
+          >
+            <span>{feedbackMsg.text}</span>
+            <button
+              type="button"
+              onClick={() => setFeedbackMsg(null)}
+              className="text-slate-500 hover:text-slate-800 cursor-pointer ml-3"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Filter & Search Bar */}
         <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-[#F0F0F0]">
           {/* Search box */}
@@ -107,7 +212,7 @@ export const HistoryView: React.FC = () => {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#888888]" />
             <input
               type="text"
-              placeholder="Cari No. Transaksi (#RSL-...) atau Nama..."
+              placeholder="Cari No. Transaksi (#RSL-...), Nama, atau Catatan..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-8 py-2 text-xs bg-[#F5F5F5] border border-[#E5E5E5] text-slate-900 focus:outline-none focus:border-[#1854BA] focus:bg-white transition-colors rounded-sm"
@@ -124,10 +229,17 @@ export const HistoryView: React.FC = () => {
           </div>
 
           {/* Method Filter Tabs */}
-          <div className="flex items-center gap-1.5 w-full sm:w-auto">
-            {(['ALL', 'CASH', 'QRIS'] as const).map((m) => {
+          <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+            {(['ALL', 'CASH', 'QRIS', 'TRANSFER'] as const).map((m) => {
               const isSelected = methodFilter === m;
-              const label = m === 'ALL' ? 'Semua Metode' : m === 'CASH' ? 'Tunai (CASH)' : 'QRIS';
+              const label =
+                m === 'ALL'
+                  ? 'Semua Metode'
+                  : m === 'CASH'
+                  ? 'Tunai (Cash)'
+                  : m === 'QRIS'
+                  ? 'QRIS'
+                  : 'Transfer';
               return (
                 <button
                   key={m}
@@ -165,7 +277,7 @@ export const HistoryView: React.FC = () => {
                   <th className="py-3 px-4">No. Transaksi</th>
                   <th className="py-3 px-4">Waktu</th>
                   <th className="py-3 px-4">Pelanggan</th>
-                  <th className="py-3 px-4">Pesanan</th>
+                  <th className="py-3 px-4">Pesanan &amp; Catatan</th>
                   <th className="py-3 px-4">Metode</th>
                   <th className="py-3 px-4 text-right">Subtotal</th>
                   <th className="py-3 px-4 text-right">Diskon (-)</th>
@@ -181,10 +293,7 @@ export const HistoryView: React.FC = () => {
                   const totalItems = tx.items.reduce((a, b) => a + b.quantity, 0);
 
                   return (
-                    <tr
-                      key={tx.id}
-                      className="hover:bg-blue-50/30 transition-colors group"
-                    >
+                    <tr key={tx.id} className="hover:bg-blue-50/30 transition-colors group">
                       {/* Transaction # */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <span className="font-mono font-bold text-xs text-[#1854BA] bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded">
@@ -201,6 +310,7 @@ export const HistoryView: React.FC = () => {
                       {/* Customer Name */}
                       <td className="py-3.5 px-4 font-medium text-slate-900 whitespace-nowrap">
                         <div className="font-semibold">{tx.customerName}</div>
+                        <div className="text-[10px] text-slate-500">Kasir: {tx.cashierName}</div>
                         {tx.customerEmail && (
                           <div className="text-[10px] text-blue-600 flex items-center gap-1 mt-0.5">
                             <CheckCircle className="w-2.5 h-2.5 text-blue-600" />
@@ -209,7 +319,7 @@ export const HistoryView: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Items */}
+                      {/* Items & Notes */}
                       <td className="py-3.5 px-4 max-w-xs">
                         <div className="flex items-center gap-1.5 mb-1">
                           <span className="px-1.5 py-0.2 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[10px] font-semibold rounded">
@@ -219,6 +329,12 @@ export const HistoryView: React.FC = () => {
                         <div className="truncate text-slate-700 text-[11px] leading-tight">
                           {tx.items.map((i) => `${i.name} (${i.quantity}x)`).join(', ')}
                         </div>
+                        {tx.notes && (
+                          <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-800 rounded text-[10px] font-medium max-w-full truncate">
+                            <StickyNote className="w-3 h-3 shrink-0 text-amber-600" />
+                            <span className="truncate">{tx.notes}</span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Payment Method Badge */}
@@ -226,7 +342,12 @@ export const HistoryView: React.FC = () => {
                         {tx.paymentMethod === 'CASH' ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200/90 rounded text-[11px] font-semibold">
                             <Banknote className="w-3.5 h-3.5 text-amber-700" />
-                            <span>Tunai</span>
+                            <span>Cash</span>
+                          </span>
+                        ) : tx.paymentMethod === 'TRANSFER' ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 text-purple-900 border border-purple-200 rounded text-[11px] font-semibold">
+                            <CreditCard className="w-3.5 h-3.5 text-purple-700" />
+                            <span>Transfer</span>
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-[#1854BA] border border-blue-200 rounded text-[11px] font-semibold">
@@ -281,16 +402,42 @@ export const HistoryView: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Action */}
+                      {/* Action Buttons: Lihat Struk, Edit, Hapus */}
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => viewReceipt(tx)}
-                          className="px-3 py-1.5 bg-[#1854BA] text-white hover:bg-[#12408F] text-[11px] font-semibold uppercase tracking-wider transition-colors cursor-pointer inline-flex items-center gap-1.5 rounded-sm shadow-xs active:scale-95"
-                        >
-                          <FileText className="w-3 h-3" />
-                          <span>Lihat Struk</span>
-                        </button>
+                        <div className="inline-flex items-center gap-1.5">
+                          {/* Tombol Lihat Struk */}
+                          <button
+                            type="button"
+                            onClick={() => viewReceipt(tx)}
+                            title="Lihat Struk"
+                            className="px-2.5 py-1.5 bg-[#1854BA] text-white hover:bg-[#12408F] text-[11px] font-semibold uppercase tracking-wider transition-colors cursor-pointer inline-flex items-center gap-1 rounded-sm shadow-xs active:scale-95"
+                          >
+                            <FileText className="w-3 h-3" />
+                            <span>Struk</span>
+                          </button>
+
+                          {/* Tombol Edit Transaksi */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(tx)}
+                            title="Edit Transaksi"
+                            className="px-2.5 py-1.5 bg-amber-500 text-white hover:bg-amber-600 text-[11px] font-semibold uppercase tracking-wider transition-colors cursor-pointer inline-flex items-center gap-1 rounded-sm shadow-xs active:scale-95"
+                          >
+                            <Pencil className="w-3 h-3" />
+                            <span>Edit</span>
+                          </button>
+
+                          {/* Tombol Hapus Transaksi */}
+                          <button
+                            type="button"
+                            onClick={() => setDeletingTransaction(tx)}
+                            title="Hapus Transaksi"
+                            className="px-2.5 py-1.5 bg-rose-600 text-white hover:bg-rose-700 text-[11px] font-semibold uppercase tracking-wider transition-colors cursor-pointer inline-flex items-center gap-1 rounded-sm shadow-xs active:scale-95"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Hapus</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -300,6 +447,178 @@ export const HistoryView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* ===================================================================== */}
+      {/* MODAL FORMULIR EDIT TRANSAKSI                                         */}
+      {/* ===================================================================== */}
+      {editingTransaction && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4 text-zinc-100">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-amber-400" />
+                  <span>Edit Transaksi {editingTransaction.transactionNumber}</span>
+                </h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Perbarui metode pembayaran, pelanggan, atau catatan langsung ke Firestore
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingTransaction(null)}
+                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              {/* Nama Pelanggan */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
+                  Nama Pelanggan
+                </label>
+                <input
+                  type="text"
+                  value={editCustomerName}
+                  onChange={(e) => setEditCustomerName(e.target.value)}
+                  placeholder="Nama pelanggan..."
+                  className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Pilihan Dropdown Metode Pembayaran (Cash, QRIS, Transfer) */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
+                  Metode Pembayaran
+                </label>
+                <select
+                  value={editPaymentMethod}
+                  onChange={(e) => setEditPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                >
+                  <option value="CASH">Cash (Tunai)</option>
+                  <option value="QRIS">QRIS</option>
+                  <option value="TRANSFER">Transfer</option>
+                </select>
+              </div>
+
+              {/* Status Pembayaran */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
+                  Status Transaksi
+                </label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as 'PAID' | 'REFUNDED')}
+                  className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                >
+                  <option value="PAID">Lunas (PAID)</option>
+                  <option value="REFUNDED">Refund / Dibatalkan (REFUNDED)</option>
+                </select>
+              </div>
+
+              {/* Textarea Catatan Transaksi (notes) */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
+                  Catatan Transaksi (Notes)
+                </label>
+                <textarea
+                  rows={3}
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Tambahkan catatan transaksi (misal: pembayaran via transfer BCA, pesanan khusus, dll)..."
+                  className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-blue-500 resize-none"
+                />
+              </div>
+
+              {/* Tombol Footer: Batal & Simpan */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-zinc-800">
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => setEditingTransaction(null)}
+                  className="px-4 py-2 text-xs font-semibold text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-2 text-xs font-bold text-white bg-[#1854BA] hover:bg-[#12408F] rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-60"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : (
+                    <span>Simpan</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL KONFIRMASI HAPUS TRANSAKSI                                      */}
+      {/* ===================================================================== */}
+      {deletingTransaction && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4 text-zinc-100">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-500/20 border border-rose-500/40 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  Hapus Transaksi {deletingTransaction.transactionNumber}?
+                </h3>
+                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                  Apakah Anda yakin ingin menghapus transaksi atas nama{' '}
+                  <strong className="text-white">{deletingTransaction.customerName}</strong> senilai{' '}
+                  <strong className="text-emerald-400">
+                    {formatCurrency(deletingTransaction.total)}
+                  </strong>
+                  ? Tindakan ini akan menghapus dokumen secara permanen dari Cloud Firestore.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-zinc-800">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeletingTransaction(null)}
+                className="px-4 py-2 text-xs font-semibold text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-60"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Menghapus...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Ya, Hapus Permanen</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
