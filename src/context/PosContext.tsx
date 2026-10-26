@@ -970,112 +970,129 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Pembuatan Transaksi Baru (`addDoc`) & Pembaruan Stok Produk (`updateDoc`) Secara Bersamaan
   const processCheckout = (paymentMethod: PaymentMethod, cashTendered?: number): Transaction => {
-    const txNumber = formatTransactionNumber(transactionSequence);
-    const tendered = cashTendered ?? (paymentMethod === 'CASH' ? total : 0);
+    // Pastikan nomor urut transaksi berikutnya (#RSL-XXXX) unik dan tidak bentrok dengan riwayat yang ada
+    const existingNumbers = new Set(transactions.map((t) => t.transactionNumber));
+    let safeSeq = Math.max(transactionSequence, transactions.length + 1);
+    while (existingNumbers.has(formatTransactionNumber(safeSeq))) {
+      safeSeq += 1;
+    }
+
+    const txNumber = formatTransactionNumber(safeSeq);
+    const tendered = cashTendered ?? (paymentMethod === 'CASH' ? total : total);
     const change = paymentMethod === 'CASH' ? calculateChange(total, tendered) : 0;
     const tempTxId = `tx-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const resolvedCustomerName = (customerName || '').trim() || 'Pelanggan';
 
     const newTransaction: Transaction = {
       id: tempTxId,
       transactionNumber: txNumber,
       timestamp: Date.now(),
-      customerName: customerName.trim() || 'Pelanggan',
+      customerName: resolvedCustomerName,
       items: cart.map((item) => {
-        const trimmedNote = item.note?.trim() || item.description?.trim() || undefined;
+        const trimmedNote = (item.note ?? item.description ?? '').trim();
+        const itemPrice = item.product?.price ?? item.price ?? 0;
+        const itemQty = item.quantity || 1;
         return {
-          productId: item.product.id,
-          name: item.product.name,
-          category: item.product.category,
-          price: item.product.price,
-          quantity: item.quantity,
-          subtotal: item.product.price * item.quantity,
-          note: trimmedNote,
-          description: trimmedNote,
+          productId: item.product?.id || item.productId || item.id,
+          name: item.product?.name || item.name,
+          category: item.product?.category || 'Umum',
+          price: itemPrice,
+          quantity: itemQty,
+          subtotal: itemPrice * itemQty,
+          ...(trimmedNote ? { note: trimmedNote, description: trimmedNote } : {}),
         };
       }),
       subtotal,
       discountType,
       discountValue,
       discountAmount,
-      discountPresetId: selectedDiscountPresetId,
-      discountPresetName: selectedDiscountPresetName,
+      ...(selectedDiscountPresetId ? { discountPresetId: selectedDiscountPresetId } : {}),
+      ...(selectedDiscountPresetName ? { discountPresetName: selectedDiscountPresetName } : {}),
       total,
       paymentMethod,
-      cashTendered: paymentMethod === 'CASH' ? tendered : undefined,
-      cashChange: paymentMethod === 'CASH' ? change : undefined,
-      cashierName: activeCashier,
+      ...(paymentMethod === 'CASH' ? { cashTendered: tendered, cashChange: change } : {}),
+      cashierName: activeCashier || 'Kasir',
       notes: '',
       status: 'PAID',
     };
 
     // 1. Simpan dokumen transaksi baru ke koleksi `transactions` menggunakan `addDoc`
     setTransactions((prev) => [newTransaction, ...prev]);
-    addDoc(
-      collection(db, FIRESTORE_COLLECTIONS.TRANSACTIONS),
-      cleanFirestoreData(newTransaction)
-    )
-      .then((docRef) => {
-        setTransactions((prev) =>
-          prev.map((t) => (t.id === tempTxId ? { ...t, id: docRef.id } : t))
+    try {
+      const cleanedTx = cleanFirestoreData(newTransaction);
+      addDoc(collection(db, FIRESTORE_COLLECTIONS.TRANSACTIONS), cleanedTx)
+        .then((docRef) => {
+          setTransactions((prev) =>
+            prev.map((t) => (t.id === tempTxId ? { ...t, id: docRef.id } : t))
+          );
+          setActiveReceipt((prev) =>
+            prev && prev.id === tempTxId ? { ...prev, id: docRef.id } : prev
+          );
+        })
+        .catch((err) =>
+          reportError(err, OperationType.CREATE, FIRESTORE_COLLECTIONS.TRANSACTIONS)
         );
-      })
-      .catch((err) =>
-        reportError(err, OperationType.CREATE, FIRESTORE_COLLECTIONS.TRANSACTIONS)
-      );
+    } catch (err) {
+      reportError(err, OperationType.CREATE, FIRESTORE_COLLECTIONS.TRANSACTIONS);
+    }
 
-    // 2. Perbarui jumlah stok pada koleksi `products` di Firestore secara bersamaan
+    // 2. Perbarui jumlah stok pada koleksi `products` di Firestore tanpa memblokir transaksi jika stok habis/undefined
     const cartSnapshot = [...cart];
     setProducts((prev) =>
       prev.map((p) => {
-        const cartItem = cartSnapshot.find((ci) => ci.product.id === p.id);
+        const cartItem = cartSnapshot.find(
+          (ci) => ci.product?.id === p.id || ci.productId === p.id || ci.id === p.id
+        );
         if (cartItem && typeof p.stockQuantity === 'number') {
           const newQty = Math.max(0, p.stockQuantity - cartItem.quantity);
           const updatedProd = { ...p, stockQuantity: newQty, inStock: newQty > 0 };
-          const prodRef = doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, p.id);
-
-          updateDoc(
-            prodRef,
-            cleanFirestoreData({
-              stockQuantity: newQty,
-              inStock: newQty > 0,
-              updatedAt: Date.now(),
-            })
-          ).catch((err) =>
-            reportError(err, OperationType.UPDATE, `${FIRESTORE_COLLECTIONS.PRODUCTS}/${p.id}`)
-          );
-
+          try {
+            const prodRef = doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, p.id);
+            updateDoc(
+              prodRef,
+              cleanFirestoreData({
+                stockQuantity: newQty,
+                inStock: newQty > 0,
+                updatedAt: Date.now(),
+              })
+            ).catch((err) =>
+              reportError(err, OperationType.UPDATE, `${FIRESTORE_COLLECTIONS.PRODUCTS}/${p.id}`)
+            );
+          } catch (err) {
+            console.warn('Gagal sinkronisasi stok produk:', err);
+          }
           return updatedProd;
         }
         return p;
       })
     );
 
-    // 3. Naikkan nomor urut transaksi
-    setTransactionSequence((prev) => prev + 1);
+    // 3. Naikkan nomor urut transaksi berikutnya
+    setTransactionSequence(safeSeq + 1);
 
     // 4. Bersihkan keranjang kasir
     clearCart();
 
-    // 5. Simpan atau perbarui data pelanggan di koleksi `customers` Firestore
-    const trimmedCustomer = customerName.trim();
-    if (trimmedCustomer && trimmedCustomer.toLowerCase() !== 'pelanggan') {
-      let topItemName = cartSnapshot[0]?.product.name || 'Risol Mayo Melt';
+    // 5. Simpan atau perbarui data pelanggan di koleksi `customers` Firestore (mendukung input nama manual)
+    if (resolvedCustomerName && resolvedCustomerName.toLowerCase() !== 'pelanggan') {
+      let topItemName =
+        cartSnapshot[0]?.product?.name || cartSnapshot[0]?.name || 'Risol Mayo Melt';
       let maxQty = 0;
       cartSnapshot.forEach((ci) => {
         if (ci.quantity > maxQty) {
           maxQty = ci.quantity;
-          topItemName = ci.product.name;
+          topItemName = ci.product?.name || ci.name || topItemName;
         }
       });
 
       const existingIdx = customers.findIndex(
-        (c) => c.name.toLowerCase() === trimmedCustomer.toLowerCase()
+        (c) => c.name.toLowerCase() === resolvedCustomerName.toLowerCase()
       );
 
       if (existingIdx >= 0) {
         const existing = customers[existingIdx];
-        const newOrders = existing.totalOrders + 1;
-        const newSpent = existing.totalSpent + total;
+        const newOrders = (existing.totalOrders || 0) + 1;
+        const newSpent = (existing.totalSpent || 0) + total;
         const newAov = Math.round(newSpent / newOrders);
         const updatedCustomer: CustomerRecord = {
           ...existing,
@@ -1090,7 +1107,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ? 'VIP'
               : newOrders >= 3
               ? 'Reguler'
-              : existing.loyaltyTier,
+              : existing.loyaltyTier || 'Baru',
           favoriteItem: existing.favoriteItem || topItemName,
         };
 
@@ -1098,21 +1115,25 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           prev.map((c, idx) => (idx === existingIdx ? updatedCustomer : c))
         );
 
-        updateDoc(
-          doc(db, FIRESTORE_COLLECTIONS.CUSTOMERS, existing.id),
-          cleanFirestoreData(updatedCustomer)
-        ).catch((err) =>
-          reportError(
-            err,
-            OperationType.UPDATE,
-            `${FIRESTORE_COLLECTIONS.CUSTOMERS}/${existing.id}`
-          )
-        );
+        try {
+          updateDoc(
+            doc(db, FIRESTORE_COLLECTIONS.CUSTOMERS, existing.id),
+            cleanFirestoreData(updatedCustomer)
+          ).catch((err) =>
+            reportError(
+              err,
+              OperationType.UPDATE,
+              `${FIRESTORE_COLLECTIONS.CUSTOMERS}/${existing.id}`
+            )
+          );
+        } catch (err) {
+          console.warn('Gagal memperbarui data pelanggan:', err);
+        }
       } else {
         const tempCustId = `cust-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
         const newCustomerRecord: CustomerRecord = {
           id: tempCustId,
-          name: trimmedCustomer,
+          name: resolvedCustomerName,
           totalOrders: 1,
           totalSpent: total,
           averageOrderValue: total,
@@ -1124,18 +1145,22 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         setCustomers((prev) => [newCustomerRecord, ...prev]);
 
-        addDoc(
-          collection(db, FIRESTORE_COLLECTIONS.CUSTOMERS),
-          cleanFirestoreData(newCustomerRecord)
-        )
-          .then((docRef) => {
-            setCustomers((prev) =>
-              prev.map((c) => (c.id === tempCustId ? { ...c, id: docRef.id } : c))
+        try {
+          addDoc(
+            collection(db, FIRESTORE_COLLECTIONS.CUSTOMERS),
+            cleanFirestoreData(newCustomerRecord)
+          )
+            .then((docRef) => {
+              setCustomers((prev) =>
+                prev.map((c) => (c.id === tempCustId ? { ...c, id: docRef.id } : c))
+              );
+            })
+            .catch((err) =>
+              reportError(err, OperationType.CREATE, FIRESTORE_COLLECTIONS.CUSTOMERS)
             );
-          })
-          .catch((err) =>
-            reportError(err, OperationType.CREATE, FIRESTORE_COLLECTIONS.CUSTOMERS)
-          );
+        } catch (err) {
+          console.warn('Gagal menambahkan pelanggan baru:', err);
+        }
       }
     }
 

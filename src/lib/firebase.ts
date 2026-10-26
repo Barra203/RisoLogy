@@ -142,16 +142,23 @@ export const FIRESTORE_COLLECTIONS = {
   CASHIERS: 'cashiers',
 } as const;
 
-// Helper untuk membersihkan nilai undefined sebelum dikirim ke Firestore
+// Helper untuk membersihkan nilai undefined secara rekursif (termasuk di dalam Array) sebelum dikirim ke Firestore
 export function cleanFirestoreData<T extends Record<string, any>>(obj: T): Record<string, any> {
   const result: Record<string, any> = {};
   for (const key of Object.keys(obj)) {
     const val = obj[key];
     if (val !== undefined) {
-      if (
+      if (Array.isArray(val)) {
+        result[key] = val
+          .filter((item) => item !== undefined)
+          .map((item) =>
+            item !== null && typeof item === 'object' && !Array.isArray(item) && !(item instanceof Date)
+              ? cleanFirestoreData(item)
+              : item
+          );
+      } else if (
         val !== null &&
         typeof val === 'object' &&
-        !Array.isArray(val) &&
         !(val instanceof Date)
       ) {
         result[key] = cleanFirestoreData(val);

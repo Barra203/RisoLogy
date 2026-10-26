@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePos } from '../context/PosContext';
 import { PaymentMethod } from '../types/pos';
 import { formatCurrency, calculateChange } from '../utils/pos-logic';
@@ -9,6 +9,7 @@ import {
   Check,
   User,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 
 interface PaymentModalProps {
@@ -17,8 +18,6 @@ interface PaymentModalProps {
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClose }) => {
-  if (isOpen === false) return null;
-
   const {
     total,
     customerName,
@@ -31,10 +30,23 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
   const [method, setMethod] = useState<PaymentMethod>('CASH');
   const [tenderedStr, setTenderedStr] = useState<string>(total.toString());
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Sinkronisasi nilai uang diterima setiap kali modal dibuka atau total belanja berubah
+  useEffect(() => {
+    if (isOpen) {
+      setTenderedStr(total.toString());
+      setErrorMsg('');
+      setIsSubmitting(false);
+    }
+  }, [isOpen, total]);
+
+  if (!isOpen) return null;
 
   const tenderedAmount = parseFloat(tenderedStr) || 0;
   const changeAmount = calculateChange(total, tenderedAmount);
   const isCashInsufficient = method === 'CASH' && tenderedAmount < total;
+  const paymentValid = method === 'QRIS' || method === 'TRANSFER' || !isCashInsufficient;
 
   // Preset quick cash amounts
   const quickAmounts = [
@@ -44,15 +56,30 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
     { label: '200.000', value: 200000 },
   ].filter((item) => item.value >= total || item.label === 'Uang Pas');
 
-  const handleConfirm = () => {
-    if (isCashInsufficient) {
+  const handleCompletePayment = () => {
+    if (isSubmitting) return;
+
+    if (method === 'CASH' && tenderedAmount < total) {
       setErrorMsg(`Uang diterima kurang dari ${formatCurrency(total)}`);
       return;
     }
 
-    // Process checkout
-    processCheckout(method, method === 'CASH' ? tenderedAmount : undefined);
-    onClose();
+    setErrorMsg('');
+    setIsSubmitting(true);
+
+    try {
+      processCheckout(method, method === 'CASH' ? tenderedAmount : total);
+      onClose();
+    } catch (err) {
+      console.error('Gagal menyelesaikan pembayaran transaksi:', err);
+      setErrorMsg(
+        err instanceof Error
+          ? `Gagal memproses pembayaran: ${err.message}`
+          : 'Terjadi kendala saat menyimpan transaksi. Silakan coba lagi.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -85,7 +112,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-6">
-          {/* Customer Name Confirmation */}
+          {/* Customer Name Confirmation (Mendukung input manual bebas tanpa terkunci daftar pelanggan) */}
           <div className="p-3 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs">
               <User className="w-4 h-4 text-[#666666]" />
@@ -96,7 +123,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder="Pelanggan"
-              className="text-xs font-semibold text-right bg-transparent border-b border-[#CCCCCC] focus:border-[#1854BA] focus:outline-none px-1 py-0.5 w-44"
+              className="text-xs font-semibold text-right bg-transparent border-b border-[#CCCCCC] focus:border-[#1854BA] focus:outline-none px-1 py-0.5 w-44 text-slate-900"
             />
           </div>
 
@@ -159,13 +186,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
                 </label>
                 <input
                   type="number"
-                  min={total}
+                  min={0}
                   value={tenderedStr}
                   onChange={(e) => {
                     setTenderedStr(e.target.value);
                     setErrorMsg('');
                   }}
-                  className="w-full p-3 font-mono text-lg font-bold border border-[#CCCCCC] focus:border-black focus:outline-none bg-white"
+                  className="w-full p-3 font-mono text-lg font-bold border border-[#CCCCCC] focus:border-black focus:outline-none bg-white text-black"
                   placeholder="0"
                 />
               </div>
@@ -212,7 +239,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
                   alt="QRIS Code"
                   className="w-48 h-48 object-contain"
                   onError={(e) => {
-                    // Fallback visual QR simulation
                     e.currentTarget.src = '/assets/qris.png';
                   }}
                 />
@@ -243,18 +269,28 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 text-xs font-semibold text-[#666666] hover:text-black border border-[#E5E5E5] hover:border-black transition-colors cursor-pointer uppercase tracking-wider"
+            disabled={isSubmitting}
+            className="px-4 py-2.5 text-xs font-semibold text-[#666666] hover:text-black border border-[#E5E5E5] hover:border-black transition-colors cursor-pointer uppercase tracking-wider disabled:opacity-40"
           >
             Batal
           </button>
           <button
             type="button"
-            onClick={handleConfirm}
-            disabled={isCashInsufficient}
+            onClick={handleCompletePayment}
+            disabled={isSubmitting || !paymentValid}
             className="px-6 py-2.5 bg-[#1854BA] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 hover:bg-[#12408F] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm"
           >
-            <Check className="w-4 h-4 stroke-[2]" />
-            <span>Selesaikan Pembayaran</span>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Memproses...</span>
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4 stroke-[2]" />
+                <span>Selesaikan Pembayaran</span>
+              </>
+            )}
           </button>
         </div>
       </div>

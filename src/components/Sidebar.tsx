@@ -90,19 +90,21 @@ export const Sidebar: React.FC = () => {
         <div>
           <div className="border-b border-[#E5E5E5]">
             <div className="flex items-center gap-3 px-4 py-4">
-              {activeLogoSrc && !logoLoadError ? (
-                <img
-                  key={activeLogoSrc}
-                  src={activeLogoSrc}
-                  alt={settings?.storeName || 'Store Logo'}
-                  className="w-10 h-10 object-contain rounded-xl border border-zinc-800 bg-zinc-900 p-0.5 shrink-0"
-                  onError={() => setLogoLoadError(true)}
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500 font-bold shrink-0">
-                  {settings?.storeName?.charAt(0) || 'R'}
-                </div>
-              )}
+              <div className="w-10 h-10 min-w-10 min-h-10 aspect-square rounded-xl overflow-hidden border border-slate-200 bg-white flex items-center justify-center shadow-sm shrink-0">
+                {activeLogoSrc && !logoLoadError ? (
+                  <img
+                    key={activeLogoSrc}
+                    src={activeLogoSrc}
+                    alt={settings?.storeName || 'Logo'}
+                    className="w-full h-full aspect-square object-cover"
+                    onError={() => setLogoLoadError(true)}
+                  />
+                ) : (
+                  <span className="font-bold text-blue-600 text-base">
+                    {settings?.storeName?.charAt(0) || 'R'}
+                  </span>
+                )}
+              </div>
               <div className="flex flex-col overflow-hidden min-w-0">
                 <span className="font-bold text-sm text-zinc-900 uppercase tracking-tight truncate">
                   {settings?.storeName || 'RisoLogy POS'}
@@ -222,19 +224,21 @@ export const Sidebar: React.FC = () => {
       <div className="lg:hidden w-full bg-white border-b border-[#E5E5E5] flex flex-col px-4 py-2 shrink-0 print:hidden z-30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {activeLogoSrc && !logoLoadError ? (
-              <img
-                key={activeLogoSrc}
-                src={activeLogoSrc}
-                alt={settings?.storeName || 'Store Logo'}
-                className="w-7 h-7 object-contain rounded-lg border border-zinc-800 bg-zinc-900 p-0.5 shrink-0"
-                onError={() => setLogoLoadError(true)}
-              />
-            ) : (
-              <div className="w-7 h-7 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500 font-bold text-xs shrink-0">
-                {settings?.storeName?.charAt(0) || 'R'}
-              </div>
-            )}
+            <div className="w-8 h-8 min-w-8 min-h-8 aspect-square rounded-lg overflow-hidden border border-slate-200 bg-white flex items-center justify-center shadow-sm shrink-0">
+              {activeLogoSrc && !logoLoadError ? (
+                <img
+                  key={activeLogoSrc}
+                  src={activeLogoSrc}
+                  alt={settings?.storeName || 'Logo'}
+                  className="w-full h-full aspect-square object-cover"
+                  onError={() => setLogoLoadError(true)}
+                />
+              ) : (
+                <span className="font-bold text-blue-600 text-xs">
+                  {settings?.storeName?.charAt(0) || 'R'}
+                </span>
+              )}
+            </div>
             <span className="text-xs font-bold text-black uppercase tracking-tight truncate">
               {settings?.storeName || 'RisoLogy POS'}
             </span>

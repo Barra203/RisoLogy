@@ -263,8 +263,8 @@ export const PosView: React.FC = () => {
                     type="text"
                     placeholder="Tambah catatan (cth: jangan terlalu pedas, bungkus pisah)..."
                     value={item.note || ''}
-                    onChange={(e) => updateCartItemNote(cartItemId, e.target.value)}
-                    className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-2.5 py-1 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                    onChange={(e) => updateCartItemNote(item.id || cartItemId, e.target.value)}
+                    className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all shadow-sm"
                   />
                 </div>
               </div>
