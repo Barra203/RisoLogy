@@ -30,12 +30,12 @@ const PosMainApp: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen w-screen overflow-hidden bg-[#F5F5F5] text-black">
-      {/* Persistent Sidebar (Left on desktop, Top bar on mobile/tablet) */}
+    <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-[#F5F5F5] text-black">
+      {/* Persistent Navigation (Left Sidebar on md+ desktop/tablet, Top header + Bottom Navigation Bar on < md mobile) */}
       <Sidebar />
 
       {/* Main View Area */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative" role="main">
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative pb-20 md:pb-0" role="main">
         {/* Database Loading Banner */}
         {isLoading && (
           <div className="bg-[#FFD100] text-black px-4 py-1.5 text-xs font-bold uppercase tracking-wider border-b-2 border-black flex items-center justify-between">

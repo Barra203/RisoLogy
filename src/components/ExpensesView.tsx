@@ -276,129 +276,228 @@ export const ExpensesView: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Table Area */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
-                  <th className="py-3 px-4">No &amp; Tanggal</th>
-                  <th className="py-3 px-4">Nama Bahan</th>
-                  <th className="py-3 px-3">Kategori</th>
-                  <th className="py-3 px-3 text-right">Kuantitas</th>
-                  <th className="py-3 px-3 text-right">Harga Satuan</th>
-                  <th className="py-3 px-4 text-right">Total Belanja (-)</th>
-                  <th className="py-3 px-4">Supplier &amp; Lokasi</th>
-                  <th className="py-3 px-3">Kasir / PIC</th>
-                  <th className="py-3 px-3 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredExpenses.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="py-12 text-center text-slate-400">
-                      Belum ada data belanja bahan supplier yang tercatat.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredExpenses.map((exp) => (
-                    <tr key={exp.id} className="hover:bg-slate-50 transition-colors">
-                      {/* No & Tanggal */}
-                      <td className="py-3 px-4">
-                        <span className="font-mono font-bold text-slate-900 block">
-                          {exp.expenseNumber}
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-mono">
-                          {exp.date}
-                        </span>
-                      </td>
-
-                      {/* Nama Bahan */}
-                      <td className="py-3 px-4 font-bold text-slate-900">
-                        <span>{exp.itemName}</span>
-                        {exp.notes && (
-                          <span className="block text-[10px] text-slate-500 font-normal italic">
-                            {exp.notes}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Kategori */}
-                      <td className="py-3 px-3">
-                        <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded text-[10px]">
-                          {exp.category}
-                        </span>
-                      </td>
-
-                      {/* Kuantitas */}
-                      <td className="py-3 px-3 text-right font-mono font-bold text-slate-800">
-                        {exp.quantity} {exp.unit}
-                      </td>
-
-                      {/* Harga Satuan */}
-                      <td className="py-3 px-3 text-right font-mono text-slate-600">
-                        {formatCurrency(exp.unitPrice)}
-                      </td>
-
-                      {/* Total Belanja (Minus = Red) */}
-                      <td className="py-3 px-4 text-right font-mono font-extrabold text-rose-600 bg-rose-50/30">
-                        - {formatCurrency(exp.totalPrice)}
-                      </td>
-
-                      {/* Supplier & Lokasi */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-1 font-semibold text-slate-900">
-                          <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{exp.supplierName}</span>
-                        </div>
-                        {exp.supplierLocation && (
-                          <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5 truncate max-w-[220px]">
-                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span className="truncate">{exp.supplierLocation}</span>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Kasir / Shift PIC */}
-                      <td className="py-3 px-3">
-                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[10px] border border-amber-200">
-                          {exp.cashierName}
-                        </span>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3 px-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(exp)}
-                            className="p-1 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded cursor-pointer"
-                            title="Edit belanja"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm(`Hapus catatan belanja "${exp.itemName}" (${exp.expenseNumber})?`)) {
-                                deleteExpense(exp.id);
-                              }
-                            }}
-                            className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
-                            title="Hapus belanja"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+      {/* Main Table (Desktop) & Card List (Mobile) */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        {filteredExpenses.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-xl p-10 text-center text-slate-400 text-xs">
+            Belum ada data belanja bahan supplier yang tercatat.
           </div>
-        </div>
+        ) : (
+          <>
+            {/* ============================================================= */}
+            {/* TAMPILAN MOBILE: DAFTAR KARTU BELANJA BAHAN (block md:hidden) */}
+            {/* ============================================================= */}
+            <div className="block md:hidden">
+              {filteredExpenses.map((exp) => (
+                <div
+                  key={exp.id}
+                  className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-2.5 mb-3"
+                >
+                  {/* Baris 1: ID Nota Belanja, Badge Kategori, dan Nama Kasir/PIC */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-xs text-slate-900 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                        {exp.expenseNumber}
+                      </span>
+                      <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded text-[10px]">
+                        {exp.category}
+                      </span>
+                    </div>
+
+                    <span className="px-2 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[10px] border border-amber-200">
+                      Kasir/PIC: {exp.cashierName}
+                    </span>
+                  </div>
+
+                  {/* Baris 2: Tanggal, Nama Bahan, Kuantitas, dan Supplier */}
+                  <div className="pt-1.5 border-t border-slate-100 space-y-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900">{exp.itemName}</h3>
+                        {exp.notes && (
+                          <p className="text-[11px] text-slate-500 italic">{exp.notes}</p>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-mono text-slate-500 shrink-0">
+                        {exp.date}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1">
+                      <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                        <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate max-w-[180px]">{exp.supplierName}</span>
+                      </div>
+                      <span className="font-mono text-xs font-bold text-slate-700">
+                        {exp.quantity} {exp.unit} × {formatCurrency(exp.unitPrice)}
+                      </span>
+                    </div>
+
+                    {exp.supplierLocation && (
+                      <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                        <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className="truncate">{exp.supplierLocation}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Baris 3: Total Nominal (Teks Tebal Besar) serta Tombol Aksi Sentuh */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                        Total Belanja
+                      </span>
+                      <span className="font-mono text-base font-extrabold text-rose-600 tabular-nums">
+                        - {formatCurrency(exp.totalPrice)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(exp)}
+                        className="touch-manipulation py-2 px-3 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold rounded-lg inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Hapus catatan belanja "${exp.itemName}" (${exp.expenseNumber})?`)) {
+                            deleteExpense(exp.id);
+                          }
+                        }}
+                        className="touch-manipulation py-2 px-3 bg-rose-600 text-white hover:bg-rose-700 text-xs font-bold rounded-lg inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Hapus</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ============================================================= */}
+            {/* TAMPILAN DESKTOP: TABEL LENGKAP (hidden md:block)             */}
+            {/* ============================================================= */}
+            <div className="hidden md:block bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                      <th className="py-3 px-4">No &amp; Tanggal</th>
+                      <th className="py-3 px-4">Nama Bahan</th>
+                      <th className="py-3 px-3">Kategori</th>
+                      <th className="py-3 px-3 text-right">Kuantitas</th>
+                      <th className="py-3 px-3 text-right">Harga Satuan</th>
+                      <th className="py-3 px-4 text-right">Total Belanja (-)</th>
+                      <th className="py-3 px-4">Supplier &amp; Lokasi</th>
+                      <th className="py-3 px-3">Kasir / PIC</th>
+                      <th className="py-3 px-3 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredExpenses.map((exp) => (
+                      <tr key={exp.id} className="hover:bg-slate-50 transition-colors">
+                        {/* No & Tanggal */}
+                        <td className="py-3 px-4">
+                          <span className="font-mono font-bold text-slate-900 block">
+                            {exp.expenseNumber}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {exp.date}
+                          </span>
+                        </td>
+
+                        {/* Nama Bahan */}
+                        <td className="py-3 px-4 font-bold text-slate-900">
+                          <span>{exp.itemName}</span>
+                          {exp.notes && (
+                            <span className="block text-[10px] text-slate-500 font-normal italic">
+                              {exp.notes}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Kategori */}
+                        <td className="py-3 px-3">
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded text-[10px]">
+                            {exp.category}
+                          </span>
+                        </td>
+
+                        {/* Kuantitas */}
+                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-800">
+                          {exp.quantity} {exp.unit}
+                        </td>
+
+                        {/* Harga Satuan */}
+                        <td className="py-3 px-3 text-right font-mono text-slate-600">
+                          {formatCurrency(exp.unitPrice)}
+                        </td>
+
+                        {/* Total Belanja (Minus = Red) */}
+                        <td className="py-3 px-4 text-right font-mono font-extrabold text-rose-600 bg-rose-50/30">
+                          - {formatCurrency(exp.totalPrice)}
+                        </td>
+
+                        {/* Supplier & Lokasi */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1 font-semibold text-slate-900">
+                            <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>{exp.supplierName}</span>
+                          </div>
+                          {exp.supplierLocation && (
+                            <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5 truncate max-w-[220px]">
+                              <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span className="truncate">{exp.supplierLocation}</span>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Kasir / Shift PIC */}
+                        <td className="py-3 px-3">
+                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[10px] border border-amber-200">
+                            {exp.cashierName}
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3 px-3 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(exp)}
+                              className="p-1 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded cursor-pointer"
+                              title="Edit belanja"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`Hapus catatan belanja "${exp.itemName}" (${exp.expenseNumber})?`)) {
+                                  deleteExpense(exp.id);
+                                }
+                              }}
+                              className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
+                              title="Hapus belanja"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Add / Edit Expense Modal */}

@@ -83,13 +83,18 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-[2px]">
-      <div className="w-full max-w-lg bg-white border border-[#E5E5E5] shadow-2xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-2xl border border-[#E5E5E5] flex flex-col">
+        {/* Mobile Drag Handle */}
+        <div className="sm:hidden flex justify-center pb-3">
+          <div className="w-12 h-1.5 rounded-full bg-slate-300" />
+        </div>
+
         {/* Modal Header */}
-        <div className="p-5 border-b border-[#E5E5E5] flex items-center justify-between bg-white shrink-0">
+        <div className="pb-4 border-b border-[#E5E5E5] flex items-center justify-between bg-white shrink-0">
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-bold bg-amber-600 text-white px-2 py-0.5">
+              <span className="font-mono text-xs font-bold bg-amber-600 text-white px-2 py-0.5 rounded">
                 {nextTransactionNumber}
               </span>
               <h2 className="text-base font-bold text-black uppercase tracking-tight">
@@ -103,7 +108,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-[#888888] hover:text-black hover:bg-[#F5F5F5] transition-colors cursor-pointer"
+            className="p-2 text-[#888888] hover:text-black hover:bg-[#F5F5F5] rounded-lg transition-colors cursor-pointer touch-manipulation"
             aria-label="Tutup"
           >
             <X className="w-5 h-5 stroke-[1.5]" />
@@ -111,7 +116,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-6">
+        <div className="py-5 space-y-5">
           {/* Customer Name Confirmation (Mendukung input manual bebas tanpa terkunci daftar pelanggan) */}
           <div className="p-3 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs">
@@ -149,14 +154,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
                   setMethod('CASH');
                   setErrorMsg('');
                 }}
-                className={`p-3.5 border text-center transition-colors cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                className={`min-h-12 p-3.5 border rounded-xl text-center transition-colors cursor-pointer flex items-center justify-center gap-2 touch-manipulation ${
                   method === 'CASH'
                     ? 'border-amber-600 bg-amber-600 text-white font-bold shadow-sm'
                     : 'border-[#E5E5E5] bg-white text-black hover:border-amber-500'
                 }`}
               >
-                <Banknote className="w-5 h-5 stroke-[1.5]" />
-                <span className="text-xs tracking-wider uppercase">Tunai (CASH)</span>
+                <Banknote className="w-5 h-5 stroke-[1.75] shrink-0" />
+                <span className="text-xs tracking-wider uppercase font-bold">Tunai (CASH)</span>
               </button>
 
               <button
@@ -165,14 +170,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
                   setMethod('QRIS');
                   setErrorMsg('');
                 }}
-                className={`p-3.5 border text-center transition-colors cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                className={`min-h-12 p-3.5 border rounded-xl text-center transition-colors cursor-pointer flex items-center justify-center gap-2 touch-manipulation ${
                   method === 'QRIS'
                     ? 'border-amber-600 bg-amber-600 text-white font-bold shadow-sm'
                     : 'border-[#E5E5E5] bg-white text-black hover:border-amber-500'
                 }`}
               >
-                <QrCode className="w-5 h-5 stroke-[1.5]" />
-                <span className="text-xs tracking-wider uppercase">QRIS Digital</span>
+                <QrCode className="w-5 h-5 stroke-[1.75] shrink-0" />
+                <span className="text-xs tracking-wider uppercase font-bold">QRIS Digital</span>
               </button>
             </div>
           </div>
@@ -265,12 +270,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
         </div>
 
         {/* Modal Footer Actions */}
-        <div className="p-4 border-t border-[#E5E5E5] bg-white flex items-center justify-end gap-3 shrink-0">
+        <div className="pt-4 border-t border-[#E5E5E5] bg-white flex items-center justify-end gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-4 py-2.5 text-xs font-semibold text-[#666666] hover:text-black border border-[#E5E5E5] hover:border-black transition-colors cursor-pointer uppercase tracking-wider disabled:opacity-40"
+            className="min-h-12 h-12 px-4 text-xs font-semibold text-[#666666] hover:text-black border border-[#E5E5E5] hover:border-black rounded-xl transition-colors cursor-pointer uppercase tracking-wider disabled:opacity-40 touch-manipulation"
           >
             Batal
           </button>
@@ -278,7 +283,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
             type="button"
             onClick={handleCompletePayment}
             disabled={isSubmitting || !paymentValid}
-            className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-amber-600/25"
+            className="flex-1 min-h-12 h-12 px-5 bg-amber-600 hover:bg-amber-700 active:scale-[0.99] text-white text-xs font-bold uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-amber-600/25 touch-manipulation"
           >
             {isSubmitting ? (
               <>
