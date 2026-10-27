@@ -12,7 +12,52 @@ import { SettingsView } from './components/SettingsView';
 import { SuccessReceiptModal } from './components/SuccessReceiptModal';
 
 const PosMainApp: React.FC = () => {
-  const { isAuthenticated, activeTab, login, isLoading, dbError, clearDbError } = usePos();
+  const { isAuthenticated, activeTab, login, isLoading, dbError, clearDbError, settings } = usePos();
+
+  // Sinkronisasi Dinamis Favicon Tab Browser dengan Logo Toko (settings.storeLogo / settings.logoUrl)
+  useEffect(() => {
+    const updateFavicon = (iconUrl: string) => {
+      let link =
+        (document.getElementById('app-favicon') as HTMLLinkElement | null) ||
+        (document.querySelector("link[rel*='icon']") as HTMLLinkElement | null);
+
+      if (!link) {
+        link = document.createElement('link');
+        link.id = 'app-favicon';
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+
+      if (iconUrl.startsWith('data:image/svg+xml') || iconUrl.endsWith('.svg')) {
+        link.type = 'image/svg+xml';
+      } else if (
+        iconUrl.startsWith('data:image/jpeg') ||
+        iconUrl.endsWith('.jpg') ||
+        iconUrl.endsWith('.jpeg')
+      ) {
+        link.type = 'image/jpeg';
+      } else {
+        link.type = 'image/png';
+      }
+      link.href = iconUrl;
+
+      const appleLink = document.querySelector(
+        "link[rel='apple-touch-icon']"
+      ) as HTMLLinkElement | null;
+      if (appleLink) {
+        appleLink.href = iconUrl;
+      }
+    };
+
+    const activeLogo =
+      settings?.storeLogo && settings.storeLogo.trim() !== ''
+        ? settings.storeLogo
+        : settings?.logoUrl && settings.logoUrl.trim() !== ''
+        ? settings.logoUrl
+        : '/logo.png';
+
+    updateFavicon(activeLogo);
+  }, [settings?.storeLogo, settings?.logoUrl]);
 
   // Support ?autostart=1 for headless testing & preview
   useEffect(() => {

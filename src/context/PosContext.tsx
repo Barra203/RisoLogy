@@ -612,12 +612,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const applySettingsSnapshot = (data: Partial<StoreSettings>) => {
       setSettings((prev) => {
-        const resolvedLogo =
-          data.storeLogo ||
-          data.logoUrl ||
-          prev.storeLogo ||
-          prev.logoUrl ||
-          INITIAL_STORE_SETTINGS.logoUrl;
+        const hasIncomingLogo = 'storeLogo' in data || 'logoUrl' in data;
+        const incomingLogo = data.storeLogo ?? data.logoUrl;
+        const resolvedLogo = hasIncomingLogo
+          ? incomingLogo && incomingLogo.trim() !== ''
+            ? incomingLogo
+            : '/logo.png'
+          : prev.storeLogo || prev.logoUrl || INITIAL_STORE_SETTINGS.logoUrl;
         const nextSettings: StoreSettings = {
           ...prev,
           ...data,
@@ -1475,7 +1476,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Pembaruan Pengaturan Toko, Logo (`storeLogo` & `logoUrl`) & QRIS di Firestore + LocalStorage
   const updateSettings = (newSettings: Partial<StoreSettings>) => {
-    const syncedLogo = newSettings.storeLogo ?? newSettings.logoUrl;
+    const hasLogoKey = 'storeLogo' in newSettings || 'logoUrl' in newSettings;
+    const rawLogo = newSettings.storeLogo ?? newSettings.logoUrl;
+    const syncedLogo = hasLogoKey
+      ? rawLogo && rawLogo.trim() !== ''
+        ? rawLogo
+        : '/logo.png'
+      : undefined;
+
     const normalizedUpdates: Partial<StoreSettings> = {
       ...newSettings,
       ...(syncedLogo !== undefined ? { logoUrl: syncedLogo, storeLogo: syncedLogo } : {}),

@@ -47,7 +47,7 @@ export const SettingsView: React.FC = () => {
   const [email, setEmail] = useState(settings.email);
   const [footerText, setFooterText] = useState(settings.footerText);
   const [qrisUrl, setQrisUrl] = useState(settings.qrisUrl);
-  const [logoUrl, setLogoUrl] = useState(settings.logoUrl);
+  const [logoUrl, setLogoUrl] = useState(settings.storeLogo || settings.logoUrl || '/logo.png');
 
   // Sync state with real-time Firestore settings
   React.useEffect(() => {
@@ -58,7 +58,7 @@ export const SettingsView: React.FC = () => {
     setEmail(settings.email);
     setFooterText(settings.footerText);
     setQrisUrl(settings.qrisUrl);
-    setLogoUrl(settings.logoUrl);
+    setLogoUrl(settings.storeLogo || settings.logoUrl || '/logo.png');
   }, [settings]);
 
   // Hidden file input refs for direct uploads
@@ -154,6 +154,7 @@ export const SettingsView: React.FC = () => {
         updateSettings({ logoUrl: dataUrl, storeLogo: dataUrl });
       });
     }
+    e.target.value = '';
   };
 
   // Upload QRIS image directly from browser
@@ -358,11 +359,11 @@ export const SettingsView: React.FC = () => {
               </span>
               <div className="w-24 h-24 rounded-full border border-black/10 overflow-hidden bg-white p-1 mb-3 shadow-inner flex items-center justify-center">
                 <img
-                  src={logoUrl || '/assets/logo.png'}
+                  src={logoUrl || settings.storeLogo || '/logo.png'}
                   alt="Logo Preview"
                   className="w-full h-full object-contain"
                   onError={(e) => {
-                    e.currentTarget.src = '/assets/logo.png';
+                    e.currentTarget.src = '/logo.png';
                   }}
                 />
               </div>
@@ -389,8 +390,9 @@ export const SettingsView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setLogoUrl('/assets/logo.png');
-                    updateSettings({ logoUrl: '/assets/logo.png' });
+                    const defaultLogo = '/logo.png';
+                    setLogoUrl(defaultLogo);
+                    updateSettings({ logoUrl: defaultLogo, storeLogo: defaultLogo });
                   }}
                   className="text-[11px] text-[#666666] hover:text-black py-1 cursor-pointer underline"
                 >

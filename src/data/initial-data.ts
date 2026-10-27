@@ -45,7 +45,8 @@ export const INITIAL_STORE_SETTINGS: StoreSettings = {
   phone: '0812-3456-7890',
   email: 'contact@risology.id',
   footerText: 'Terima kasih atas kunjungan Anda!\nFollow IG @risology.id • Have a mindful day',
-  logoUrl: '/assets/logo.png',
+  logoUrl: '/logo.png',
+  storeLogo: '/logo.png',
   qrisUrl: '/assets/qris.png',
   pinCode: '666666',
 };
