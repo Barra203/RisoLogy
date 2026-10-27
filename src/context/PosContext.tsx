@@ -23,6 +23,7 @@ import {
   ShiftConfig,
 } from '../types/pos';
 import {
+  initialProducts,
   INITIAL_PRODUCTS,
   INITIAL_STORE_SETTINGS,
   INITIAL_TRANSACTIONS,
@@ -75,9 +76,10 @@ interface PosContextType {
 
   // Products
   products: Product[];
-  addProduct: (product: Omit<Product, 'id'>) => void;
-  updateProduct: (id: string, product: Partial<Product>) => void;
-  deleteProduct: (id: string) => void;
+  addProduct: (newProduct: Omit<Product, 'id'>) => Promise<void>;
+  updateProduct: (productId: string, updatedData: Partial<Product>) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
+  updateStock: (productId: string, newStock: number) => Promise<void>;
 
   // Cart & Item Notes
   cart: CartItem[];
@@ -285,34 +287,97 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // 1. Koleksi `products`: Pemuatan awal, seeding jika kosong, & real-time listener
   useEffect(() => {
-    const prodsColRef = collection(db, FIRESTORE_COLLECTIONS.PRODUCTS);
+    const productsRef = collection(db, 'products');
+    const LEGACY_IDS = new Set([
+      'prod-risol-mayo',
+      'prod-risol-ragout',
+      'prod-risol-choco',
+      'prod-risol-pedas',
+    ]);
+    const LEGACY_NAMES = new Set([
+      'risol mayo melt',
+      'risol ragout ayam keju',
+      'risol cokelat lumer',
+      'risol spicy bolognese',
+    ]);
+    const OFFICIAL_NAMES = new Set(
+      initialProducts.map((item) => item.name.trim().toLowerCase())
+    );
+
     const unsubscribe = onSnapshot(
-      prodsColRef,
-      (snapshot) => {
+      productsRef,
+      async (snapshot) => {
         setIsLoading(false);
         setIsSyncing(false);
 
-        if (snapshot.empty && !initialProductsSeeded.current && INITIAL_PRODUCTS.length > 0) {
-          initialProductsSeeded.current = true;
-          const batch = writeBatch(db);
-          INITIAL_PRODUCTS.forEach((p) => {
-            batch.set(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, p.id), cleanFirestoreData(p));
-          });
-          batch.commit().catch((err) =>
-            reportError(err, OperationType.WRITE, FIRESTORE_COLLECTIONS.PRODUCTS)
-          );
+        if (snapshot.empty) {
+          if (!initialProductsSeeded.current) {
+            initialProductsSeeded.current = true;
+            // Seed data awal 3 menu resmi RisoLogy ke Firestore jika koleksi benar-benar kosong
+            for (const item of initialProducts) {
+              const { id, ...data } = item;
+              await setDoc(doc(db, 'products', id), cleanFirestoreData(data)).catch((err) =>
+                reportError(err, OperationType.WRITE, FIRESTORE_COLLECTIONS.PRODUCTS)
+              );
+            }
+          } else {
+            setProducts([]);
+          }
           return;
         }
 
-        const list: Product[] = [];
-        snapshot.forEach((d) => {
-          list.push({ ...(d.data() as Product), id: d.id });
+        // Bersihkan menu lama bawaan jika masih tersimpan di Firestore dari sesi lama
+        const hasLegacyDefaults = snapshot.docs.some((docSnap) => {
+          const data = docSnap.data();
+          const docName = String(data.name || '').trim().toLowerCase();
+          return LEGACY_IDS.has(docSnap.id) || LEGACY_NAMES.has(docName);
         });
 
-        if (list.length > 0) {
-          list.sort((a, b) => a.id.localeCompare(b.id));
-          setProducts(list);
+        if (hasLegacyDefaults) {
+          initialProductsSeeded.current = true;
+          const existingOfficialNames = new Set<string>();
+
+          for (const docSnap of snapshot.docs) {
+            const data = docSnap.data();
+            const docName = String(data.name || '').trim().toLowerCase();
+            if (OFFICIAL_NAMES.has(docName) && !LEGACY_IDS.has(docSnap.id)) {
+              existingOfficialNames.add(docName);
+            } else {
+              await deleteDoc(doc(db, 'products', docSnap.id)).catch((err) =>
+                reportError(err, OperationType.DELETE, `products/${docSnap.id}`)
+              );
+            }
+          }
+
+          for (const item of initialProducts) {
+            const officialKey = item.name.trim().toLowerCase();
+            if (!existingOfficialNames.has(officialKey)) {
+              const { id, ...data } = item;
+              await setDoc(doc(db, 'products', id), cleanFirestoreData(data)).catch((err) =>
+                reportError(err, OperationType.WRITE, `products/${id}`)
+              );
+            }
+          }
+          return;
         }
+
+        const fetchedProducts = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          const resolvedStock = Number(data.stock ?? data.stockQuantity ?? 0);
+          const resolvedImage = String(data.image ?? data.imageUrl ?? '');
+          return {
+            ...data,
+            id: docSnap.id,
+            stock: resolvedStock,
+            stockQuantity: resolvedStock,
+            inStock: resolvedStock > 0,
+            image: resolvedImage,
+            imageUrl: resolvedImage || undefined,
+          } as Product;
+        });
+
+        fetchedProducts.sort((a, b) => a.id.localeCompare(b.id));
+        setProducts(fetchedProducts);
       },
       (error) => {
         setIsLoading(false);
@@ -1093,14 +1158,21 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const cartItem = cartSnapshot.find(
           (ci) => ci.product?.id === p.id || ci.productId === p.id || ci.id === p.id
         );
-        if (cartItem && typeof p.stockQuantity === 'number') {
-          const newQty = Math.max(0, p.stockQuantity - cartItem.quantity);
-          const updatedProd = { ...p, stockQuantity: newQty, inStock: newQty > 0 };
+        const currentStock = Number(p.stock ?? p.stockQuantity ?? 0);
+        if (cartItem) {
+          const newQty = Math.max(0, currentStock - cartItem.quantity);
+          const updatedProd: Product = {
+            ...p,
+            stock: newQty,
+            stockQuantity: newQty,
+            inStock: newQty > 0,
+          };
           try {
-            const prodRef = doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, p.id);
+            const prodRef = doc(db, 'products', p.id);
             updateDoc(
               prodRef,
               cleanFirestoreData({
+                stock: newQty,
                 stockQuantity: newQty,
                 inStock: newQty > 0,
                 updatedAt: Date.now(),
@@ -1126,7 +1198,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 5. Simpan atau perbarui data pelanggan di koleksi `customers` Firestore (mendukung input nama manual)
     if (resolvedCustomerName && resolvedCustomerName.toLowerCase() !== 'pelanggan') {
       let topItemName =
-        cartSnapshot[0]?.product?.name || cartSnapshot[0]?.name || 'Risol Mayo Melt';
+        cartSnapshot[0]?.product?.name || cartSnapshot[0]?.name || 'Risol Mix';
       let maxQty = 0;
       cartSnapshot.forEach((ci) => {
         if (ci.quantity > maxQty) {
@@ -1298,7 +1370,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : 0,
       firstVisit: customerData.firstVisit || now,
       lastVisit: customerData.lastVisit || now,
-      favoriteItem: customerData.favoriteItem?.trim() || 'Risol Mayo Melt',
+      favoriteItem: customerData.favoriteItem?.trim() || 'Risol Mix',
       loyaltyTier: customerData.loyaltyTier || 'Baru',
     };
 
@@ -1439,40 +1511,103 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDoc(doc(db, 'settings', 'general'), payload, { merge: true }).catch(() => {});
   };
 
-  // Manajemen Produk di Firestore
-  const addProduct = (product: Omit<Product, 'id'>) => {
-    const tempId = `prod-${Date.now()}`;
-    const newProduct: Product = {
-      ...product,
-      id: tempId,
-    };
-    setProducts((prev) => [...prev, newProduct]);
-
-    addDoc(collection(db, FIRESTORE_COLLECTIONS.PRODUCTS), cleanFirestoreData(newProduct))
-      .then((docRef) => {
-        setProducts((prev) =>
-          prev.map((p) => (p.id === tempId ? { ...p, id: docRef.id } : p))
-        );
-      })
-      .catch((err) =>
-        reportError(err, OperationType.CREATE, FIRESTORE_COLLECTIONS.PRODUCTS)
-      );
+  // Manajemen Produk di Firestore (Sinkronisasi Real-Time & CRUD Permanen)
+  const addProduct = async (newProduct: Omit<Product, 'id'>): Promise<void> => {
+    try {
+      const resolvedStock = Math.max(0, Number(newProduct.stock ?? newProduct.stockQuantity ?? 0));
+      const resolvedImage = String(newProduct.image ?? newProduct.imageUrl ?? '');
+      const payload = cleanFirestoreData({
+        ...newProduct,
+        name: newProduct.name.trim(),
+        category: newProduct.category,
+        price: Math.max(0, Number(newProduct.price) || 0),
+        stock: resolvedStock,
+        stockQuantity: resolvedStock,
+        inStock: resolvedStock > 0,
+        description: (newProduct.description || '').trim(),
+        image: resolvedImage,
+        ...(resolvedImage ? { imageUrl: resolvedImage } : {}),
+        updatedAt: Date.now(),
+      });
+      delete payload.id;
+      await addDoc(collection(db, 'products'), payload);
+    } catch (error) {
+      console.error('Gagal menambah menu ke Firestore:', error);
+      reportError(error, OperationType.CREATE, FIRESTORE_COLLECTIONS.PRODUCTS);
+    }
   };
 
-  const updateProduct = (id: string, updates: Partial<Product>) => {
-    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
-    updateDoc(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, id), cleanFirestoreData(updates)).catch(
-      (err) =>
-        reportError(err, OperationType.UPDATE, `${FIRESTORE_COLLECTIONS.PRODUCTS}/${id}`)
-    );
+  const updateProduct = async (
+    productId: string,
+    updatedData: Partial<Product>
+  ): Promise<void> => {
+    try {
+      const hasStockUpdate =
+        updatedData.stock !== undefined || updatedData.stockQuantity !== undefined;
+      const resolvedStock = hasStockUpdate
+        ? Math.max(0, Number(updatedData.stock ?? updatedData.stockQuantity ?? 0))
+        : undefined;
+      const hasImageUpdate = 'image' in updatedData || 'imageUrl' in updatedData;
+      const resolvedImage = hasImageUpdate
+        ? String(updatedData.image ?? updatedData.imageUrl ?? '')
+        : undefined;
+
+      const payload = cleanFirestoreData({
+        ...updatedData,
+        ...(updatedData.name !== undefined ? { name: updatedData.name.trim() } : {}),
+        ...(updatedData.price !== undefined
+          ? { price: Math.max(0, Number(updatedData.price) || 0) }
+          : {}),
+        ...(resolvedStock !== undefined
+          ? {
+              stock: resolvedStock,
+              stockQuantity: resolvedStock,
+              inStock: resolvedStock > 0,
+            }
+          : {}),
+        ...(resolvedImage !== undefined
+          ? {
+              image: resolvedImage,
+              imageUrl: resolvedImage,
+            }
+          : {}),
+        updatedAt: Date.now(),
+      });
+      delete payload.id;
+
+      const productDoc = doc(db, 'products', productId);
+      await updateDoc(productDoc, payload);
+    } catch (error) {
+      console.error('Gagal mengupdate menu di Firestore:', error);
+      reportError(error, OperationType.UPDATE, `${FIRESTORE_COLLECTIONS.PRODUCTS}/${productId}`);
+    }
   };
 
-  const deleteProduct = (id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-    removeFromCart(id);
-    deleteDoc(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, id)).catch((err) =>
-      reportError(err, OperationType.DELETE, `${FIRESTORE_COLLECTIONS.PRODUCTS}/${id}`)
-    );
+  const deleteProduct = async (productId: string): Promise<void> => {
+    try {
+      removeFromCart(productId);
+      const productDoc = doc(db, 'products', productId);
+      await deleteDoc(productDoc);
+    } catch (error) {
+      console.error('Gagal menghapus menu dari Firestore:', error);
+      reportError(error, OperationType.DELETE, `${FIRESTORE_COLLECTIONS.PRODUCTS}/${productId}`);
+    }
+  };
+
+  const updateStock = async (productId: string, newStock: number): Promise<void> => {
+    try {
+      const safeStock = Math.max(0, Number(newStock) || 0);
+      const productDoc = doc(db, 'products', productId);
+      await updateDoc(productDoc, {
+        stock: safeStock,
+        stockQuantity: safeStock,
+        inStock: safeStock > 0,
+        updatedAt: Date.now(),
+      });
+    } catch (error) {
+      console.error('Gagal memperbarui stok di Firestore:', error);
+      reportError(error, OperationType.UPDATE, `${FIRESTORE_COLLECTIONS.PRODUCTS}/${productId}`);
+    }
   };
 
   // Manajemen Kategori di Firestore
@@ -1631,8 +1766,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .then((snap) => {
         const batch = writeBatch(db);
         snap.forEach((d) => batch.delete(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, d.id)));
-        INITIAL_PRODUCTS.forEach((p) => {
-          batch.set(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, p.id), cleanFirestoreData(p));
+        initialProducts.forEach((p) => {
+          const { id, ...data } = p;
+          batch.set(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, id), cleanFirestoreData(data));
         });
         batch.commit().catch(() => {});
       })
@@ -1719,6 +1855,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addProduct,
         updateProduct,
         deleteProduct,
+        updateStock,
         cart,
         customerName,
         setCustomerName,

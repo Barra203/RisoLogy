@@ -1,13 +1,16 @@
 export interface Product {
   id: string;
   name: string;
-  price: number;
   category: 'Risol Mayo' | 'Risol Gurih' | 'Risol Manis' | string;
-  description?: string;
-  inStock: boolean;
+  price: number;
+  stock: number;
   stockQuantity?: number;
-  unitCost?: number;
+  inStock?: boolean;
+  description?: string;
+  image?: string;
   imageUrl?: string;
+  unitCost?: number;
+  updatedAt?: number;
 }
 
 export interface CartItem {

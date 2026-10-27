@@ -35,6 +35,7 @@ export const SettingsView: React.FC = () => {
     addProduct,
     updateProduct,
     deleteProduct,
+    updateStock,
     resetAllData,
   } = usePos();
 
@@ -246,18 +247,20 @@ export const SettingsView: React.FC = () => {
   };
 
   // Add Product Submit
-  const handleCreateProduct = (e: React.FormEvent) => {
+  const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProdName.trim() || !newProdPrice) return;
 
     const stockQty = Math.max(0, parseInt(newProdStock, 10) || 0);
 
-    addProduct({
+    await addProduct({
       name: newProdName.trim(),
       category: newProdCategory,
       price: Math.max(0, parseInt(newProdPrice, 10) || 0),
       description: newProdDesc.trim(),
+      image: newProdImage || '',
       imageUrl: newProdImage || undefined,
+      stock: stockQty,
       stockQuantity: stockQty,
       inStock: stockQty > 0,
     });
@@ -271,18 +274,24 @@ export const SettingsView: React.FC = () => {
   };
 
   // Edit Product Submit
-  const handleSaveEditedProduct = (e: React.FormEvent) => {
+  const handleSaveEditedProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct || !editingProduct.name.trim()) return;
 
-    const stockQty = Math.max(0, Number(editingProduct.stockQuantity) || 0);
+    const stockQty = Math.max(
+      0,
+      Number(editingProduct.stock ?? editingProduct.stockQuantity ?? 0)
+    );
+    const resolvedImg = editingProduct.image ?? editingProduct.imageUrl ?? '';
 
-    updateProduct(editingProduct.id, {
+    await updateProduct(editingProduct.id, {
       name: editingProduct.name.trim(),
       category: editingProduct.category,
       price: Math.max(0, Number(editingProduct.price) || 0),
-      description: editingProduct.description?.trim(),
-      imageUrl: editingProduct.imageUrl,
+      description: editingProduct.description?.trim() || '',
+      image: resolvedImg,
+      imageUrl: resolvedImg || undefined,
+      stock: stockQty,
       stockQuantity: stockQty,
       inStock: stockQty > 0,
     });
@@ -290,14 +299,11 @@ export const SettingsView: React.FC = () => {
     setEditingProduct(null);
   };
 
-  // Quick adjust stock directly from product list (+/-)
+  // Quick adjust stock directly from product list (+/-) via updateStock in Firestore
   const handleQuickAdjustStock = (product: Product, delta: number) => {
-    const current = product.stockQuantity || 0;
+    const current = Number(product.stock ?? product.stockQuantity ?? 0);
     const nextStock = Math.max(0, current + delta);
-    updateProduct(product.id, {
-      stockQuantity: nextStock,
-      inStock: nextStock > 0,
-    });
+    updateStock(product.id, nextStock);
   };
 
   return (
@@ -864,105 +870,117 @@ export const SettingsView: React.FC = () => {
 
           {/* Product Items Table with EDIT and DELETE buttons */}
           <div className="divide-y divide-[#E5E5E5] border border-[#E5E5E5]">
-            {products.map((p) => (
-              <div
-                key={p.id}
-                className="p-3.5 flex items-center justify-between hover:bg-[#FAFAFA] transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  {p.imageUrl ? (
-                    <img
-                      src={p.imageUrl}
-                      alt={p.name}
-                      className="w-10 h-10 object-cover border border-[#E5E5E5]"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 bg-[#F5F5F5] border border-[#E5E5E5] flex items-center justify-center text-[#999999]">
-                      <RisolIcon className="w-5 h-5 stroke-[1.8]" />
-                    </div>
-                  )}
+            {products.map((p) => {
+              const currentStock = Number(p.stock ?? p.stockQuantity ?? 0);
+              const productImg = p.image || p.imageUrl;
+              return (
+                <div
+                  key={p.id}
+                  className="p-3.5 flex items-center justify-between hover:bg-[#FAFAFA] transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    {productImg ? (
+                      <img
+                        src={productImg}
+                        alt={p.name}
+                        className="w-10 h-10 object-cover border border-[#E5E5E5]"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 bg-[#F5F5F5] border border-[#E5E5E5] flex items-center justify-center text-[#999999]">
+                        <RisolIcon className="w-5 h-5 stroke-[1.8]" />
+                      </div>
+                    )}
 
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-xs text-black">{p.name}</span>
-                      <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200">
-                        {p.category}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-black">{p.name}</span>
+                        <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200">
+                          {p.category}
+                        </span>
+                      </div>
+                      {p.description && (
+                        <p className="text-[11px] text-[#666666] mt-0.5 line-clamp-1">
+                          {p.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+                    {/* Stock Quantity Badge & Quick Stepper */}
+                    <div className="flex items-center gap-1.5 bg-[#F8F9FA] px-2.5 py-1 rounded border border-[#E5E5E5]">
+                      <span className="text-[10px] text-[#666666] uppercase font-semibold hidden md:inline">
+                        Stok:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAdjustStock(p, -1)}
+                        disabled={currentStock <= 0}
+                        className="w-5 h-5 rounded bg-white hover:bg-slate-200 disabled:opacity-30 border border-[#CCCCCC] flex items-center justify-center text-xs font-bold text-slate-700 cursor-pointer transition-colors"
+                        title="Kurangi stok (-1 porsi)"
+                      >
+                        -
+                      </button>
+                      <span
+                        className={`font-mono text-xs font-bold px-2 py-0.5 rounded tabular-nums min-w-[34px] text-center ${
+                          currentStock === 0
+                            ? 'bg-rose-100 text-rose-700 border border-rose-200 font-extrabold'
+                            : currentStock <= 15
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }`}
+                        title={`${currentStock} porsi tersedia`}
+                      >
+                        {currentStock}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAdjustStock(p, 1)}
+                        className="w-5 h-5 rounded bg-white hover:bg-slate-200 border border-[#CCCCCC] flex items-center justify-center text-xs font-bold text-slate-700 cursor-pointer transition-colors"
+                        title="Tambah stok (+1 porsi)"
+                      >
+                        +
+                      </button>
+                      <span className="text-[10px] text-slate-500 font-medium hidden sm:inline">
+                        {currentStock === 0 ? 'Habis' : 'porsi'}
                       </span>
                     </div>
-                    {p.description && (
-                      <p className="text-[11px] text-[#666666] mt-0.5 line-clamp-1">
-                        {p.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-                  {/* Stock Quantity Badge & Quick Stepper */}
-                  <div className="flex items-center gap-1.5 bg-[#F8F9FA] px-2.5 py-1 rounded border border-[#E5E5E5]">
-                    <span className="text-[10px] text-[#666666] uppercase font-semibold hidden md:inline">
-                      Stok:
+                    <span className="font-mono font-bold text-xs text-black tabular-nums min-w-[65px] text-right">
+                      {formatCurrency(p.price)}
                     </span>
+
+                    {/* Edit button */}
                     <button
                       type="button"
-                      onClick={() => handleQuickAdjustStock(p, -1)}
-                      disabled={(p.stockQuantity || 0) <= 0}
-                      className="w-5 h-5 rounded bg-white hover:bg-slate-200 disabled:opacity-30 border border-[#CCCCCC] flex items-center justify-center text-xs font-bold text-slate-700 cursor-pointer transition-colors"
-                      title="Kurangi stok (-1 porsi)"
+                      onClick={() =>
+                        setEditingProduct({
+                          ...p,
+                          stock: currentStock,
+                          stockQuantity: currentStock,
+                          image: productImg || '',
+                          imageUrl: productImg,
+                        })
+                      }
+                      className="p-1.5 text-amber-700 hover:bg-amber-50 border border-transparent hover:border-amber-400 transition-colors cursor-pointer"
+                      title={`Edit menu ${p.name}`}
                     >
-                      -
+                      <Edit2 className="w-4 h-4" />
                     </button>
-                    <span
-                      className={`font-mono text-xs font-bold px-2 py-0.5 rounded tabular-nums min-w-[34px] text-center ${
-                        (p.stockQuantity || 0) === 0
-                          ? 'bg-rose-100 text-rose-700 border border-rose-200 font-extrabold'
-                          : (p.stockQuantity || 0) <= 15
-                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                          : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                      }`}
-                      title={`${p.stockQuantity ?? 0} porsi tersedia`}
-                    >
-                      {p.stockQuantity ?? 0}
-                    </span>
+
+                    {/* Delete button (In-app modal) */}
                     <button
                       type="button"
-                      onClick={() => handleQuickAdjustStock(p, 1)}
-                      className="w-5 h-5 rounded bg-white hover:bg-slate-200 border border-[#CCCCCC] flex items-center justify-center text-xs font-bold text-slate-700 cursor-pointer transition-colors"
-                      title="Tambah stok (+1 porsi)"
+                      onClick={() => setProductToDelete(p)}
+                      className="p-1.5 text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors cursor-pointer"
+                      title={`Hapus menu ${p.name}`}
                     >
-                      +
+                      <Trash2 className="w-4 h-4" />
                     </button>
-                    <span className="text-[10px] text-slate-500 font-medium hidden sm:inline">
-                      {(p.stockQuantity || 0) === 0 ? 'Habis' : 'porsi'}
-                    </span>
                   </div>
-
-                  <span className="font-mono font-bold text-xs text-black tabular-nums min-w-[65px] text-right">
-                    {formatCurrency(p.price)}
-                  </span>
-
-                  {/* Edit button */}
-                  <button
-                    type="button"
-                    onClick={() => setEditingProduct({ ...p })}
-                    className="p-1.5 text-amber-700 hover:bg-amber-50 border border-transparent hover:border-amber-400 transition-colors cursor-pointer"
-                    title={`Edit menu ${p.name}`}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-
-                  {/* Delete button (In-app modal) */}
-                  <button
-                    type="button"
-                    onClick={() => setProductToDelete(p)}
-                    className="p-1.5 text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors cursor-pointer"
-                    title={`Hapus menu ${p.name}`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -1340,13 +1358,15 @@ export const SettingsView: React.FC = () => {
                     type="number"
                     required
                     min="0"
-                    value={editingProduct.stockQuantity ?? 0}
-                    onChange={(e) =>
+                    value={editingProduct.stock ?? editingProduct.stockQuantity ?? 0}
+                    onChange={(e) => {
+                      const val = Math.max(0, parseInt(e.target.value, 10) || 0);
                       setEditingProduct({
                         ...editingProduct,
-                        stockQuantity: Math.max(0, parseInt(e.target.value, 10) || 0),
-                      })
-                    }
+                        stock: val,
+                        stockQuantity: val,
+                      });
+                    }}
                     className="w-full px-2.5 py-1.5 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white font-mono focus:outline-none"
                   />
                 </div>
@@ -1367,9 +1387,9 @@ export const SettingsView: React.FC = () => {
               {/* Direct Photo Change in Edit Modal */}
               <div className="p-3 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {editingProduct.imageUrl ? (
+                  {editingProduct.image || editingProduct.imageUrl ? (
                     <img
-                      src={editingProduct.imageUrl}
+                      src={editingProduct.image || editingProduct.imageUrl}
                       alt="Preview"
                       className="w-14 h-14 object-cover border border-[#CCCCCC]"
                     />
@@ -1381,7 +1401,7 @@ export const SettingsView: React.FC = () => {
                   <div>
                     <span className="text-xs font-semibold text-black block">Foto Produk</span>
                     <span className="text-[11px] text-[#666666]">
-                      {editingProduct.imageUrl ? 'Foto terpasang' : 'Belum ada foto'}
+                      {editingProduct.image || editingProduct.imageUrl ? 'Foto terpasang' : 'Belum ada foto'}
                     </span>
                   </div>
                 </div>
@@ -1395,7 +1415,11 @@ export const SettingsView: React.FC = () => {
                       const file = e.target.files?.[0];
                       if (file) {
                         readFileAsDataUrl(file, (dataUrl) =>
-                          setEditingProduct({ ...editingProduct, imageUrl: dataUrl })
+                          setEditingProduct({
+                            ...editingProduct,
+                            image: dataUrl,
+                            imageUrl: dataUrl,
+                          })
                         );
                       }
                     }}
@@ -1409,10 +1433,16 @@ export const SettingsView: React.FC = () => {
                     <Upload className="w-3.5 h-3.5" />
                     <span>Ganti Foto</span>
                   </button>
-                  {editingProduct.imageUrl && (
+                  {(editingProduct.image || editingProduct.imageUrl) && (
                     <button
                       type="button"
-                      onClick={() => setEditingProduct({ ...editingProduct, imageUrl: undefined })}
+                      onClick={() =>
+                        setEditingProduct({
+                          ...editingProduct,
+                          image: '',
+                          imageUrl: undefined,
+                        })
+                      }
                       className="text-xs text-red-600 hover:underline px-2 cursor-pointer"
                     >
                       Hapus Foto

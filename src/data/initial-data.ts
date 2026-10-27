@@ -1,47 +1,42 @@
 import { Product, StoreSettings, Transaction, DiscountPreset, SupplierExpense, CustomerRecord } from '../types/pos';
 
-export const INITIAL_PRODUCTS: Product[] = [
+export const initialProducts: Product[] = [
   {
-    id: 'prod-risol-mayo',
-    name: 'Risol Mayo Melt',
-    price: 12000,
-    category: 'Risol Mayo',
-    description: 'Kulit renyah golden breadcrumbs dengan isian smoked beef premium, telur rebus, dan lelehan creamy mayo gurih.',
-    inStock: true,
-    stockQuantity: 48,
-    unitCost: 5500,
-  },
-  {
-    id: 'prod-risol-ragout',
-    name: 'Risol Ragout Ayam Keju',
-    price: 12000,
+    id: 'prod-001',
+    name: 'Risol Mix',
     category: 'Risol Gurih',
-    description: 'Risol gurih dengan adonan ragout ayam suwir lembut, wortel cincang, dan limpahan keju cheddar meleleh.',
+    price: 12000,
+    stock: 20,
+    stockQuantity: 20,
     inStock: true,
-    stockQuantity: 36,
-    unitCost: 5200,
+    description: 'Kombinasi risol lezat artisan krispi.',
+    image: '',
   },
   {
-    id: 'prod-risol-choco',
-    name: 'Risol Cokelat Lumer',
-    price: 10000,
+    id: 'prod-002',
+    name: 'Risol Mac-n-Cheese',
     category: 'Risol Manis',
-    description: 'Varian manis krispi dengan cokelat Belgia pekat yang meleleh lumer seketika saat digigit hangat-hangat.',
+    price: 12000,
+    stock: 15,
+    stockQuantity: 15,
     inStock: true,
-    stockQuantity: 25,
-    unitCost: 4000,
+    description: 'Isian makaroni creamy keju lumer melimpah.',
+    image: '',
   },
   {
-    id: 'prod-risol-pedas',
-    name: 'Risol Spicy Bolognese',
-    price: 13000,
-    category: 'Risol Gurih',
-    description: 'Isian daging cincang saus bolognese pedas gurih dipadu lelehan keju mozzarella kenyal.',
+    id: 'prod-003',
+    name: 'Risol Ayam Balado',
+    category: 'Risol Mayo',
+    price: 12000,
+    stock: 20,
+    stockQuantity: 20,
     inStock: true,
-    stockQuantity: 30,
-    unitCost: 5800,
+    description: 'Suwiran ayam gurih dengan bumbu balado pedas nikmat.',
+    image: '',
   },
 ];
+
+export const INITIAL_PRODUCTS: Product[] = initialProducts;
 
 export const INITIAL_STORE_SETTINGS: StoreSettings = {
   storeName: 'RisoLogy',

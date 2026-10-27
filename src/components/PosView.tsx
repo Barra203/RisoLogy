@@ -555,7 +555,7 @@ export const PosView: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {filteredProducts.map((product) => {
                 const inCart = cart.find((i) => i.product.id === product.id);
-                const stock = product.stockQuantity ?? 0;
+                const stock = Number(product.stock ?? product.stockQuantity ?? 0);
                 const isOutOfStock = stock <= 0;
                 const isLowStock = stock > 0 && stock < 5;
 
