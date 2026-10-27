@@ -76,6 +76,7 @@ export interface CustomerRecord {
   lastVisit: number;
   favoriteItem: string;
   loyaltyTier: 'VIP' | 'Reguler' | 'Baru';
+  tier?: 'VIP' | 'Reguler' | 'Baru' | string;
 }
 
 export interface TransactionItem {

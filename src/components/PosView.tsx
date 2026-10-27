@@ -12,7 +12,6 @@ import {
   User,
   ShoppingBag,
   X,
-  Users,
   Clock,
   AlertTriangle,
 } from 'lucide-react';
@@ -44,9 +43,9 @@ export const PosView: React.FC = () => {
     total,
     nextTransactionNumber,
     activeCashier,
-    setActiveCashier,
-    cashierList,
   } = usePos();
+
+  const currentInvoiceNumber = nextTransactionNumber;
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
@@ -104,26 +103,11 @@ export const PosView: React.FC = () => {
   const renderCartContent = (isMobileDrawer = false) => (
     <div className="flex flex-col h-full bg-white">
       {/* Cart Header */}
-      <div className="p-4 border-b border-[#E5E5E5] bg-white flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <ShoppingBag className="w-4 h-4 text-amber-600 stroke-[1.8]" />
-          <h2 className="text-sm font-bold tracking-tight text-black uppercase">
-            Pesanan ({totalCartQty})
-          </h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-mono font-semibold text-[#666666] bg-slate-100 px-2 py-0.5 rounded">
-            {nextTransactionNumber}
+      <div className="p-4 border-b border-[#E5E5E5] bg-white shrink-0">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            Nomor Nota: <span className="text-slate-800 font-bold font-mono">{currentInvoiceNumber}</span>
           </span>
-          {cart.length > 0 && (
-            <button
-              type="button"
-              onClick={clearCart}
-              className="text-xs text-[#888888] hover:text-black hover:underline cursor-pointer transition-colors"
-            >
-              Kosongkan
-            </button>
-          )}
           {isMobileDrawer && (
             <button
               type="button"
@@ -131,6 +115,23 @@ export const PosView: React.FC = () => {
               className="p-1 text-[#888888] hover:text-black ml-1"
             >
               <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShoppingBag className="w-4 h-4 text-amber-600 stroke-[1.8]" />
+            <h2 className="text-sm font-bold tracking-tight text-black uppercase">
+              Pesanan ({totalCartQty})
+            </h2>
+          </div>
+          {cart.length > 0 && (
+            <button
+              type="button"
+              onClick={clearCart}
+              className="text-xs text-[#888888] hover:text-black hover:underline cursor-pointer transition-colors"
+            >
+              Kosongkan
             </button>
           )}
         </div>
@@ -431,44 +432,11 @@ export const PosView: React.FC = () => {
     <div className="flex-1 flex flex-col lg:flex-row h-screen overflow-hidden bg-[#F5F5F5]">
       {/* LEFT/CENTER: Product Catalog Section */}
       <div className="flex-1 flex flex-col h-full overflow-hidden border-r border-[#E5E5E5]">
-        {/* Top Shift & Search Bar */}
+        {/* Top Search & Category Bar */}
         <div className="p-4 bg-white border-b border-[#E5E5E5] shrink-0 space-y-3">
-          {/* Shift Kasir Switcher Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-amber-600" />
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-tight">
-                Shift Kasir:
-              </span>
-              <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded">
-                {cashierList.map((cashier) => (
-                  <button
-                    key={cashier}
-                    type="button"
-                    onClick={() => setActiveCashier(cashier)}
-                    className={`px-2.5 py-0.5 text-xs font-bold rounded cursor-pointer transition-colors ${
-                      activeCashier === cashier
-                        ? 'bg-amber-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {cashier}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-slate-500">Nomor Nota:</span>
-              <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded">
-                {nextTransactionNumber}
-              </span>
-            </div>
-          </div>
-
-          {/* Search bar & quick category creation */}
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
+          {/* Search bar, Invoice Number & Discount Management */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
@@ -488,18 +456,25 @@ export const PosView: React.FC = () => {
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowDiscountModal(true)}
-              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded flex items-center gap-1.5 cursor-pointer border border-slate-200"
-            >
-              <Tag className="w-3.5 h-3.5 text-amber-600" />
-              <span>Kelola Diskon</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider hidden sm:inline">
+                Nomor Nota:{' '}
+                <span className="text-slate-800 font-bold font-mono">{currentInvoiceNumber}</span>
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setShowDiscountModal(true)}
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded flex items-center gap-1.5 cursor-pointer border border-slate-200"
+              >
+                <Tag className="w-3.5 h-3.5 text-amber-600" />
+                <span>Kelola Diskon</span>
+              </button>
+            </div>
           </div>
 
           {/* Category Filter Pills (Horizontal Scrollable without rough scrollbar) */}
-          <div className="flex items-center overflow-x-auto no-scrollbar gap-2 pb-2">
+          <div className="flex items-center overflow-x-auto no-scrollbar gap-2 pb-1">
             {categoriesList.map((category) => {
               const isSelected = selectedCategory.toLowerCase() === category.toLowerCase();
               return (

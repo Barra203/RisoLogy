@@ -27,14 +27,12 @@ import {
   ShoppingBag,
   Users,
   Percent,
-  QrCode,
   Package,
   Truck,
   FileSpreadsheet,
   Download,
   UserCheck,
   ShoppingCart,
-  Store,
   ArrowRight,
 } from 'lucide-react';
 import { RisolIcon } from './RisolIcon';
@@ -596,7 +594,7 @@ export const DashboardView: React.FC = () => {
           </div>
         )}
 
-        {/* ROW 2: PRIMARY FINANCIAL & TRANSACTION KPI CARDS (4 CARDS) */}
+        {/* ROW 2: PRIMARY FINANCIAL & TRANSACTION KPI CARDS (4 CARDS ESENSIAL) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Jumlah Transaksi & AOV */}
           <div className="p-4 bg-white border border-amber-200 rounded-lg shadow-xs relative overflow-hidden">
@@ -697,110 +695,7 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* ROW 3: ALL-PAGES AGGREGATE SUMMARY STRIP */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {/* 1. Pos / Keranjang */}
-          <div
-            onClick={() => setActiveTab('pos')}
-            className="p-3 bg-white border border-slate-200 hover:border-amber-500 rounded-lg cursor-pointer transition-colors shadow-2xs group"
-          >
-            <div className="flex items-center justify-between text-slate-500 mb-1">
-              <span className="text-[10px] font-bold uppercase">1. Halaman Kasir</span>
-              <Store className="w-3.5 h-3.5 text-amber-600 group-hover:scale-110 transition-transform" />
-            </div>
-            <div className="text-base font-bold text-slate-900 truncate">
-              {cart.length > 0 ? `${cart.length} Pesanan Aktif` : 'Ready Pesanan'}
-            </div>
-            <div className="text-[10px] text-amber-700 font-semibold mt-0.5">
-              Kasir: {activeCashier} →
-            </div>
-          </div>
-
-          {/* 2. Stok & Menu */}
-          <div
-            onClick={() => setActiveTab('settings')}
-            className="p-3 bg-white border border-slate-200 hover:border-amber-500 rounded-lg cursor-pointer transition-colors shadow-2xs group"
-          >
-            <div className="flex items-center justify-between text-slate-500 mb-1">
-              <span className="text-[10px] font-bold uppercase">2. Stok &amp; Menu</span>
-              <Package className="w-3.5 h-3.5 text-amber-600 group-hover:scale-110 transition-transform" />
-            </div>
-            <div className="text-base font-bold text-slate-900">
-              {metrics.totalStockUnits} Porsi
-            </div>
-            <div className="text-[10px] text-slate-500 mt-0.5">
-              {metrics.totalProductsCount} Varian Menu →
-            </div>
-          </div>
-
-          {/* 3. Pelanggan */}
-          <div
-            onClick={() => setActiveTab('customers')}
-            className="p-3 bg-white border border-slate-200 hover:border-purple-500 rounded-lg cursor-pointer transition-colors shadow-2xs group"
-          >
-            <div className="flex items-center justify-between text-slate-500 mb-1">
-              <span className="text-[10px] font-bold uppercase">3. Pelanggan</span>
-              <Users className="w-3.5 h-3.5 text-purple-600 group-hover:scale-110 transition-transform" />
-            </div>
-            <div className="text-base font-bold text-slate-900">
-              {metrics.totalCustomersCount} Terdaftar
-            </div>
-            <div className="text-[10px] text-purple-700 font-semibold mt-0.5">
-              {metrics.vipCustomersCount} VIP Member →
-            </div>
-          </div>
-
-          {/* 4. Belanja Bahan (Tersinkronisasi langsung dengan state expenses) */}
-          <div
-            onClick={() => setActiveTab('expenses')}
-            className="p-3 bg-white border border-slate-200 hover:border-rose-500 rounded-lg cursor-pointer transition-colors shadow-2xs group"
-          >
-            <div className="flex items-center justify-between text-slate-500 mb-1">
-              <span className="text-[10px] font-bold uppercase">4. Belanja Bahan</span>
-              <Truck className="w-3.5 h-3.5 text-rose-600 group-hover:scale-110 transition-transform" />
-            </div>
-            <div className="text-base font-bold text-rose-600 font-mono">
-              - Rp {totalBelanjaBahan.toLocaleString('id-ID')}
-            </div>
-            <div className="text-[10px] text-slate-500 mt-0.5">
-              {totalNotaBelanja} Nota Belanja →
-            </div>
-          </div>
-
-          {/* 5. Metode Bayar */}
-          <div
-            onClick={() => setActiveTab('history')}
-            className="p-3 bg-white border border-slate-200 hover:border-teal-500 rounded-lg cursor-pointer transition-colors shadow-2xs group"
-          >
-            <div className="flex items-center justify-between text-slate-500 mb-1">
-              <span className="text-[10px] font-bold uppercase">5. Metode Bayar</span>
-              <QrCode className="w-3.5 h-3.5 text-teal-600 group-hover:scale-110 transition-transform" />
-            </div>
-            <div className="text-base font-bold text-slate-900">
-              {metrics.cashCount} Cash / {metrics.qrisCount} QRIS
-            </div>
-            <div className="text-[10px] text-teal-700 font-semibold mt-0.5">
-              Lihat Detail Riwayat →
-            </div>
-          </div>
-
-          {/* 6. Modul Ekspor */}
-          <div
-            onClick={() => setActiveTab('export')}
-            className="p-3 bg-white border border-slate-200 hover:border-emerald-600 rounded-lg cursor-pointer transition-colors shadow-2xs group"
-          >
-            <div className="flex items-center justify-between text-slate-500 mb-1">
-              <span className="text-[10px] font-bold uppercase">6. Modul Ekspor</span>
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-110 transition-transform" />
-            </div>
-            <div className="text-base font-bold text-slate-900">6 Template</div>
-            <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">
-              Ekspor CSV &amp; Excel →
-            </div>
-          </div>
-        </div>
-
-        {/* ROW 4: CHART TREN OMZET & BEST SELLERS */}
+        {/* ROW 3: CHART TREN OMZET & BEST SELLERS */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Chart Tren Omzet (2 Columns) */}
           <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5 shadow-xs flex flex-col justify-between">
@@ -892,7 +787,7 @@ export const DashboardView: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Award className="w-4 h-4 text-amber-500" />
                   <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight">
-                    Menu Terlaris (Best Seller)
+                    Produk Terlaris (Best Seller)
                   </h3>
                 </div>
                 <span className="text-xs font-mono font-semibold text-slate-500">
@@ -975,7 +870,7 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* ROW 5: INTEGRATED TABLES (PELANGGAN LOYAL & BELANJA BAHAN SUPPLIER TERBARU) */}
+        {/* ROW 4: INTEGRATED TABLES (PELANGGAN LOYAL & BELANJA BAHAN SUPPLIER TERBARU) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Card: Top Pelanggan Loyal (From Customers Page) */}
           <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
@@ -996,54 +891,48 @@ export const DashboardView: React.FC = () => {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-500 text-[11px] uppercase">
-                    <th className="pb-2">Nama Pelanggan</th>
-                    <th className="pb-2 text-center">Tier</th>
-                    <th className="pb-2 text-center">Pesanan</th>
-                    <th className="pb-2 text-right">Total LTV</th>
-                    <th className="pb-2">Menu Favorit</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {metrics.topLoyalCustomers.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-400">
-                        Belum ada data pelanggan tersimpan.
-                      </td>
-                    </tr>
-                  ) : (
-                    metrics.topLoyalCustomers.map((cust) => (
-                      <tr key={cust.id} className="hover:bg-slate-50/80">
-                        <td className="py-2.5 font-bold text-slate-900">{cust.name}</td>
-                        <td className="py-2.5 text-center">
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              cust.loyaltyTier === 'VIP'
-                                ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                                : cust.loyaltyTier === 'Reguler'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-slate-100 text-slate-700'
-                            }`}
-                          >
-                            {cust.loyaltyTier}
-                          </span>
-                        </td>
-                        <td className="py-2.5 text-center font-mono font-medium text-slate-700">
-                          {cust.totalOrders}x
-                        </td>
-                        <td className="py-2.5 text-right font-mono font-bold text-emerald-700">
-                          {formatCurrency(cust.totalSpent)}
-                        </td>
-                        <td className="py-2.5 text-slate-600 truncate max-w-[140px]">
-                          {cust.favoriteItem}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+              <div className="min-w-[480px]">
+                {/* Header Tabel */}
+                <div className="grid grid-cols-12 gap-3 pb-3 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <div className="col-span-4">Nama Pelanggan</div>
+                  <div className="col-span-2 text-center">Tier</div>
+                  <div className="col-span-2 text-center">Pesanan</div>
+                  <div className="col-span-2 text-right">Total LTV</div>
+                  <div className="col-span-2 text-left pl-3">Menu Favorit</div>
+                </div>
+
+                {/* Baris Data Pelanggan */}
+                {metrics.topLoyalCustomers.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-400">
+                    Belum ada data pelanggan tersimpan.
+                  </div>
+                ) : (
+                  metrics.topLoyalCustomers.map((customer) => (
+                    <div
+                      key={customer.id}
+                      className="grid grid-cols-12 gap-3 py-3 border-b border-slate-100 items-center text-sm hover:bg-slate-50/80 transition-colors"
+                    >
+                      <div className="col-span-4 font-semibold text-slate-800 truncate">
+                        {customer.name}
+                      </div>
+                      <div className="col-span-2 flex justify-center">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                          {customer.tier || customer.loyaltyTier || 'Baru'}
+                        </span>
+                      </div>
+                      <div className="col-span-2 text-center text-slate-600 font-medium">
+                        {customer.totalOrders}x
+                      </div>
+                      <div className="col-span-2 text-right font-bold text-emerald-600">
+                        Rp {customer.totalSpent?.toLocaleString('id-ID')}
+                      </div>
+                      <div className="col-span-2 text-left pl-3 text-slate-600 text-xs truncate">
+                        {customer.favoriteItem || '-'}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
 
@@ -1069,10 +958,10 @@ export const DashboardView: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500 text-[11px] uppercase">
-                    <th className="pb-2">Bahan Baku</th>
-                    <th className="pb-2">Supplier &amp; Lokasi</th>
-                    <th className="pb-2 text-center">PIC</th>
-                    <th className="pb-2 text-right">Biaya (-)</th>
+                    <th className="pb-2 pr-3">Bahan Baku</th>
+                    <th className="pb-2 px-3">Supplier &amp; Lokasi</th>
+                    <th className="pb-2 px-2 text-center">PIC</th>
+                    <th className="pb-2 pl-3 text-right">Biaya (-)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1087,25 +976,25 @@ export const DashboardView: React.FC = () => {
                       const nominal = getExpenseNominal(exp);
                       return (
                         <tr key={exp.id} className="hover:bg-slate-50/80">
-                          <td className="py-2.5 font-bold text-slate-900">
+                          <td className="py-2.5 pr-3 font-bold text-slate-900">
                             <div>{exp.itemName}</div>
                             <span className="text-[10px] text-slate-500 font-normal">
                               {exp.date} • {exp.quantity} {exp.unit} @{' '}
                               {formatCurrency(exp.unitPrice)}
                             </span>
                           </td>
-                          <td className="py-2.5 text-slate-600">
+                          <td className="py-2.5 px-3 text-slate-600">
                             <div className="font-medium text-slate-800">{exp.supplierName}</div>
                             <div className="text-[10px] text-slate-400 truncate max-w-[180px]">
                               {exp.supplierLocation}
                             </div>
                           </td>
-                          <td className="py-2.5 text-center font-medium text-slate-700">
+                          <td className="py-2.5 px-2 text-center font-medium text-slate-700">
                             <span className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-[10px] font-bold">
                               {exp.cashierName}
                             </span>
                           </td>
-                          <td className="py-2.5 text-right font-mono font-bold text-rose-600">
+                          <td className="py-2.5 pl-3 text-right font-mono font-bold text-rose-600 whitespace-nowrap">
                             - Rp {nominal.toLocaleString('id-ID')}
                           </td>
                         </tr>
@@ -1118,7 +1007,7 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* ROW 6: CASHIER SHIFT PERFORMANCE (Harits, Rafi, Barra, Dimas, Akhyar) */}
+        {/* ROW 5: CASHIER SHIFT PERFORMANCE (Harits, Rafi, Barra, Dimas, Akhyar) */}
         <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
@@ -1189,7 +1078,7 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* ROW 7: MODUL EKSPOR SHORTCUTS (6 TEMPLATE 1-CLICK DOWNLOADS) */}
+        {/* ROW 6: MODUL EKSPOR SHORTCUTS (6 TEMPLATE 1-CLICK DOWNLOADS) */}
         <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
@@ -1341,7 +1230,7 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* ROW 8: STOK MENIPIS & PROMO DISKON AKTIF (From Settings & POS) */}
+        {/* ROW 7: STOK MENIPIS & PROMO DISKON AKTIF (From Settings & POS) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Card: Status Stok Produk (Mengikuti list menu produk) */}
           <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
