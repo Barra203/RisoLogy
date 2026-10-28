@@ -156,42 +156,59 @@ export const DashboardView: React.FC = () => {
 
   // Aggregate Metrics across ALL pages
   const metrics = useMemo(() => {
+    // Hanya hitung transaksi yang benar-benar sudah LUNAS (PAID) untuk metrik Omzet & Penjualan
+    const paidTransactions = filteredTransactions.filter(
+      (t) => t.status === 'PAID' || t.status === 'Lunas'
+    );
+
+    const totalOmzet = paidTransactions.reduce(
+      (sum, t) => sum + (Number(t.total) || 0),
+      0
+    );
+
+    // Hitung jumlah transaksi yang masih gantung ("Belum Bayar") untuk ditampilkan di sub-info kartu jika diperlukan
+    const unpaidTransactions = filteredTransactions.filter(
+      (t) => t.status === 'UNPAID' || t.status === 'Belum Bayar'
+    );
+
+    const refundedList = filteredTransactions.filter(
+      (t) => t.status === 'REFUNDED' || t.status === 'Refund'
+    );
+
     // 1. Transactions & POS metrics
     const totalTransactions = filteredTransactions.length;
-    const successfulTransactions = filteredTransactions.filter((t) => t.status === 'PAID').length;
-    const refundedTransactions = filteredTransactions.filter((t) => t.status === 'REFUNDED').length;
+    const successfulTransactions = paidTransactions.length;
+    const unpaidCount = unpaidTransactions.length;
+    const unpaidAmount = unpaidTransactions.reduce(
+      (sum, t) => sum + (Number(t.total) || 0),
+      0
+    );
+    const refundedTransactions = refundedList.length;
     const successRate =
       totalTransactions > 0 ? Math.round((successfulTransactions / totalTransactions) * 100) : 100;
 
-    const grossSales = filteredTransactions.reduce(
-      (acc, t) => acc + (t.status === 'PAID' ? t.subtotal : 0),
+    const grossSales = paidTransactions.reduce(
+      (acc, t) => acc + (Number(t.subtotal) || 0),
       0
     );
-    const totalDiscount = filteredTransactions.reduce(
-      (acc, t) => acc + (t.status === 'PAID' ? t.discountAmount : 0),
+    const totalDiscount = paidTransactions.reduce(
+      (acc, t) => acc + (Number(t.discountAmount) || 0),
       0
     );
-    const netSales = filteredTransactions.reduce(
-      (acc, t) => acc + (t.status === 'PAID' ? t.total : 0),
-      0
-    );
+    const netSales = totalOmzet;
     const totalExpenses = totalBelanjaBahan;
     const estimatedNetProfit = netSales - totalExpenses;
     const profitMargin = netSales > 0 ? Math.round((estimatedNetProfit / netSales) * 100) : 0;
 
-    const cashSales = filteredTransactions
-      .filter((t) => t.paymentMethod === 'CASH' && t.status === 'PAID')
-      .reduce((acc, t) => acc + t.total, 0);
-    const cashCount = filteredTransactions.filter(
-      (t) => t.paymentMethod === 'CASH' && t.status === 'PAID'
-    ).length;
+    const cashSales = paidTransactions
+      .filter((t) => t.paymentMethod === 'CASH')
+      .reduce((acc, t) => acc + (Number(t.total) || 0), 0);
+    const cashCount = paidTransactions.filter((t) => t.paymentMethod === 'CASH').length;
 
-    const qrisSales = filteredTransactions
-      .filter((t) => t.paymentMethod === 'QRIS' && t.status === 'PAID')
-      .reduce((acc, t) => acc + t.total, 0);
-    const qrisCount = filteredTransactions.filter(
-      (t) => t.paymentMethod === 'QRIS' && t.status === 'PAID'
-    ).length;
+    const qrisSales = paidTransactions
+      .filter((t) => t.paymentMethod === 'QRIS')
+      .reduce((acc, t) => acc + (Number(t.total) || 0), 0);
+    const qrisCount = paidTransactions.filter((t) => t.paymentMethod === 'QRIS').length;
 
     const avgTicket =
       successfulTransactions > 0 ? Math.round(netSales / successfulTransactions) : 0;
@@ -201,25 +218,23 @@ export const DashboardView: React.FC = () => {
       string,
       { id: string; name: string; category: string; qty: number; gross: number; net: number }
     >();
-    filteredTransactions
-      .filter((t) => t.status === 'PAID')
-      .forEach((tx) => {
-        tx.items.forEach((item) => {
-          const existing = itemMap.get(item.name) || {
-            id: item.productId,
-            name: item.name,
-            category: item.category,
-            qty: 0,
-            gross: 0,
-            net: 0,
-          };
-          existing.qty += item.quantity;
-          existing.gross += item.subtotal;
-          const itemDiscountRatio = tx.subtotal > 0 ? item.subtotal / tx.subtotal : 0;
-          existing.net += Math.round(item.subtotal - tx.discountAmount * itemDiscountRatio);
-          itemMap.set(item.name, existing);
-        });
+    paidTransactions.forEach((tx) => {
+      tx.items.forEach((item) => {
+        const existing = itemMap.get(item.name) || {
+          id: item.productId,
+          name: item.name,
+          category: item.category,
+          qty: 0,
+          gross: 0,
+          net: 0,
+        };
+        existing.qty += item.quantity;
+        existing.gross += item.subtotal;
+        const itemDiscountRatio = tx.subtotal > 0 ? item.subtotal / tx.subtotal : 0;
+        existing.net += Math.round(item.subtotal - tx.discountAmount * itemDiscountRatio);
+        itemMap.set(item.name, existing);
       });
+    });
 
     const bestSellers = Array.from(itemMap.values()).sort((a, b) => b.qty - a.qty);
     const totalQtySold = bestSellers.reduce((acc, i) => acc + i.qty, 0);
@@ -253,21 +268,19 @@ export const DashboardView: React.FC = () => {
       expenseCategoryMap[exp.category] = (expenseCategoryMap[exp.category] || 0) + nom;
     });
 
-    // 6. Cashier Performance breakdown
+    // 6. Cashier Performance breakdown (hanya menghitung transaksi yang sudah PAID / Lunas)
     const cashierPerf: Record<string, { count: number; total: number; avg: number }> = {};
     cashierList.forEach((c) => {
       cashierPerf[c] = { count: 0, total: 0, avg: 0 };
     });
-    filteredTransactions
-      .filter((t) => t.status === 'PAID')
-      .forEach((tx) => {
-        const cName = tx.cashierName || 'Harits';
-        if (!cashierPerf[cName]) {
-          cashierPerf[cName] = { count: 0, total: 0, avg: 0 };
-        }
-        cashierPerf[cName].count += 1;
-        cashierPerf[cName].total += tx.total;
-      });
+    paidTransactions.forEach((tx) => {
+      const cName = tx.cashierName || 'Harits';
+      if (!cashierPerf[cName]) {
+        cashierPerf[cName] = { count: 0, total: 0, avg: 0 };
+      }
+      cashierPerf[cName].count += 1;
+      cashierPerf[cName].total += Number(tx.total) || 0;
+    });
     Object.keys(cashierPerf).forEach((cName) => {
       const data = cashierPerf[cName];
       data.avg = data.count > 0 ? Math.round(data.total / data.count) : 0;
@@ -286,11 +299,14 @@ export const DashboardView: React.FC = () => {
     return {
       totalTransactions,
       successfulTransactions,
+      unpaidCount,
+      unpaidAmount,
       refundedTransactions,
       successRate,
       grossSales,
       totalDiscount,
       netSales,
+      totalOmzet,
       totalExpenses,
       estimatedNetProfit,
       profitMargin,
@@ -327,8 +343,9 @@ export const DashboardView: React.FC = () => {
     cashierList,
   ]);
 
-  // Hourly or Daily Trend Data for Chart
+  // Hourly or Daily Trend Data for Chart (hanya transaksi PAID / Lunas)
   const trendData = useMemo(() => {
+    const isPaidStatus = (s?: string) => s === 'PAID' || s === 'Lunas';
     if (timeRange === 'today') {
       const hours = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
       return hours.map((hourLabel) => {
@@ -336,10 +353,10 @@ export const DashboardView: React.FC = () => {
         let amount = 0;
         let count = 0;
         filteredTransactions.forEach((tx) => {
-          if (tx.status !== 'PAID') return;
+          if (!isPaidStatus(tx.status)) return;
           const d = new Date(tx.timestamp);
           if (Math.abs(d.getHours() - targetHour) <= 1) {
-            amount += tx.total;
+            amount += Number(tx.total) || 0;
             count += 1;
           }
         });
@@ -356,10 +373,10 @@ export const DashboardView: React.FC = () => {
         let amount = 0;
         let count = 0;
         transactions.forEach((tx) => {
-          if (tx.status !== 'PAID') return;
+          if (!isPaidStatus(tx.status)) return;
           const txDay = new Date(tx.timestamp).toISOString().split('T')[0];
           if (txDay === dayStr) {
-            amount += tx.total;
+            amount += Number(tx.total) || 0;
             count += 1;
           }
         });
@@ -452,20 +469,23 @@ export const DashboardView: React.FC = () => {
   };
 
   const handleExportExpenses = () => {
-    const rows: ExpenseExportRow[] = filteredExpenses.map((exp) => ({
-      expenseNumber: exp.expenseNumber,
-      date: exp.date,
-      itemName: exp.itemName,
-      category: exp.category,
-      quantity: exp.quantity,
-      unit: exp.unit,
-      unitPrice: exp.unitPrice,
-      totalPrice: getExpenseNominal(exp),
-      supplierName: exp.supplierName,
-      supplierLocation: exp.supplierLocation,
-      cashierName: exp.cashierName,
-      notes: exp.notes,
-    }));
+    const rows: ExpenseExportRow[] = filteredExpenses.map((exp) => {
+      const nominal = getExpenseNominal(exp);
+      return {
+        expenseNumber: exp.expenseNumber,
+        date: exp.date,
+        itemName: exp.itemName || exp.name || 'Belanja Bahan',
+        category: exp.category,
+        quantity: exp.quantity ?? 1,
+        unit: exp.unit ?? 'paket',
+        unitPrice: exp.unitPrice ?? nominal,
+        totalPrice: nominal,
+        supplierName: exp.supplierName || exp.supplier || '-',
+        supplierLocation: exp.supplierLocation || '-',
+        cashierName: exp.cashierName || exp.cashier || 'Kasir',
+        notes: exp.notes,
+      };
+    });
     triggerDownload(
       `RisoLogy_5_Pengeluaran_Bahan_${timeRange}.csv`,
       generateExpensesCsv(rows)
@@ -630,13 +650,15 @@ export const DashboardView: React.FC = () => {
                 {metrics.successfulTransactions}
               </div>
               <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                {metrics.successRate}% Sukses
+                {metrics.successRate}% Lunas
               </span>
             </div>
             <div className="mt-2 flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-              <span>Refund/Batal:</span>
-              <span className="font-semibold text-rose-600 font-mono">
-                {metrics.refundedTransactions} pesanan
+              <span>Belum Bayar / Refund:</span>
+              <span className="font-semibold font-mono flex items-center gap-1.5">
+                <span className="text-amber-700">{metrics.unpaidCount} belum</span>
+                <span className="text-slate-300">•</span>
+                <span className="text-rose-600">{metrics.refundedTransactions} refund</span>
               </span>
             </div>
           </div>
@@ -977,21 +999,19 @@ export const DashboardView: React.FC = () => {
                       return (
                         <tr key={exp.id} className="hover:bg-slate-50/80">
                           <td className="py-2.5 pr-3 font-bold text-slate-900">
-                            <div>{exp.itemName}</div>
+                            <div>{exp.itemName || exp.name}</div>
                             <span className="text-[10px] text-slate-500 font-normal">
-                              {exp.date} • {exp.quantity} {exp.unit} @{' '}
-                              {formatCurrency(exp.unitPrice)}
+                              {exp.date} • {exp.category}
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-slate-600">
-                            <div className="font-medium text-slate-800">{exp.supplierName}</div>
-                            <div className="text-[10px] text-slate-400 truncate max-w-[180px]">
-                              {exp.supplierLocation}
+                            <div className="font-medium text-slate-800">
+                              {exp.supplierName || exp.supplier || '-'}
                             </div>
                           </td>
                           <td className="py-2.5 px-2 text-center font-medium text-slate-700">
                             <span className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                              {exp.cashierName}
+                              {exp.cashierName || exp.cashier}
                             </span>
                           </td>
                           <td className="py-2.5 pl-3 text-right font-mono font-bold text-rose-600 whitespace-nowrap">

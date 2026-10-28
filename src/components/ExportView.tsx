@@ -140,7 +140,7 @@ export const ExportView: React.FC = () => {
     const map = new Map<string, { id: string; name: string; category: string; price: number; qty: number; gross: number; net: number }>();
 
     filteredTransactions
-      .filter((t) => t.status === 'PAID')
+      .filter((t) => t.status === 'PAID' || t.status === 'Lunas')
       .forEach((tx) => {
         tx.items.forEach((item) => {
           const existing = map.get(item.name) || {
@@ -230,18 +230,20 @@ export const ExportView: React.FC = () => {
       dateMap.set(formatDateTime(Date.now()).date, { txs: [], expenses: 0 });
     }
 
+    const isPaid = (s?: string) => s === 'PAID' || s === 'Lunas';
+
     return Array.from(dateMap.entries()).map(([dateStr, record]) => {
       const count = record.txs.length;
-      const grossSales = record.txs.reduce((a, t) => a + (t.status === 'PAID' ? t.subtotal : 0), 0);
-      const discounts = record.txs.reduce((a, t) => a + (t.status === 'PAID' ? t.discountAmount : 0), 0);
-      const netSales = record.txs.reduce((a, t) => a + (t.status === 'PAID' ? t.total : 0), 0);
+      const grossSales = record.txs.reduce((a, t) => a + (isPaid(t.status) ? t.subtotal : 0), 0);
+      const discounts = record.txs.reduce((a, t) => a + (isPaid(t.status) ? t.discountAmount : 0), 0);
+      const netSales = record.txs.reduce((a, t) => a + (isPaid(t.status) ? t.total : 0), 0);
       const supplierExpenses = record.expenses;
       const netProfit = netSales - supplierExpenses;
       const cashSales = record.txs
-        .filter((t) => t.paymentMethod === 'CASH' && t.status === 'PAID')
+        .filter((t) => t.paymentMethod === 'CASH' && isPaid(t.status))
         .reduce((a, t) => a + t.total, 0);
       const qrisSales = record.txs
-        .filter((t) => t.paymentMethod === 'QRIS' && t.status === 'PAID')
+        .filter((t) => t.paymentMethod === 'QRIS' && isPaid(t.status))
         .reduce((a, t) => a + t.total, 0);
 
       return {
@@ -260,20 +262,24 @@ export const ExportView: React.FC = () => {
 
   // 5. Template: Pengeluaran (Belanja Bahan Supplier)
   const expensesData = useMemo<ExpenseExportRow[]>(() => {
-    return filteredExpenses.map((exp) => ({
-      expenseNumber: exp.expenseNumber,
-      date: exp.date,
-      itemName: exp.itemName,
-      category: exp.category,
-      quantity: exp.quantity,
-      unit: exp.unit,
-      unitPrice: exp.unitPrice,
-      totalPrice: exp.totalPrice,
-      supplierName: exp.supplierName,
-      supplierLocation: exp.supplierLocation,
-      cashierName: exp.cashierName,
-      notes: exp.notes,
-    }));
+    return filteredExpenses.map((exp) => {
+      const resolvedTotal =
+        Number(exp.total ?? exp.totalBelanja ?? exp.amount ?? exp.totalPrice) || 0;
+      return {
+        expenseNumber: exp.expenseNumber,
+        date: exp.date,
+        itemName: exp.itemName || exp.name || 'Belanja Bahan',
+        category: exp.category,
+        quantity: exp.quantity ?? 1,
+        unit: exp.unit ?? 'paket',
+        unitPrice: exp.unitPrice ?? resolvedTotal,
+        totalPrice: resolvedTotal,
+        supplierName: exp.supplierName || exp.supplier || '-',
+        supplierLocation: exp.supplierLocation || '-',
+        cashierName: exp.cashierName || exp.cashier || 'Kasir',
+        notes: exp.notes,
+      };
+    });
   }, [filteredExpenses]);
 
   // 6. Template: Rincian Transaksi
@@ -933,12 +939,18 @@ export const ExportView: React.FC = () => {
                           <td className="py-3 px-3 text-center">
                             <span
                               className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                row.status === 'PAID'
-                                  ? 'bg-emerald-50 text-emerald-700'
-                                  : 'bg-rose-50 text-rose-700'
+                                row.status === 'PAID' || row.status === 'Lunas'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : row.status === 'UNPAID' || row.status === 'Belum Bayar'
+                                  ? 'bg-amber-50 text-amber-700 border border-amber-300'
+                                  : 'bg-rose-50 text-rose-700 border border-rose-200'
                               }`}
                             >
-                              {row.status}
+                              {row.status === 'UNPAID' || row.status === 'Belum Bayar'
+                                ? 'Belum Bayar'
+                                : row.status === 'REFUNDED' || row.status === 'Refund'
+                                ? 'Refund'
+                                : 'Lunas'}
                             </span>
                           </td>
                         </tr>

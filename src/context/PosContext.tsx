@@ -198,6 +198,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const baseSettings: StoreSettings = {
       ...INITIAL_STORE_SETTINGS,
       storeLogo: INITIAL_STORE_SETTINGS.logoUrl,
+      soundEnabled: true,
     };
     try {
       const cached = localStorage.getItem('pos_store_settings');
@@ -213,6 +214,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           qrisUrl: parsed.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl,
           storeName: parsed.storeName || INITIAL_STORE_SETTINGS.storeName,
           brandName: parsed.brandName || INITIAL_STORE_SETTINGS.brandName,
+          soundEnabled: parsed.soundEnabled ?? true,
         };
       }
     } catch {
@@ -500,7 +502,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const list: SupplierExpense[] = [];
         snapshot.forEach((d) => {
-          const raw = d.data() as SupplierExpense;
+          const raw = d.data() as Partial<SupplierExpense> & Record<string, any>;
           const resolvedNominal =
             Number(
               raw.totalBelanja ??
@@ -509,13 +511,37 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 raw.totalPrice ??
                 Number(raw.quantity || 0) * Number(raw.unitPrice || 0)
             ) || 0;
+          const resolvedName = String(raw.itemName || raw.name || 'Belanja Bahan');
+          const resolvedSupplier = String(raw.supplierName || raw.supplier || '-');
+          const resolvedCashier = String(raw.cashierName || raw.cashier || 'Harits');
+          const resolvedDate =
+            raw.date ||
+            (raw.createdAt ? String(raw.createdAt).split('T')[0] : new Date().toISOString().split('T')[0]);
+          const resolvedTimestamp =
+            raw.timestamp ||
+            (raw.createdAt ? new Date(raw.createdAt).getTime() : Date.now());
+
           list.push({
-            ...raw,
+            ...(raw as SupplierExpense),
             id: d.id,
+            expenseNumber: raw.expenseNumber || `#EXP-${d.id.slice(0, 4).toUpperCase()}`,
+            date: resolvedDate,
+            timestamp: Number.isNaN(resolvedTimestamp) ? Date.now() : resolvedTimestamp,
+            itemName: resolvedName,
+            name: resolvedName,
+            category: raw.category || 'Bahan Utama',
+            quantity: raw.quantity ?? 1,
+            unit: raw.unit || 'paket',
+            unitPrice: raw.unitPrice ?? resolvedNominal,
             totalPrice: resolvedNominal,
             totalBelanja: resolvedNominal,
             total: resolvedNominal,
             amount: resolvedNominal,
+            supplierName: resolvedSupplier,
+            supplier: resolvedSupplier,
+            supplierLocation: raw.supplierLocation || '-',
+            cashierName: resolvedCashier,
+            cashier: resolvedCashier,
           });
         });
         list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
@@ -627,6 +653,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           qrisUrl: data.qrisUrl || prev.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl,
           storeName: data.storeName || prev.storeName || INITIAL_STORE_SETTINGS.storeName,
           brandName: data.brandName || prev.brandName || INITIAL_STORE_SETTINGS.brandName,
+          soundEnabled: data.soundEnabled ?? prev.soundEnabled ?? true,
         };
         try {
           localStorage.setItem('pos_store_settings', JSON.stringify(nextSettings));
@@ -1013,28 +1040,52 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const tempId = `exp-${Date.now()}`;
     const resolvedNominal =
       Number(
-        expense.totalBelanja ??
-          expense.total ??
+        expense.total ??
+          expense.totalBelanja ??
           expense.amount ??
           expense.totalPrice ??
-          Number(expense.quantity || 0) * Number(expense.unitPrice || 0)
+          Number(expense.quantity || 1) * Number(expense.unitPrice || 0)
       ) || 0;
-    const newExp: SupplierExpense = {
-      ...expense,
-      id: tempId,
+    const resolvedName = (expense.name || expense.itemName || '').trim() || 'Belanja Bahan';
+    const resolvedSupplier =
+      (expense.supplier || expense.supplierName || '').trim() || '-';
+    const resolvedCashier =
+      (expense.cashier || expense.cashierName || activeCashier || currentUser || 'Kasir').trim();
+    const resolvedDate = expense.date || new Date().toISOString().split('T')[0];
+    const nowIso = new Date().toISOString();
+
+    const newExpensePayload = {
+      name: resolvedName,
+      itemName: resolvedName,
+      category: expense.category || 'Bahan Utama',
+      date: resolvedDate,
+      total: resolvedNominal,
+      totalBelanja: resolvedNominal,
+      totalPrice: resolvedNominal,
+      amount: resolvedNominal,
+      supplier: resolvedSupplier,
+      supplierName: resolvedSupplier,
+      supplierLocation: expense.supplierLocation?.trim() || '-',
+      cashier: resolvedCashier,
+      cashierName: resolvedCashier,
+      createdAt: nowIso,
+      // Fallback agar tabel lama tidak error jika membaca properti qty:
+      quantity: expense.quantity ?? 1,
+      unit: expense.unit || 'paket',
+      unitPrice: expense.unitPrice ?? resolvedNominal,
       expenseNumber: nextNum,
       timestamp: Date.now(),
-      date: expense.date || new Date().toISOString().split('T')[0],
-      cashierName: expense.cashierName || activeCashier,
-      totalPrice: resolvedNominal,
-      totalBelanja: resolvedNominal,
-      total: resolvedNominal,
-      amount: resolvedNominal,
+      ...(expense.notes ? { notes: expense.notes } : {}),
+    };
+
+    const newExp: SupplierExpense = {
+      ...newExpensePayload,
+      id: tempId,
     };
 
     setExpenses((prev) => [newExp, ...prev]);
 
-    addDoc(collection(db, FIRESTORE_COLLECTIONS.EXPENSES), cleanFirestoreData(newExp))
+    addDoc(collection(db, 'expenses'), cleanFirestoreData(newExpensePayload))
       .then((docRef) => {
         setExpenses((prev) =>
           prev.map((exp) => (exp.id === tempId ? { ...exp, id: docRef.id } : exp))
@@ -1049,18 +1100,37 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateExpense = (id: string, updates: Partial<SupplierExpense>) => {
     const resolvedNominal =
-      updates.totalBelanja ??
       updates.total ??
+      updates.totalBelanja ??
       updates.amount ??
       updates.totalPrice;
+    const resolvedName = updates.name ?? updates.itemName;
+    const resolvedSupplier = updates.supplier ?? updates.supplierName;
+    const resolvedCashier = updates.cashier ?? updates.cashierName;
+
     const normalizedUpdates: Partial<SupplierExpense> = {
       ...updates,
+      ...(resolvedName !== undefined
+        ? { name: resolvedName.trim(), itemName: resolvedName.trim() }
+        : {}),
+      ...(resolvedSupplier !== undefined
+        ? {
+            supplier: resolvedSupplier.trim() || '-',
+            supplierName: resolvedSupplier.trim() || '-',
+          }
+        : {}),
+      ...(resolvedCashier !== undefined
+        ? { cashier: resolvedCashier, cashierName: resolvedCashier }
+        : {}),
       ...(resolvedNominal !== undefined
         ? {
             totalPrice: Number(resolvedNominal) || 0,
             totalBelanja: Number(resolvedNominal) || 0,
             total: Number(resolvedNominal) || 0,
             amount: Number(resolvedNominal) || 0,
+            unitPrice: Number(resolvedNominal) || 0,
+            quantity: updates.quantity ?? 1,
+            unit: updates.unit || 'paket',
           }
         : {}),
     };
@@ -1731,6 +1801,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       qrisUrl: settings.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl,
       storeName: settings.storeName || INITIAL_STORE_SETTINGS.storeName,
       brandName: settings.brandName || INITIAL_STORE_SETTINGS.brandName,
+      soundEnabled: settings.soundEnabled ?? true,
     };
 
     setSettings(preservedSettings);

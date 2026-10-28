@@ -49,6 +49,7 @@ export const INITIAL_STORE_SETTINGS: StoreSettings = {
   storeLogo: '/logo.png',
   qrisUrl: '/assets/qris.png',
   pinCode: '666666',
+  soundEnabled: true,
 };
 
 export const INITIAL_CATEGORIES: string[] = ['Risol Mayo', 'Risol Gurih', 'Risol Manis'];

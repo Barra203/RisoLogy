@@ -19,9 +19,11 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  ShieldAlert,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { RisolIcon } from './RisolIcon';
+import { playSuccessChime } from '../utils/sound';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -479,6 +481,54 @@ export const SettingsView: React.FC = () => {
                   className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 text-black bg-white font-mono focus:outline-none"
                   placeholder="Terima kasih atas kunjungan Anda!..."
                 />
+              </div>
+
+              {/* Toggle Efek Suara Kasir (Audio Chime) */}
+              <div className="sm:col-span-2 pt-2">
+                <div className="flex items-center justify-between p-4 bg-stone-50 rounded-xl border border-stone-200">
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border ${
+                        settings.soundEnabled !== false
+                          ? 'bg-amber-50 text-amber-600 border-amber-200'
+                          : 'bg-stone-100 text-stone-400 border-stone-200'
+                      }`}
+                    >
+                      {settings.soundEnabled !== false ? (
+                        <Volume2 className="w-4 h-4" />
+                      ) : (
+                        <VolumeX className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-stone-800">
+                        Efek Suara Kasir (Audio Chime)
+                      </p>
+                      <p className="text-xs text-stone-500">
+                        Mainkan nada halus saat transaksi pembayaran berhasil diselesaikan
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={settings.soundEnabled !== false}
+                    onClick={() => {
+                      const nextVal = settings.soundEnabled === false;
+                      updateSettings({ soundEnabled: nextVal });
+                      if (nextVal) playSuccessChime();
+                    }}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors cursor-pointer ${
+                      settings.soundEnabled !== false ? 'bg-amber-600' : 'bg-stone-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        settings.soundEnabled !== false ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

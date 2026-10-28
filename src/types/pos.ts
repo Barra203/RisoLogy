@@ -46,6 +46,7 @@ export interface SupplierExpense {
   date: string; // YYYY-MM-DD
   timestamp: number;
   itemName: string;
+  name?: string;
   category:
     | 'Bahan Utama'
     | 'Bumbu & Saus'
@@ -54,18 +55,23 @@ export interface SupplierExpense {
     | 'Kemasan & Plastik'
     | 'Operasional'
     | string;
-  quantity: number;
-  unit: string; // kg, pack, pcs, liter, karton, tabung
-  unitPrice: number;
+  quantity?: number;
+  unit?: string; // kg, pack, pcs, liter, karton, tabung, paket
+  unitPrice?: number;
   totalPrice: number;
   totalBelanja?: number;
   total?: number;
   amount?: number;
   supplierName: string;
-  supplierLocation: string;
+  supplier?: string;
+  supplierLocation?: string;
   cashierName: string;
+  cashier?: string;
+  createdAt?: string;
   notes?: string;
 }
+
+export type Expense = SupplierExpense;
 
 export interface CustomerRecord {
   id: string;
@@ -95,6 +101,8 @@ export interface TransactionItem {
 
 export type OrderItem = TransactionItem;
 
+export type TransactionStatus = 'PAID' | 'UNPAID' | 'REFUNDED' | 'Lunas' | 'Belum Bayar' | 'Refund';
+
 export interface Transaction {
   id: string;
   transactionNumber: string; // e.g. #RSL-0001
@@ -119,8 +127,9 @@ export interface Transaction {
   customerEmail?: string;
   emailSent?: boolean;
   notes?: string;
+  createdAt?: any;
   updatedAt?: number;
-  status: 'PAID' | 'REFUNDED';
+  status: TransactionStatus;
 }
 
 export interface StoreSettings {
@@ -135,6 +144,7 @@ export interface StoreSettings {
   qrisUrl: string;
   qrisNmid?: string;
   pinCode: string;
+  soundEnabled?: boolean; // Status aktif/nonaktif suara notifikasi kasir (default: true)
 }
 
 export type ActiveTab =

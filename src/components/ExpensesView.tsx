@@ -1,45 +1,50 @@
 import React, { useState, useMemo } from 'react';
 import { usePos } from '../context/PosContext';
 import { SupplierExpense } from '../types/pos';
-import { formatCurrency, formatDateTime } from '../utils/pos-logic';
+import { formatCurrency } from '../utils/pos-logic';
 import {
   Truck,
   Plus,
   Search,
-  Filter,
-  Calendar,
   Building2,
-  MapPin,
-  Tag,
   Edit2,
   Trash2,
   X,
   Check,
-  Download,
-  AlertCircle,
-  TrendingDown,
-  User,
+  AlertTriangle,
 } from 'lucide-react';
 
+const TEAM_PIC_LIST = ['Barra', 'Harits', 'Dimas', 'Akhyar'];
+
+const getExpenseTotal = (exp: SupplierExpense): number => {
+  return (
+    Number(
+      exp.total ??
+        exp.totalBelanja ??
+        exp.amount ??
+        exp.totalPrice ??
+        Number(exp.quantity || 1) * Number(exp.unitPrice || 0)
+    ) || 0
+  );
+};
+
 export const ExpensesView: React.FC = () => {
-  const { expenses, addExpense, updateExpense, deleteExpense, activeCashier, cashierList } = usePos();
+  const { expenses, addExpense, updateExpense, deleteExpense, activeCashier, cashierList } =
+    usePos();
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [deletingExpense, setDeletingExpense] = useState<SupplierExpense | null>(null);
 
-  // Form states
-  const [itemName, setItemName] = useState<string>('');
+  // 5 Essential Form States
+  const [name, setName] = useState<string>('');
   const [category, setCategory] = useState<string>('Bahan Utama');
-  const [quantity, setQuantity] = useState<number>(1);
-  const [unit, setUnit] = useState<string>('kg');
-  const [unitPrice, setUnitPrice] = useState<number>(0);
-  const [supplierName, setSupplierName] = useState<string>('');
-  const [supplierLocation, setSupplierLocation] = useState<string>('');
-  const [expenseCashier, setExpenseCashier] = useState<string>(activeCashier);
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [notes, setNotes] = useState<string>('');
+  const [total, setTotal] = useState<string>('');
+  const [supplier, setSupplier] = useState<string>('');
+  const [cashier, setCashier] = useState<string>(activeCashier || 'Barra');
   const [formError, setFormError] = useState<string>('');
 
   const categories = [
@@ -52,14 +57,32 @@ export const ExpensesView: React.FC = () => {
     'Operasional',
   ];
 
+  // Daftar Kasir / PIC (utamakan Barra, Harits, Dimas, Akhyar + kasir aktif)
+  const availableCashiers = useMemo(() => {
+    const set = new Set<string>([...TEAM_PIC_LIST, ...(cashierList || [])]);
+    if (activeCashier && activeCashier.trim()) {
+      set.add(activeCashier.trim());
+    }
+    if (cashier && cashier.trim()) {
+      set.add(cashier.trim());
+    }
+    return Array.from(set);
+  }, [cashierList, activeCashier, cashier]);
+
   // Filtered expenses
   const filteredExpenses = useMemo(() => {
     return expenses.filter((exp) => {
+      const q = searchQuery.toLowerCase();
+      const expName = (exp.itemName || exp.name || '').toLowerCase();
+      const expSupplier = (exp.supplierName || exp.supplier || '').toLowerCase();
+      const expNumber = (exp.expenseNumber || '').toLowerCase();
+      const expCashier = (exp.cashierName || exp.cashier || '').toLowerCase();
+
       const matchSearch =
-        exp.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        exp.supplierName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        exp.supplierLocation.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        exp.expenseNumber.toLowerCase().includes(searchQuery.toLowerCase());
+        expName.includes(q) ||
+        expSupplier.includes(q) ||
+        expNumber.includes(q) ||
+        expCashier.includes(q);
       const matchCategory = selectedCategory === 'Semua' || exp.category === selectedCategory;
       return matchSearch && matchCategory;
     });
@@ -67,14 +90,14 @@ export const ExpensesView: React.FC = () => {
 
   // Aggregate stats
   const stats = useMemo(() => {
-    const totalExpenses = expenses.reduce((acc, exp) => acc + exp.totalPrice, 0);
+    const totalExpenses = expenses.reduce((acc, exp) => acc + getExpenseTotal(exp), 0);
     const invoiceCount = expenses.length;
     const avgInvoice = invoiceCount > 0 ? Math.round(totalExpenses / invoiceCount) : 0;
 
     // Largest category
     const catMap: Record<string, number> = {};
     expenses.forEach((e) => {
-      catMap[e.category] = (catMap[e.category] || 0) + e.totalPrice;
+      catMap[e.category] = (catMap[e.category] || 0) + getExpenseTotal(e);
     });
 
     let topCat = 'Bahan Utama';
@@ -91,91 +114,99 @@ export const ExpensesView: React.FC = () => {
 
   const handleOpenAddModal = () => {
     setEditingExpenseId(null);
-    setItemName('');
+    setName('');
     setCategory('Bahan Utama');
-    setQuantity(1);
-    setUnit('kg');
-    setUnitPrice(0);
-    setSupplierName('');
-    setSupplierLocation('');
-    setExpenseCashier(activeCashier);
     setDate(new Date().toISOString().split('T')[0]);
-    setNotes('');
+    setTotal('');
+    setSupplier('');
+    setCashier(activeCashier || 'Barra');
     setFormError('');
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (exp: SupplierExpense) => {
+    const resolvedNominal = getExpenseTotal(exp);
     setEditingExpenseId(exp.id);
-    setItemName(exp.itemName);
-    setCategory(exp.category);
-    setQuantity(exp.quantity);
-    setUnit(exp.unit);
-    setUnitPrice(exp.unitPrice);
-    setSupplierName(exp.supplierName);
-    setSupplierLocation(exp.supplierLocation);
-    setExpenseCashier(exp.cashierName);
-    setDate(exp.date);
-    setNotes(exp.notes || '');
+    setName(exp.itemName || exp.name || '');
+    setCategory(exp.category || 'Bahan Utama');
+    setDate(exp.date || new Date().toISOString().split('T')[0]);
+    setTotal(resolvedNominal > 0 ? String(resolvedNominal) : '');
+    setSupplier(
+      (exp.supplierName || exp.supplier || '') === '-'
+        ? ''
+        : exp.supplierName || exp.supplier || ''
+    );
+    setCashier(exp.cashierName || exp.cashier || activeCashier || 'Barra');
     setFormError('');
     setIsModalOpen(true);
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!itemName.trim()) {
-      setFormError('Nama bahan / barang wajib diisi');
+    const trimmedName = name.trim();
+    const numericTotal = Number(total);
+
+    if (!trimmedName) {
+      setFormError('Nama bahan / keperluan wajib diisi');
       return;
     }
-    if (quantity <= 0) {
-      setFormError('Jumlah / kuantitas harus lebih dari 0');
-      return;
-    }
-    if (unitPrice <= 0) {
-      setFormError('Harga satuan wajib diisi');
-      return;
-    }
-    if (!supplierName.trim()) {
-      setFormError('Nama supplier wajib diisi');
+    if (!numericTotal || numericTotal <= 0) {
+      setFormError('Total nominal belanja (Rp) wajib diisi dan lebih dari 0');
       return;
     }
 
-    const totalPrice = quantity * unitPrice;
+    const resolvedSupplier = supplier.trim() || '-';
+    const resolvedCashier = cashier || activeCashier || 'Kasir';
+    const resolvedDate = date || new Date().toISOString().split('T')[0];
 
     if (editingExpenseId) {
       updateExpense(editingExpenseId, {
-        itemName: itemName.trim(),
+        name: trimmedName,
+        itemName: trimmedName,
         category,
-        quantity,
-        unit: unit.trim(),
-        unitPrice,
-        totalPrice,
-        supplierName: supplierName.trim(),
-        supplierLocation: supplierLocation.trim(),
-        cashierName: expenseCashier,
-        date,
-        notes: notes.trim() || undefined,
+        date: resolvedDate,
+        total: numericTotal,
+        totalBelanja: numericTotal,
+        totalPrice: numericTotal,
+        amount: numericTotal,
+        supplier: resolvedSupplier,
+        supplierName: resolvedSupplier,
+        cashier: resolvedCashier,
+        cashierName: resolvedCashier,
+        quantity: 1,
+        unit: 'paket',
+        unitPrice: numericTotal,
       });
     } else {
       addExpense({
-        itemName: itemName.trim(),
+        name: trimmedName,
+        itemName: trimmedName,
         category,
-        quantity,
-        unit: unit.trim(),
-        unitPrice,
-        totalPrice,
-        supplierName: supplierName.trim(),
-        supplierLocation: supplierLocation.trim(),
-        cashierName: expenseCashier,
-        date,
-        notes: notes.trim() || undefined,
+        date: resolvedDate,
+        total: numericTotal,
+        totalBelanja: numericTotal,
+        totalPrice: numericTotal,
+        amount: numericTotal,
+        supplier: resolvedSupplier,
+        supplierName: resolvedSupplier,
+        supplierLocation: '-',
+        cashier: resolvedCashier,
+        cashierName: resolvedCashier,
+        createdAt: new Date().toISOString(),
+        quantity: 1,
+        unit: 'paket',
+        unitPrice: numericTotal,
       });
     }
 
     setIsModalOpen(false);
   };
 
-  const calculatedTotal = quantity * unitPrice;
+  const handleConfirmDelete = () => {
+    if (!deletingExpense) return;
+    deleteExpense(deletingExpense.id);
+    setDeletingExpense(null);
+  };
 
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#F5F5F5]">
@@ -190,14 +221,14 @@ export const ExpensesView: React.FC = () => {
               </h1>
             </div>
             <p className="text-xs text-[#666666] mt-0.5">
-              Catat pengeluaran belanja bahan baku risol (daging, mayonaise, panko, kemasan) &amp; data supplier
+              Catat pengeluaran belanja bahan baku risol (keju, tepung, minyak, kemasan) dengan cepat berdasarkan total nota
             </p>
           </div>
 
           <button
             type="button"
             onClick={handleOpenAddModal}
-            className="px-4 py-2.5 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-md shadow-amber-600/20 transition-colors"
+            className="px-4 py-2.5 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold uppercase tracking-wider rounded-lg flex items-center gap-2 cursor-pointer shadow-md shadow-amber-600/20 transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Catat Belanja Baru</span>
@@ -207,38 +238,38 @@ export const ExpensesView: React.FC = () => {
         {/* KPI Cards Row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[#F0F0F0]">
           {/* Total Belanja (Red money) */}
-          <div className="p-3 bg-rose-50/70 border border-rose-200 rounded">
+          <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-lg">
             <span className="text-[10px] font-bold text-rose-900 uppercase tracking-wider block">
               Total Pengeluaran Bahan
             </span>
-            <span className="font-mono text-xl font-extrabold text-rose-600 mt-0.5 block">
+            <span className="font-mono text-xl font-extrabold text-rose-600 mt-0.5 block tabular-nums">
               - {formatCurrency(stats.totalExpenses)}
             </span>
           </div>
 
-          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded">
+          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg">
             <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">
               Jumlah Faktur / Transaksi
             </span>
-            <span className="font-mono text-xl font-extrabold text-amber-950 mt-0.5 block">
+            <span className="font-mono text-xl font-extrabold text-amber-950 mt-0.5 block tabular-nums">
               {stats.invoiceCount} Transaksi
             </span>
           </div>
 
-          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded">
+          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg">
             <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">
               Rata-rata Nota Belanja
             </span>
-            <span className="font-mono text-xl font-extrabold text-amber-950 mt-0.5 block">
+            <span className="font-mono text-xl font-extrabold text-amber-950 mt-0.5 block tabular-nums">
               {formatCurrency(stats.avgInvoice)}
             </span>
           </div>
 
-          <div className="p-3 bg-slate-100 border border-slate-200 rounded">
+          <div className="p-3 bg-slate-100 border border-slate-200 rounded-lg">
             <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider block">
               Kategori Terbesar: {stats.topCat}
             </span>
-            <span className="font-mono text-xl font-extrabold text-slate-800 mt-0.5 block">
+            <span className="font-mono text-xl font-extrabold text-slate-800 mt-0.5 block tabular-nums">
               {formatCurrency(stats.topCatAmount)}
             </span>
           </div>
@@ -250,10 +281,10 @@ export const ExpensesView: React.FC = () => {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Cari nama bahan, supplier, lokasi, atau #EXP..."
+              placeholder="Cari nama bahan, tempat beli / toko, kasir, atau #EXP..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
             />
           </div>
 
@@ -263,7 +294,7 @@ export const ExpensesView: React.FC = () => {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1 text-xs font-semibold rounded whitespace-nowrap cursor-pointer transition-colors ${
+                className={`px-3 py-1 text-xs font-semibold rounded-lg whitespace-nowrap cursor-pointer transition-colors ${
                   selectedCategory === cat
                     ? 'bg-amber-600 text-white shadow-xs'
                     : 'bg-white text-slate-700 border border-slate-200 hover:border-amber-300'
@@ -288,100 +319,91 @@ export const ExpensesView: React.FC = () => {
             {/* TAMPILAN MOBILE: DAFTAR KARTU BELANJA BAHAN (block md:hidden) */}
             {/* ============================================================= */}
             <div className="block md:hidden">
-              {filteredExpenses.map((exp) => (
-                <div
-                  key={exp.id}
-                  className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-2.5 mb-3"
-                >
-                  {/* Baris 1: ID Nota Belanja, Badge Kategori, dan Nama Kasir/PIC */}
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-xs text-slate-900 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
-                        {exp.expenseNumber}
-                      </span>
-                      <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded text-[10px]">
-                        {exp.category}
-                      </span>
-                    </div>
+              {filteredExpenses.map((exp) => {
+                const nominal = getExpenseTotal(exp);
+                const displayName = exp.itemName || exp.name || 'Belanja Bahan';
+                const displaySupplier = exp.supplierName || exp.supplier || '-';
+                const displayCashier = exp.cashierName || exp.cashier || 'Kasir';
 
-                    <span className="px-2 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[10px] border border-amber-200">
-                      Kasir/PIC: {exp.cashierName}
-                    </span>
-                  </div>
-
-                  {/* Baris 2: Tanggal, Nama Bahan, Kuantitas, dan Supplier */}
-                  <div className="pt-1.5 border-t border-slate-100 space-y-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900">{exp.itemName}</h3>
-                        {exp.notes && (
-                          <p className="text-[11px] text-slate-500 italic">{exp.notes}</p>
-                        )}
+                return (
+                  <div
+                    key={exp.id}
+                    className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-2.5 mb-3"
+                  >
+                    {/* Baris 1: ID Nota Belanja, Badge Kategori, dan Nama Kasir/PIC */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-xs text-slate-900 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                          {exp.expenseNumber}
+                        </span>
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded text-[10px]">
+                          {exp.category}
+                        </span>
                       </div>
-                      <span className="text-[11px] font-mono text-slate-500 shrink-0">
-                        {exp.date}
+
+                      <span className="px-2 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[10px] border border-amber-200">
+                        Kasir / PIC: {displayCashier}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs pt-1">
-                      <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                    {/* Baris 2: Tanggal, Nama Bahan, dan Tempat Beli / Supplier */}
+                    <div className="pt-1.5 border-t border-slate-100 space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="text-sm font-bold text-slate-900">{displayName}</h3>
+                          {exp.notes && (
+                            <p className="text-[11px] text-slate-500 italic">{exp.notes}</p>
+                          )}
+                        </div>
+                        <span className="text-[11px] font-mono text-slate-500 shrink-0">
+                          {exp.date}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium pt-0.5">
                         <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="truncate max-w-[180px]">{exp.supplierName}</span>
+                        <span className="truncate">{displaySupplier}</span>
                       </div>
-                      <span className="font-mono text-xs font-bold text-slate-700">
-                        {exp.quantity} {exp.unit} × {formatCurrency(exp.unitPrice)}
-                      </span>
                     </div>
 
-                    {exp.supplierLocation && (
-                      <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                        <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span className="truncate">{exp.supplierLocation}</span>
+                    {/* Baris 3: Total Nominal (Teks Tebal Besar) serta Tombol Aksi Sentuh */}
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                          Total Belanja
+                        </span>
+                        <span className="font-mono text-base font-extrabold text-rose-600 tabular-nums">
+                          - {formatCurrency(nominal)}
+                        </span>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Baris 3: Total Nominal (Teks Tebal Besar) serta Tombol Aksi Sentuh */}
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">
-                        Total Belanja
-                      </span>
-                      <span className="font-mono text-base font-extrabold text-rose-600 tabular-nums">
-                        - {formatCurrency(exp.totalPrice)}
-                      </span>
-                    </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(exp)}
+                          className="touch-manipulation py-2 px-3 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold rounded-lg inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditModal(exp)}
-                        className="touch-manipulation py-2 px-3 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold rounded-lg inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        <span>Edit</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm(`Hapus catatan belanja "${exp.itemName}" (${exp.expenseNumber})?`)) {
-                            deleteExpense(exp.id);
-                          }
-                        }}
-                        className="touch-manipulation py-2 px-3 bg-rose-600 text-white hover:bg-rose-700 text-xs font-bold rounded-lg inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Hapus</span>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingExpense(exp)}
+                          className="touch-manipulation py-2 px-3 bg-rose-600 text-white hover:bg-rose-700 text-xs font-bold rounded-lg inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Hapus</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* ============================================================= */}
-            {/* TAMPILAN DESKTOP: TABEL LENGKAP (hidden md:block)             */}
+            {/* TAMPILAN DESKTOP: TABEL RINGKAS (hidden md:block)             */}
             {/* ============================================================= */}
             <div className="hidden md:block bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
               <div className="overflow-x-auto">
@@ -391,107 +413,94 @@ export const ExpensesView: React.FC = () => {
                       <th className="py-3 px-4">No &amp; Tanggal</th>
                       <th className="py-3 px-4">Nama Bahan</th>
                       <th className="py-3 px-3">Kategori</th>
-                      <th className="py-3 px-3 text-right">Kuantitas</th>
-                      <th className="py-3 px-3 text-right">Harga Satuan</th>
                       <th className="py-3 px-4 text-right">Total Belanja (-)</th>
-                      <th className="py-3 px-4">Supplier &amp; Lokasi</th>
+                      <th className="py-3 px-4">Supplier</th>
                       <th className="py-3 px-3">Kasir / PIC</th>
                       <th className="py-3 px-3 text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredExpenses.map((exp) => (
-                      <tr key={exp.id} className="hover:bg-slate-50 transition-colors">
-                        {/* No & Tanggal */}
-                        <td className="py-3 px-4">
-                          <span className="font-mono font-bold text-slate-900 block">
-                            {exp.expenseNumber}
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-mono">
-                            {exp.date}
-                          </span>
-                        </td>
+                    {filteredExpenses.map((exp) => {
+                      const nominal = getExpenseTotal(exp);
+                      const displayName = exp.itemName || exp.name || 'Belanja Bahan';
+                      const displaySupplier = exp.supplierName || exp.supplier || '-';
+                      const displayCashier = exp.cashierName || exp.cashier || 'Kasir';
 
-                        {/* Nama Bahan */}
-                        <td className="py-3 px-4 font-bold text-slate-900">
-                          <span>{exp.itemName}</span>
-                          {exp.notes && (
-                            <span className="block text-[10px] text-slate-500 font-normal italic">
-                              {exp.notes}
+                      return (
+                        <tr key={exp.id} className="hover:bg-slate-50 transition-colors">
+                          {/* No & Tanggal */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="font-mono font-bold text-slate-900 block">
+                              {exp.expenseNumber}
                             </span>
-                          )}
-                        </td>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              {exp.date}
+                            </span>
+                          </td>
 
-                        {/* Kategori */}
-                        <td className="py-3 px-3">
-                          <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded text-[10px]">
-                            {exp.category}
-                          </span>
-                        </td>
+                          {/* Nama Bahan */}
+                          <td className="py-3 px-4 font-bold text-slate-900">
+                            <span>{displayName}</span>
+                            {exp.notes && (
+                              <span className="block text-[10px] text-slate-500 font-normal italic">
+                                {exp.notes}
+                              </span>
+                            )}
+                          </td>
 
-                        {/* Kuantitas */}
-                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-800">
-                          {exp.quantity} {exp.unit}
-                        </td>
+                          {/* Kategori */}
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded text-[10px]">
+                              {exp.category}
+                            </span>
+                          </td>
 
-                        {/* Harga Satuan */}
-                        <td className="py-3 px-3 text-right font-mono text-slate-600">
-                          {formatCurrency(exp.unitPrice)}
-                        </td>
+                          {/* Total Belanja (Minus = Red) */}
+                          <td className="py-3 px-4 text-right font-mono font-extrabold text-rose-600 bg-rose-50/30 tabular-nums whitespace-nowrap">
+                            - {formatCurrency(nominal)}
+                          </td>
 
-                        {/* Total Belanja (Minus = Red) */}
-                        <td className="py-3 px-4 text-right font-mono font-extrabold text-rose-600 bg-rose-50/30">
-                          - {formatCurrency(exp.totalPrice)}
-                        </td>
-
-                        {/* Supplier & Lokasi */}
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-1 font-semibold text-slate-900">
-                            <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span>{exp.supplierName}</span>
-                          </div>
-                          {exp.supplierLocation && (
-                            <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5 truncate max-w-[220px]">
-                              <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                              <span className="truncate">{exp.supplierLocation}</span>
+                          {/* Supplier */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+                              <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span>{displaySupplier}</span>
                             </div>
-                          )}
-                        </td>
+                          </td>
 
-                        {/* Kasir / Shift PIC */}
-                        <td className="py-3 px-3">
-                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[10px] border border-amber-200">
-                            {exp.cashierName}
-                          </span>
-                        </td>
+                          {/* Kasir / Shift PIC */}
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[10px] border border-amber-200">
+                              {displayCashier}
+                            </span>
+                          </td>
 
-                        {/* Actions */}
-                        <td className="py-3 px-3 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditModal(exp)}
-                              className="p-1 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded cursor-pointer"
-                              title="Edit belanja"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (confirm(`Hapus catatan belanja "${exp.itemName}" (${exp.expenseNumber})?`)) {
-                                  deleteExpense(exp.id);
-                                }
-                              }}
-                              className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
-                              title="Hapus belanja"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          {/* Actions */}
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditModal(exp)}
+                                className="px-2.5 py-1 text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded font-semibold text-[11px] inline-flex items-center gap-1 cursor-pointer transition-colors"
+                                title="Edit belanja"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeletingExpense(exp)}
+                                className="px-2.5 py-1 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded font-semibold text-[11px] inline-flex items-center gap-1 cursor-pointer transition-colors"
+                                title="Hapus belanja"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>Hapus</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -500,65 +509,70 @@ export const ExpensesView: React.FC = () => {
         )}
       </div>
 
-      {/* Add / Edit Expense Modal */}
+      {/* ===================================================================== */}
+      {/* MODAL CATAT / EDIT BELANJA BAHAN RINGKAS (5 FIELD UTAMA)              */}
+      {/* ===================================================================== */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-lg bg-white rounded-lg shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
             {/* Header */}
             <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <Truck className="w-5 h-5 text-amber-400" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-400/30 flex items-center justify-center">
+                  <Truck className="w-4 h-4 text-amber-400" />
+                </div>
                 <div>
                   <h3 className="font-bold text-sm tracking-tight">
                     {editingExpenseId ? 'Edit Belanja Bahan' : 'Catat Belanja Bahan Supplier Baru'}
                   </h3>
                   <p className="text-[11px] text-slate-300">
-                    Input pembelian bahan baku, harga grosir, dan identitas supplier
+                    Input cepat nominal pengeluaran sesuai nota belanja
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-white rounded cursor-pointer"
+                className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer transition-colors"
+                aria-label="Tutup"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Form Body */}
+            {/* Form Body (Hanya 5 Field Esensial) */}
             <form onSubmit={handleSave} className="p-6 overflow-y-auto space-y-4 flex-1">
               {formError && (
-                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded">
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium rounded-xl">
                   {formError}
                 </div>
               )}
 
-              {/* Nama Bahan */}
+              {/* 1. Nama Bahan / Pengeluaran (Wajib) */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                  Nama Bahan / Barang *
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Nama Bahan / Keperluan *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Cth: Daging Smoked Beef Slice Premium, Mayonaise Kewpie, dsb."
-                  value={itemName}
-                  onChange={(e) => setItemName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
+                  placeholder="Cth: Keju, Tepung Terigu, Minyak, Box Kemasan..."
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
                 />
               </div>
 
-              {/* Kategori & Tanggal */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* 2. Kategori Pengeluaran & Tanggal (Sejajar 2 Kolom) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Kategori Pengeluaran
                   </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
                   >
                     <option value="Bahan Utama">Bahan Utama</option>
                     <option value="Bumbu & Saus">Bumbu &amp; Saus</option>
@@ -570,7 +584,7 @@ export const ExpensesView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Tanggal Belanja
                   </label>
                   <input
@@ -578,92 +592,59 @@ export const ExpensesView: React.FC = () => {
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none font-mono"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-mono text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
                   />
                 </div>
               </div>
 
-              {/* Quantity, Unit, Unit Price */}
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                    Jumlah / Qty *
-                  </label>
-                  <input
-                    type="number"
-                    min="0.1"
-                    step="any"
-                    required
-                    value={quantity || ''}
-                    onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none font-mono font-bold"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                    Satuan *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="kg / pack / pcs"
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                    Harga Satuan (Rp) *
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={unitPrice || ''}
-                    onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none font-mono font-bold"
-                  />
-                </div>
+              {/* 3. Total Pengeluaran / Belanja (Wajib - Input Langsung) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Total Nominal Belanja (Rp) *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  step="any"
+                  placeholder="Cth: 25000"
+                  value={total}
+                  onChange={(e) => setTotal(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-lg font-bold text-rose-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-mono tabular-nums"
+                />
+                {Number(total) > 0 && (
+                  <p className="text-[11px] font-mono text-rose-600 font-semibold mt-1">
+                    Nominal tercatat: - {formatCurrency(Number(total))}
+                  </p>
+                )}
               </div>
 
-              {/* Total Belanja Preview Banner */}
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded flex items-center justify-between">
-                <span className="text-xs font-bold text-rose-900 uppercase">Total Belanja:</span>
-                <span className="font-mono text-base font-extrabold text-rose-600">
-                  - {formatCurrency(calculatedTotal)}
-                </span>
-              </div>
-
-              {/* Supplier Info: Name & Location */}
+              {/* 4. Nama Supplier / Toko (Opsional) & 5. Kasir / PIC (Dropdown) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                    Nama Supplier / Toko *
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Tempat Beli / Toko (Opsional)
                   </label>
                   <input
                     type="text"
-                    required
-                    placeholder="Cth: CV Sumber Pangan Mandiri, Toko Kue Berkah"
-                    value={supplierName}
-                    onChange={(e) => setSupplierName(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
+                    placeholder="Cth: Pasar, O Save, Shopee, Warung..."
+                    value={supplier}
+                    onChange={(e) => setSupplier(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                    Kasir Penanggung Jawab
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Kasir / PIC
                   </label>
                   <select
-                    value={expenseCashier}
-                    onChange={(e) => setExpenseCashier(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none font-semibold"
+                    value={cashier}
+                    onChange={(e) => setCashier(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
                   >
-                    {cashierList.map((c) => (
-                      <option key={c} value={c}>
+                    {availableCashiers.map((c) => (
+                      <option key={c} value={c} className="bg-white text-slate-900">
                         {c}
                       </option>
                     ))}
@@ -671,50 +652,71 @@ export const ExpensesView: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                  Alamat / Lokasi / Kontak Supplier
-                </label>
-                <input
-                  type="text"
-                  placeholder="Cth: Pasar Senen Blok B No. 14, Jakarta Pusat (0812-8899-1122)"
-                  value={supplierLocation}
-                  onChange={(e) => setSupplierLocation(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                  Catatan Tambahan (Opsional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Cth: Stok untuk kebutuhan 4 hari, grade A premium"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
-                />
-              </div>
-
               {/* Actions */}
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 cursor-pointer"
+                  className="px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded shadow-md shadow-amber-600/20 cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-md shadow-amber-600/20 cursor-pointer flex items-center gap-1.5 transition-all active:scale-95"
                 >
                   <Check className="w-4 h-4" />
                   <span>Simpan Catatan Belanja</span>
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Hapus Belanja Bahan */}
+      {deletingExpense && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-5 text-slate-800">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  Hapus Catatan Belanja {deletingExpense.expenseNumber}?
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Apakah Anda yakin ingin menghapus pengeluaran{' '}
+                  <strong className="text-slate-900">
+                    {deletingExpense.itemName || deletingExpense.name}
+                  </strong>{' '}
+                  senilai{' '}
+                  <strong className="text-rose-600">
+                    {formatCurrency(getExpenseTotal(deletingExpense))}
+                  </strong>
+                  ?
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDeletingExpense(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 bg-slate-50 hover:bg-slate-100 font-semibold text-xs cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-sm"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Ya, Hapus</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

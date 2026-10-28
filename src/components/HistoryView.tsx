@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { usePos } from '../context/PosContext';
-import { Transaction, PaymentMethod } from '../types/pos';
+import { Transaction, PaymentMethod, TransactionStatus } from '../types/pos';
 import { formatCurrency, formatDateTime } from '../utils/pos-logic';
 import {
   Search,
@@ -26,11 +26,48 @@ interface EditFormState {
   paymentMethod: PaymentMethod;
   cashierName: string;
   cashier: string;
-  status: 'PAID' | 'REFUNDED';
+  status: TransactionStatus;
   notes: string;
 }
 
 const DEFAULT_TEAM_CASHIERS = ['Barra', 'Harits', 'Dimas', 'Akhyar', 'Rafi'];
+
+const normalizeStatusValue = (status?: string): TransactionStatus => {
+  const upper = (status || 'PAID').toUpperCase();
+  if (upper === 'UNPAID' || upper === 'BELUM BAYAR') return 'UNPAID';
+  if (upper === 'REFUNDED' || upper === 'REFUND') return 'REFUNDED';
+  return 'PAID';
+};
+
+export const renderStatusBadge = (status: string) => {
+  const normalized = status?.toUpperCase() || 'PAID';
+
+  if (normalized === 'UNPAID' || normalized === 'BELUM BAYAR') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-300">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+        Belum Bayar
+      </span>
+    );
+  }
+
+  if (normalized === 'REFUNDED' || normalized === 'REFUND') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+        Refund
+      </span>
+    );
+  }
+
+  // Default: PAID / Lunas
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+      Lunas
+    </span>
+  );
+};
 
 export const HistoryView: React.FC = () => {
   const {
@@ -86,28 +123,41 @@ export const HistoryView: React.FC = () => {
     return transactions.filter((tx) => {
       const q = searchQuery.toLowerCase();
       const txCashier = (tx.cashierName || tx.cashier || tx.pic || '').toLowerCase();
+      const txStatusLabel =
+        tx.status === 'UNPAID' || tx.status === 'Belum Bayar'
+          ? 'belum bayar unpaid'
+          : tx.status === 'REFUNDED' || tx.status === 'Refund'
+          ? 'refund dibatalkan'
+          : 'lunas paid';
       const matchSearch =
         tx.transactionNumber.toLowerCase().includes(q) ||
         tx.customerName.toLowerCase().includes(q) ||
         txCashier.includes(q) ||
+        txStatusLabel.includes(q) ||
         (tx.notes && tx.notes.toLowerCase().includes(q));
       const matchMethod = methodFilter === 'ALL' || tx.paymentMethod === methodFilter;
       return matchSearch && matchMethod;
     });
   }, [transactions, searchQuery, methodFilter]);
 
-  // Statistics
+  // Statistics (Hanya menghitung transaksi PAID / Lunas sebagai Uang Masuk / Omset)
   const stats = useMemo(() => {
-    const totalRev = filteredTransactions.reduce(
-      (acc, t) => acc + (t.status === 'REFUNDED' ? -t.total : t.total),
-      0
+    const paidList = filteredTransactions.filter(
+      (t) => t.status === 'PAID' || t.status === 'Lunas'
     );
-    const totalSub = filteredTransactions.reduce((acc, t) => acc + t.subtotal, 0);
-    const totalDisc = filteredTransactions.reduce((acc, t) => acc + t.discountAmount, 0);
+    const unpaidList = filteredTransactions.filter(
+      (t) => t.status === 'UNPAID' || t.status === 'Belum Bayar'
+    );
+    const totalRev = paidList.reduce((acc, t) => acc + (Number(t.total) || 0), 0);
+    const totalSub = paidList.reduce((acc, t) => acc + (Number(t.subtotal) || 0), 0);
+    const totalDisc = paidList.reduce((acc, t) => acc + (Number(t.discountAmount) || 0), 0);
+    const unpaidTotal = unpaidList.reduce((acc, t) => acc + (Number(t.total) || 0), 0);
     return {
       revenue: totalRev,
       subtotal: totalSub,
       discount: totalDisc,
+      unpaidCount: unpaidList.length,
+      unpaidTotal,
       count: filteredTransactions.length,
     };
   }, [filteredTransactions]);
@@ -121,12 +171,12 @@ export const HistoryView: React.FC = () => {
       paymentMethod: tx.paymentMethod || 'CASH',
       cashierName: currentCashier,
       cashier: currentCashier,
-      status: tx.status || 'PAID',
+      status: normalizeStatusValue(tx.status),
       notes: tx.notes || '',
     });
   };
 
-  // Simpan Perubahan Edit Transaksi (termasuk Kasir / PIC Shift) ke Cloud Firestore
+  // Simpan Perubahan Edit Transaksi (termasuk Kasir / PIC Shift & Status) ke Cloud Firestore
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTransaction) return;
@@ -150,7 +200,13 @@ export const HistoryView: React.FC = () => {
       setEditingTransaction(null);
       showFeedback(
         'success',
-        `Transaksi ${editingTransaction.transactionNumber} berhasil diperbarui (Kasir/PIC: ${resolvedCashier}).`
+        `Transaksi ${editingTransaction.transactionNumber} berhasil diperbarui (Status: ${
+          editFormData.status === 'UNPAID'
+            ? 'Belum Bayar'
+            : editFormData.status === 'REFUNDED'
+            ? 'Refund'
+            : 'Lunas'
+        }, Kasir/PIC: ${resolvedCashier}).`
       );
     } catch (err) {
       showFeedback('error', 'Gagal memperbarui transaksi. Periksa koneksi database.');
@@ -189,7 +245,7 @@ export const HistoryView: React.FC = () => {
               </h1>
             </div>
             <p className="text-xs text-[#666666] mt-0.5">
-              Daftar seluruh transaksi kasir RisoLogy dengan manajemen edit Kasir / PIC Shift, metode bayar &amp; hapus langsung ke Cloud Firestore
+              Daftar seluruh transaksi kasir RisoLogy dengan manajemen edit Kasir / PIC Shift, status pembayaran &amp; hapus langsung ke Cloud Firestore
             </p>
           </div>
 
@@ -204,6 +260,19 @@ export const HistoryView: React.FC = () => {
                 {stats.count} Pesanan
               </span>
             </div>
+
+            {/* Tagihan Belum Bayar (jika ada) */}
+            {stats.unpaidCount > 0 && (
+              <div className="px-3.5 py-2 bg-amber-50 border border-amber-300 rounded text-right shadow-xs">
+                <span className="text-[10px] text-amber-800 uppercase tracking-wider font-semibold flex items-center justify-end gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  Belum Bayar ({stats.unpaidCount})
+                </span>
+                <span className="font-mono font-bold text-sm text-amber-700 tabular-nums">
+                  {formatCurrency(stats.unpaidTotal)}
+                </span>
+              </div>
+            )}
 
             {/* Total Diskon (MINUS = RED) */}
             {stats.discount > 0 && (
@@ -323,7 +392,11 @@ export const HistoryView: React.FC = () => {
             <div className="block md:hidden">
               {filteredTransactions.map((tx) => {
                 const dt = formatDateTime(tx.timestamp);
-                const isRefund = tx.status === 'REFUNDED';
+                const normalizedStatus = (tx.status || 'PAID').toUpperCase();
+                const isRefund =
+                  normalizedStatus === 'REFUNDED' || normalizedStatus === 'REFUND';
+                const isUnpaid =
+                  normalizedStatus === 'UNPAID' || normalizedStatus === 'BELUM BAYAR';
                 const totalItems = tx.items.reduce((a, b) => a + b.quantity, 0);
                 const cashierPic = tx.cashierName || tx.cashier || tx.pic || 'Harits';
 
@@ -338,16 +411,7 @@ export const HistoryView: React.FC = () => {
                         <span className="font-mono font-bold text-xs text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded">
                           {tx.transactionNumber}
                         </span>
-                        {isRefund ? (
-                          <span className="px-2 py-0.5 bg-rose-100 text-rose-800 border border-rose-200 rounded text-[10px] font-bold uppercase tracking-wider">
-                            Refund
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold uppercase tracking-wider">
-                            <CheckCircle className="w-2.5 h-2.5 text-emerald-600" />
-                            <span>Lunas</span>
-                          </span>
-                        )}
+                        {renderStatusBadge(tx.status)}
                       </div>
 
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-800 rounded text-[10px] font-bold">
@@ -425,6 +489,10 @@ export const HistoryView: React.FC = () => {
                           <span className="font-mono font-extrabold text-base text-rose-600 tabular-nums">
                             -{formatCurrency(tx.total)}
                           </span>
+                        ) : isUnpaid ? (
+                          <span className="font-mono font-extrabold text-base text-amber-700 tabular-nums">
+                            {formatCurrency(tx.total)}
+                          </span>
                         ) : (
                           <span className="font-mono font-extrabold text-base text-emerald-600 tabular-nums">
                             +{formatCurrency(tx.total)}
@@ -488,7 +556,11 @@ export const HistoryView: React.FC = () => {
                 <tbody className="divide-y divide-[#E5E5E5]">
                   {filteredTransactions.map((tx) => {
                     const dt = formatDateTime(tx.timestamp);
-                    const isRefund = tx.status === 'REFUNDED';
+                    const normalizedStatus = (tx.status || 'PAID').toUpperCase();
+                    const isRefund =
+                      normalizedStatus === 'REFUNDED' || normalizedStatus === 'REFUND';
+                    const isUnpaid =
+                      normalizedStatus === 'UNPAID' || normalizedStatus === 'BELUM BAYAR';
                     const totalItems = tx.items.reduce((a, b) => a + b.quantity, 0);
                     const cashierPic = tx.cashierName || tx.cashier || tx.pic || 'Harits';
 
@@ -594,11 +666,15 @@ export const HistoryView: React.FC = () => {
                           )}
                         </td>
 
-                        {/* Total: PLUS = GREEN (or RED if refunded/minus) */}
+                        {/* Total: PLUS = GREEN (or AMBER if UNPAID, RED if REFUNDED) */}
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
                           {isRefund ? (
                             <span className="font-mono font-bold text-xs text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded tabular-nums inline-block">
                               -{formatCurrency(tx.total)}
+                            </span>
+                          ) : isUnpaid ? (
+                            <span className="font-mono font-bold text-xs text-amber-700 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded tabular-nums inline-block">
+                              {formatCurrency(tx.total)}
                             </span>
                           ) : (
                             <span className="font-mono font-bold text-sm text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded tabular-nums inline-block shadow-2xs">
@@ -609,16 +685,7 @@ export const HistoryView: React.FC = () => {
 
                         {/* Status */}
                         <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                          {isRefund ? (
-                            <span className="px-2 py-0.5 bg-rose-100 text-rose-800 border border-rose-200 rounded text-[10px] font-bold uppercase tracking-wider">
-                              Refund
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold uppercase tracking-wider">
-                              <CheckCircle className="w-2.5 h-2.5 text-emerald-600" />
-                              <span>Lunas</span>
-                            </span>
-                          )}
+                          {renderStatusBadge(tx.status)}
                         </td>
 
                         {/* Action Buttons: Lihat Struk, Edit, Hapus */}
@@ -682,7 +749,7 @@ export const HistoryView: React.FC = () => {
                   <span>Edit Transaksi {editingTransaction.transactionNumber}</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Perbarui metode pembayaran, Kasir / PIC Shift, pelanggan, atau catatan langsung ke Firestore
+                  Perbarui metode pembayaran, Kasir / PIC Shift, status, pelanggan, atau catatan langsung ke Firestore
                 </p>
               </div>
               <button
@@ -725,15 +792,15 @@ export const HistoryView: React.FC = () => {
                       paymentMethod: e.target.value as PaymentMethod,
                     })
                   }
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer shadow-sm"
                 >
-                  <option value="CASH" className="bg-white text-slate-900">
+                  <option value="CASH" className="bg-white text-slate-800">
                     Cash (Tunai)
                   </option>
-                  <option value="QRIS" className="bg-white text-slate-900">
+                  <option value="QRIS" className="bg-white text-slate-800">
                     QRIS
                   </option>
-                  <option value="TRANSFER" className="bg-white text-slate-900">
+                  <option value="TRANSFER" className="bg-white text-slate-800">
                     Transfer
                   </option>
                 </select>
@@ -753,7 +820,7 @@ export const HistoryView: React.FC = () => {
                       cashier: e.target.value,
                     })
                   }
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer shadow-sm"
                 >
                   <option value="" className="bg-white text-slate-400">
                     Pilih Kasir / PIC
@@ -762,7 +829,7 @@ export const HistoryView: React.FC = () => {
                     <option
                       key={cashierName}
                       value={cashierName}
-                      className="bg-white text-slate-900"
+                      className="bg-white text-slate-800"
                     >
                       {cashierName}
                     </option>
@@ -771,8 +838,8 @@ export const HistoryView: React.FC = () => {
               </div>
 
               {/* Status Transaksi */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block">
                   Status Transaksi
                 </label>
                 <select
@@ -780,15 +847,18 @@ export const HistoryView: React.FC = () => {
                   onChange={(e) =>
                     setEditFormData({
                       ...editFormData,
-                      status: e.target.value as 'PAID' | 'REFUNDED',
+                      status: e.target.value as TransactionStatus,
                     })
                   }
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer shadow-sm"
                 >
-                  <option value="PAID" className="bg-white text-slate-900">
+                  <option value="PAID" className="bg-white text-slate-800">
                     Lunas (PAID)
                   </option>
-                  <option value="REFUNDED" className="bg-white text-slate-900">
+                  <option value="UNPAID" className="bg-white text-amber-700 font-medium">
+                    Belum Bayar (UNPAID)
+                  </option>
+                  <option value="REFUNDED" className="bg-white text-rose-600">
                     Refund / Dibatalkan (REFUNDED)
                   </option>
                 </select>
