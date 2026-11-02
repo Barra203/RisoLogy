@@ -74,15 +74,19 @@ export const LoginScreen: React.FC = () => {
       >
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-20 h-20 mb-3 rounded-full border border-black/10 flex items-center justify-center p-1.5 bg-white shadow-xs">
-            <img
-              src={settings.logoUrl || '/assets/logo.png'}
-              alt={settings.storeName || 'RisoLogy'}
-              className="w-full h-full object-contain rounded-full"
-              onError={(e) => {
-                e.currentTarget.src = '/assets/logo.png';
-              }}
-            />
+          <div className="w-28 h-28 aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-white flex items-center justify-center shadow-md mb-3">
+            {settings?.storeLogo || settings?.logoUrl ? (
+              <img
+                src={settings.storeLogo || settings.logoUrl}
+                alt={settings.storeName || 'RisoLogy Logo'}
+                className="w-full h-full object-contain p-1"
+                onError={(e) => {
+                  e.currentTarget.src = '/logo.png';
+                }}
+              />
+            ) : (
+              <img src="/logo.png" alt="Default Logo" className="w-full h-full object-contain" />
+            )}
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 uppercase">
             {settings.storeName || 'RisoLogy POS'}

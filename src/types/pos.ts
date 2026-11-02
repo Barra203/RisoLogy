@@ -67,6 +67,7 @@ export interface SupplierExpense {
   supplierLocation?: string;
   cashierName: string;
   cashier?: string;
+  batch?: string; // Cth: "Batch 1", "Batch 2"
   createdAt?: string;
   notes?: string;
 }
@@ -124,6 +125,7 @@ export interface Transaction {
   pic?: string;
   shift?: string;
   cashierShift?: string;
+  batch?: string; // Cth: "Batch 1", "Batch 2"
   customerEmail?: string;
   emailSent?: boolean;
   notes?: string;
@@ -142,12 +144,15 @@ export interface StoreSettings {
   logoUrl: string;
   storeLogo?: string; // Alias sinkron untuk logoUrl (URL / base64 image string)
   qrisUrl: string;
+  qrisImage?: string; // Alias sinkron untuk qrisUrl (URL / base64 image string)
   qrisNmid?: string;
   pinCode: string;
   soundEnabled?: boolean; // Status aktif/nonaktif suara notifikasi kasir (default: true)
   initialCapital?: number; // Modal awal operasional usaha (default: Rp 500.000)
   capitalSource?: string; // Asal modal (cth: "Modal Kelompok / Mandiri", "Hibah Kampus / PMW")
   capitalDate?: string; // Tanggal alokasi modal YYYY-MM-DD
+  activeBatch?: string; // Batch default yang sedang aktif berjalan (default: "Batch 1")
+  availableBatches?: string[]; // Daftar batch produksi/penjualan: ["Batch 1", "Batch 2", ...]
 }
 
 export type ActiveTab =

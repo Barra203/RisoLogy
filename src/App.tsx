@@ -75,27 +75,27 @@ const PosMainApp: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-[#F5F5F5] text-black">
+    <div className="min-h-screen w-full bg-slate-50 flex flex-col md:flex-row text-slate-800">
       {/* Persistent Navigation (Left Sidebar on md+ desktop/tablet, Top header + Bottom Navigation Bar on < md mobile) */}
       <Sidebar />
 
-      {/* Main View Area */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative pb-20 md:pb-0" role="main">
+      {/* Konten Halaman: di mobile gunakan min-h-screen dan padding bawah aman */}
+      <main className="flex-1 w-full min-w-0 pb-28 md:pb-8 overflow-y-auto" role="main">
         {/* Database Loading Banner */}
         {isLoading && (
-          <div className="bg-[#FFD100] text-black px-4 py-1.5 text-xs font-bold uppercase tracking-wider border-b-2 border-black flex items-center justify-between">
-            <span>Memuat & menyinkronkan data dari Cloud Firestore...</span>
+          <div className="bg-amber-400 text-slate-900 px-4 py-1.5 text-xs font-bold uppercase tracking-wider border-b border-amber-500 flex items-center justify-between">
+            <span>Memuat &amp; menyinkronkan data dari Cloud Firestore...</span>
             <span className="animate-pulse">● LIVE SYNC</span>
           </div>
         )}
 
         {/* Database Error Banner */}
         {dbError && (
-          <div className="bg-[#E02424] text-white px-4 py-2 text-xs font-bold border-b-2 border-black flex items-center justify-between">
+          <div className="bg-rose-600 text-white px-4 py-2 text-xs font-bold border-b border-rose-700 flex items-center justify-between">
             <span>{dbError}</span>
             <button
               onClick={clearDbError}
-              className="ml-4 px-2 py-0.5 bg-black text-white text-[10px] uppercase font-bold"
+              className="ml-4 px-2 py-0.5 bg-slate-900 text-white text-[10px] uppercase font-bold rounded"
             >
               Tutup
             </button>

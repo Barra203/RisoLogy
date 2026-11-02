@@ -29,23 +29,41 @@ const getExpenseTotal = (exp: SupplierExpense): number => {
 };
 
 export const ExpensesView: React.FC = () => {
-  const { expenses, addExpense, updateExpense, deleteExpense, activeCashier, cashierList } =
-    usePos();
+  const {
+    expenses,
+    addExpense,
+    updateExpense,
+    deleteExpense,
+    activeCashier,
+    cashierList,
+    settings,
+  } = usePos();
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
+  const [selectedBatchFilter, setSelectedBatchFilter] = useState<string>('ALL');
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<SupplierExpense | null>(null);
 
-  // 5 Essential Form States
+  // Essential Form States + Batch
   const [name, setName] = useState<string>('');
   const [category, setCategory] = useState<string>('Bahan Utama');
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [total, setTotal] = useState<string>('');
   const [supplier, setSupplier] = useState<string>('');
   const [cashier, setCashier] = useState<string>(activeCashier || 'Barra');
+  const [batch, setBatch] = useState<string>(settings.activeBatch || 'Batch 1');
   const [formError, setFormError] = useState<string>('');
+
+  const availableBatches = useMemo(() => {
+    const set = new Set<string>(settings.availableBatches || ['Batch 1', 'Batch 2']);
+    if (settings.activeBatch) set.add(settings.activeBatch);
+    expenses.forEach((e) => {
+      if (e.batch) set.add(e.batch);
+    });
+    return Array.from(set);
+  }, [settings.availableBatches, settings.activeBatch, expenses]);
 
   const categories = [
     'Semua',
@@ -77,26 +95,33 @@ export const ExpensesView: React.FC = () => {
       const expSupplier = (exp.supplierName || exp.supplier || '').toLowerCase();
       const expNumber = (exp.expenseNumber || '').toLowerCase();
       const expCashier = (exp.cashierName || exp.cashier || '').toLowerCase();
+      const expBatch = exp.batch || 'Batch 1';
 
       const matchSearch =
         expName.includes(q) ||
         expSupplier.includes(q) ||
         expNumber.includes(q) ||
-        expCashier.includes(q);
+        expCashier.includes(q) ||
+        expBatch.toLowerCase().includes(q);
       const matchCategory = selectedCategory === 'Semua' || exp.category === selectedCategory;
-      return matchSearch && matchCategory;
+      const matchBatch = selectedBatchFilter === 'ALL' || expBatch === selectedBatchFilter;
+      return matchSearch && matchCategory && matchBatch;
     });
-  }, [expenses, searchQuery, selectedCategory]);
+  }, [expenses, searchQuery, selectedCategory, selectedBatchFilter]);
 
-  // Aggregate stats
+  // Aggregate stats (mengikuti filter batch jika dipilih)
   const stats = useMemo(() => {
-    const totalExpenses = expenses.reduce((acc, exp) => acc + getExpenseTotal(exp), 0);
-    const invoiceCount = expenses.length;
+    const targetList =
+      selectedBatchFilter === 'ALL'
+        ? expenses
+        : expenses.filter((e) => (e.batch || 'Batch 1') === selectedBatchFilter);
+    const totalExpenses = targetList.reduce((acc, exp) => acc + getExpenseTotal(exp), 0);
+    const invoiceCount = targetList.length;
     const avgInvoice = invoiceCount > 0 ? Math.round(totalExpenses / invoiceCount) : 0;
 
     // Largest category
     const catMap: Record<string, number> = {};
-    expenses.forEach((e) => {
+    targetList.forEach((e) => {
       catMap[e.category] = (catMap[e.category] || 0) + getExpenseTotal(e);
     });
 
@@ -110,7 +135,7 @@ export const ExpensesView: React.FC = () => {
     });
 
     return { totalExpenses, invoiceCount, avgInvoice, topCat, topCatAmount };
-  }, [expenses]);
+  }, [expenses, selectedBatchFilter]);
 
   const handleOpenAddModal = () => {
     setEditingExpenseId(null);
@@ -120,6 +145,7 @@ export const ExpensesView: React.FC = () => {
     setTotal('');
     setSupplier('');
     setCashier(activeCashier || 'Barra');
+    setBatch(settings.activeBatch || 'Batch 1');
     setFormError('');
     setIsModalOpen(true);
   };
@@ -137,8 +163,14 @@ export const ExpensesView: React.FC = () => {
         : exp.supplierName || exp.supplier || ''
     );
     setCashier(exp.cashierName || exp.cashier || activeCashier || 'Barra');
+    setBatch(exp.batch || settings.activeBatch || 'Batch 1');
     setFormError('');
     setIsModalOpen(true);
+  };
+
+  const handleQuickAddNominal = (amountToAdd: number) => {
+    const current = Number(total) || 0;
+    setTotal(String(current + amountToAdd));
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -158,6 +190,7 @@ export const ExpensesView: React.FC = () => {
     const resolvedSupplier = supplier.trim() || '-';
     const resolvedCashier = cashier || activeCashier || 'Kasir';
     const resolvedDate = date || new Date().toISOString().split('T')[0];
+    const resolvedBatch = batch || settings.activeBatch || 'Batch 1';
 
     if (editingExpenseId) {
       updateExpense(editingExpenseId, {
@@ -173,6 +206,7 @@ export const ExpensesView: React.FC = () => {
         supplierName: resolvedSupplier,
         cashier: resolvedCashier,
         cashierName: resolvedCashier,
+        batch: resolvedBatch,
         quantity: 1,
         unit: 'paket',
         unitPrice: numericTotal,
@@ -192,6 +226,7 @@ export const ExpensesView: React.FC = () => {
         supplierLocation: '-',
         cashier: resolvedCashier,
         cashierName: resolvedCashier,
+        batch: resolvedBatch,
         createdAt: new Date().toISOString(),
         quantity: 1,
         unit: 'paket',
@@ -209,26 +244,26 @@ export const ExpensesView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#F5F5F5]">
+    <div className="flex-1 flex flex-col min-h-screen w-full bg-slate-50">
       {/* Top Header */}
-      <div className="p-6 bg-white border-b border-[#E5E5E5] shrink-0">
+      <div className="p-4 sm:p-6 bg-white border-b border-slate-200 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <Truck className="w-5 h-5 text-amber-600 stroke-[2]" />
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">
-                Pencatatan Belanja Bahan Supplier
-              </h1>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+              <Truck className="w-4 h-4 stroke-[2]" />
             </div>
-            <p className="text-xs text-[#666666] mt-0.5">
-              Catat pengeluaran belanja bahan baku risol (keju, tepung, minyak, kemasan) dengan cepat berdasarkan total nota
-            </p>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              Pencatatan Belanja Bahan Supplier
+            </h1>
+            <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-md text-[10px] font-bold">
+              Aktif: {settings.activeBatch || 'Batch 1'}
+            </span>
           </div>
 
           <button
             type="button"
             onClick={handleOpenAddModal}
-            className="px-4 py-2.5 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold uppercase tracking-wider rounded-lg flex items-center gap-2 cursor-pointer shadow-md shadow-amber-600/20 transition-colors"
+            className="touch-manipulation px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Catat Belanja Baru</span>
@@ -236,7 +271,7 @@ export const ExpensesView: React.FC = () => {
         </div>
 
         {/* KPI Cards Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[#F0F0F0]">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-100">
           {/* Total Belanja (Red money) */}
           <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-lg">
             <span className="text-[10px] font-bold text-rose-900 uppercase tracking-wider block">
@@ -277,18 +312,33 @@ export const ExpensesView: React.FC = () => {
 
         {/* Filter & Search Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-100">
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cari nama bahan, tempat beli / toko, kasir, atau #EXP..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
-            />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 max-w-xl">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Cari nama bahan, toko, kasir, batch, atau #EXP..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
+              />
+            </div>
+
+            <select
+              value={selectedBatchFilter}
+              onChange={(e) => setSelectedBatchFilter(e.target.value)}
+              className="px-3 py-1.5 text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200 rounded-lg focus:outline-none focus:border-amber-500 cursor-pointer"
+            >
+              <option value="ALL">Semua Batch</option>
+              {availableBatches.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
             {categories.map((cat) => (
               <button
                 key={cat}
@@ -308,7 +358,7 @@ export const ExpensesView: React.FC = () => {
       </div>
 
       {/* Main Table (Desktop) & Card List (Mobile) */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="flex-1 p-4 sm:p-6">
         {filteredExpenses.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-xl p-10 text-center text-slate-400 text-xs">
             Belum ada data belanja bahan supplier yang tercatat.
@@ -324,17 +374,21 @@ export const ExpensesView: React.FC = () => {
                 const displayName = exp.itemName || exp.name || 'Belanja Bahan';
                 const displaySupplier = exp.supplierName || exp.supplier || '-';
                 const displayCashier = exp.cashierName || exp.cashier || 'Kasir';
+                const displayBatch = exp.batch || 'Batch 1';
 
                 return (
                   <div
                     key={exp.id}
                     className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-2.5 mb-3"
                   >
-                    {/* Baris 1: ID Nota Belanja, Badge Kategori, dan Nama Kasir/PIC */}
+                    {/* Baris 1: ID Nota Belanja, Badge Kategori, Batch, dan Nama Kasir/PIC */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-mono font-bold text-xs text-slate-900 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
                           {exp.expenseNumber}
+                        </span>
+                        <span className="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold rounded text-[10px]">
+                          {displayBatch}
                         </span>
                         <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded text-[10px]">
                           {exp.category}
@@ -342,7 +396,7 @@ export const ExpensesView: React.FC = () => {
                       </div>
 
                       <span className="px-2 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[10px] border border-amber-200">
-                        Kasir / PIC: {displayCashier}
+                        PIC: {displayCashier}
                       </span>
                     </div>
 
@@ -411,6 +465,7 @@ export const ExpensesView: React.FC = () => {
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
                       <th className="py-3 px-4">No &amp; Tanggal</th>
+                      <th className="py-3 px-3">Batch</th>
                       <th className="py-3 px-4">Nama Bahan</th>
                       <th className="py-3 px-3">Kategori</th>
                       <th className="py-3 px-4 text-right">Total Belanja (-)</th>
@@ -425,6 +480,7 @@ export const ExpensesView: React.FC = () => {
                       const displayName = exp.itemName || exp.name || 'Belanja Bahan';
                       const displaySupplier = exp.supplierName || exp.supplier || '-';
                       const displayCashier = exp.cashierName || exp.cashier || 'Kasir';
+                      const displayBatch = exp.batch || 'Batch 1';
 
                       return (
                         <tr key={exp.id} className="hover:bg-slate-50 transition-colors">
@@ -435,6 +491,13 @@ export const ExpensesView: React.FC = () => {
                             </span>
                             <span className="text-[10px] text-slate-500 font-mono">
                               {exp.date}
+                            </span>
+                          </td>
+
+                          {/* Batch */}
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold rounded text-[10px]">
+                              {displayBatch}
                             </span>
                           </td>
 
@@ -510,38 +573,36 @@ export const ExpensesView: React.FC = () => {
       </div>
 
       {/* ===================================================================== */}
-      {/* MODAL CATAT / EDIT BELANJA BAHAN RINGKAS (5 FIELD UTAMA)              */}
+      {/* MODAL CATAT / EDIT BELANJA BAHAN (MOBILE BOTTOM SHEET & QUICK CHIPS)  */}
       {/* ===================================================================== */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="w-full sm:max-w-md bg-white rounded-t-xl sm:rounded-xl max-h-[92vh] overflow-y-auto p-5 pb-8 shadow-xl border border-slate-200 flex flex-col">
+            {/* Mobile Drag Handle Indicator */}
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
+
             {/* Header */}
-            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+            <div className="pb-3.5 border-b border-slate-100 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-400/30 flex items-center justify-center">
-                  <Truck className="w-4 h-4 text-amber-400" />
+                <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center">
+                  <Truck className="w-4 h-4 text-amber-700" />
                 </div>
-                <div>
-                  <h3 className="font-bold text-sm tracking-tight">
-                    {editingExpenseId ? 'Edit Belanja Bahan' : 'Catat Belanja Bahan Supplier Baru'}
-                  </h3>
-                  <p className="text-[11px] text-slate-300">
-                    Input cepat nominal pengeluaran sesuai nota belanja
-                  </p>
-                </div>
+                <h3 className="font-bold text-sm text-slate-900 tracking-tight">
+                  {editingExpenseId ? 'Edit Belanja Bahan' : 'Catat Belanja Bahan Supplier Baru'}
+                </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer transition-colors"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
                 aria-label="Tutup"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Form Body (Hanya 5 Field Esensial) */}
-            <form onSubmit={handleSave} className="p-6 overflow-y-auto space-y-4 flex-1">
+            {/* Form Body */}
+            <form onSubmit={handleSave} className="pt-4 space-y-4 flex-1">
               {formError && (
                 <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium rounded-xl">
                   {formError}
@@ -563,16 +624,16 @@ export const ExpensesView: React.FC = () => {
                 />
               </div>
 
-              {/* 2. Kategori Pengeluaran & Tanggal (Sejajar 2 Kolom) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
+              {/* 2. Kategori Pengeluaran, Batch, & Tanggal */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                <div className="col-span-2 sm:col-span-1">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Kategori Pengeluaran
+                    Kategori
                   </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
                   >
                     <option value="Bahan Utama">Bahan Utama</option>
                     <option value="Bumbu & Saus">Bumbu &amp; Saus</option>
@@ -585,19 +646,36 @@ export const ExpensesView: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Tanggal Belanja
+                    Batch Produksi
+                  </label>
+                  <select
+                    value={batch}
+                    onChange={(e) => setBatch(e.target.value)}
+                    className="w-full bg-amber-50/70 border border-amber-200 rounded-xl px-3 py-2.5 text-xs font-bold text-amber-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+                  >
+                    {availableBatches.map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Tanggal
                   </label>
                   <input
                     type="date"
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-mono text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2.5 text-xs font-mono text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
                   />
                 </div>
               </div>
 
-              {/* 3. Total Pengeluaran / Belanja (Wajib - Input Langsung) */}
+              {/* 3. Total Pengeluaran / Belanja (Wajib - Input Langsung + Chip Nominal Cepat) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Total Nominal Belanja (Rp) *
@@ -612,8 +690,35 @@ export const ExpensesView: React.FC = () => {
                   onChange={(e) => setTotal(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-lg font-bold text-rose-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-mono tabular-nums"
                 />
+
+                {/* Chip Nominal Cepat */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  {[
+                    { label: '+10.000', value: 10000 },
+                    { label: '+25.000', value: 25000 },
+                    { label: '+50.000', value: 50000 },
+                    { label: '+100.000', value: 100000 },
+                  ].map((chip) => (
+                    <button
+                      key={chip.value}
+                      type="button"
+                      onClick={() => handleQuickAddNominal(chip.value)}
+                      className="touch-manipulation px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 border border-amber-200 rounded-lg text-xs font-mono font-bold cursor-pointer transition-colors"
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setTotal('')}
+                    className="touch-manipulation px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                  >
+                    Reset
+                  </button>
+                </div>
+
                 {Number(total) > 0 && (
-                  <p className="text-[11px] font-mono text-rose-600 font-semibold mt-1">
+                  <p className="text-[11px] font-mono text-rose-600 font-semibold mt-1.5">
                     Nominal tercatat: - {formatCurrency(Number(total))}
                   </p>
                 )}
@@ -652,21 +757,21 @@ export const ExpensesView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
+              {/* Submit Button Full-Width */}
+              <div className="pt-3 border-t border-slate-100 space-y-2">
+                <button
+                  type="submit"
+                  className="touch-manipulation w-full py-3.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-700 text-white font-bold text-base rounded-xl shadow-lg shadow-amber-600/20 cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+                >
+                  <Check className="w-5 h-5" />
+                  <span>Simpan Belanja</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer transition-colors"
+                  className="touch-manipulation w-full py-2.5 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl cursor-pointer transition-colors"
                 >
                   Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-md shadow-amber-600/20 cursor-pointer flex items-center gap-1.5 transition-all active:scale-95"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>Simpan Catatan Belanja</span>
                 </button>
               </div>
             </form>

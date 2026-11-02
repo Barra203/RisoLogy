@@ -103,7 +103,7 @@ export const Sidebar: React.FC = () => {
       {/* =================================================================== */}
       {/* DESKTOP & TABLET LANDSCAPE SIDEBAR (md:flex)                        */}
       {/* =================================================================== */}
-      <aside className="hidden md:flex w-64 bg-white border-r border-[#E5E5E5] flex-col justify-between h-screen shrink-0 select-none print:hidden">
+      <aside className="hidden md:flex w-64 bg-white border-r border-[#E5E5E5] flex-col justify-between md:sticky md:top-0 md:h-screen shrink-0 select-none print:hidden">
         {/* Top Header & Dynamic Store Identity */}
         <div>
           <div className="border-b border-[#E5E5E5]">

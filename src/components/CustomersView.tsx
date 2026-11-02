@@ -206,9 +206,9 @@ export const CustomersView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#F5F5F5]">
+    <div className="flex-1 flex flex-col min-h-screen w-full bg-[#F5F5F5]">
       {/* Top Header */}
-      <div className="p-6 bg-white border-b border-[#E5E5E5] shrink-0">
+      <div className="p-4 sm:p-6 bg-white border-b border-[#E5E5E5] shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -318,7 +318,7 @@ export const CustomersView: React.FC = () => {
       </div>
 
       {/* Table Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 p-4 sm:p-6">
         <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">

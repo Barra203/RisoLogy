@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { usePos } from '../context/PosContext';
 import { Product } from '../types/pos';
 import { formatCurrency } from '../utils/pos-logic';
@@ -32,6 +34,9 @@ export const SettingsView: React.FC = () => {
     settings,
     updateSettings,
     updateInitialCapital,
+    setActiveBatch,
+    addBatch,
+    reorderBatches,
     products,
     categories,
     addCategory,
@@ -51,8 +56,32 @@ export const SettingsView: React.FC = () => {
   const [phone, setPhone] = useState(settings.phone);
   const [email, setEmail] = useState(settings.email);
   const [footerText, setFooterText] = useState(settings.footerText);
-  const [qrisUrl, setQrisUrl] = useState(settings.qrisUrl);
+  const [qrisUrl, setQrisUrl] = useState(settings.qrisImage || settings.qrisUrl || '/assets/qris.png');
   const [logoUrl, setLogoUrl] = useState(settings.storeLogo || settings.logoUrl || '/logo.png');
+  const [newBatchInput, setNewBatchInput] = useState<string>('');
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const availableBatches = settings.availableBatches || ['Batch 1', 'Batch 2'];
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === targetIndex) return;
+
+    const updatedBatches = [...availableBatches];
+    const [draggedItem] = updatedBatches.splice(draggedIndex, 1);
+    updatedBatches.splice(targetIndex, 0, draggedItem);
+
+    setDraggedIndex(targetIndex);
+    reorderBatches(updatedBatches);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
 
   // Local form state for Modal Awal Usaha (Presentation to Lecturer)
   const [capitalAmount, setCapitalAmount] = useState<string>(
@@ -74,7 +103,7 @@ export const SettingsView: React.FC = () => {
     setPhone(settings.phone);
     setEmail(settings.email);
     setFooterText(settings.footerText);
-    setQrisUrl(settings.qrisUrl);
+    setQrisUrl(settings.qrisImage || settings.qrisUrl || '/assets/qris.png');
     setLogoUrl(settings.storeLogo || settings.logoUrl || '/logo.png');
     setCapitalAmount(String(settings.initialCapital ?? 500000));
     setCapitalSource(settings.capitalSource || 'Modal Kelompok / Mandiri');
@@ -119,73 +148,95 @@ export const SettingsView: React.FC = () => {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetError, setResetError] = useState('');
 
-  // Direct File Reader helper with auto-resizing for safe Firestore database storage
+  // Utilitas Kompresi Gambar Klien (Canvas) -> Base64 Ringkas (< 100 KB, maks 400px, JPEG kualitas 0.7)
+  // Memastikan gambar tersimpan ke Cloud Firestore `settings/general` dan tersinkronisasi ke semua perangkat
   const readFileAsDataUrl = (file: File, callback: (dataUrl: string) => void) => {
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
         const rawResult = reader.result;
-        // If image is large (> 400KB), resize via canvas to fit safely under 1MB Firestore doc limits
-        if (file.size > 400 * 1024) {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const maxDimension = 800;
-            let width = img.width;
-            let height = img.height;
-            if (width > height) {
-              if (width > maxDimension) {
-                height = Math.round((height * maxDimension) / width);
-                width = maxDimension;
-              }
-            } else {
-              if (height > maxDimension) {
-                width = Math.round((width * maxDimension) / height);
-                height = maxDimension;
-              }
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDimension = 400;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxDimension) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
             }
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(img, 0, 0, width, height);
-              const compressed = canvas.toDataURL('image/jpeg', 0.85);
-              callback(compressed);
-              return;
+          } else {
+            if (height > maxDimension) {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
             }
-            callback(rawResult);
-          };
-          img.onerror = () => callback(rawResult);
-          img.src = rawResult;
-        } else {
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            // Isi latar putih agar gambar PNG transparan tetap bersih saat dikompres ke JPEG
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.72);
+            callback(compressed);
+            return;
+          }
           callback(rawResult);
-        }
+        };
+        img.onerror = () => callback(rawResult);
+        img.src = rawResult;
       }
     };
     reader.readAsDataURL(file);
   };
 
-  // Upload Logo directly from browser
+  // Upload Logo directly from browser & sync to Cloud Firestore `settings/general`
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      readFileAsDataUrl(file, (dataUrl) => {
-        setLogoUrl(dataUrl);
-        updateSettings({ logoUrl: dataUrl, storeLogo: dataUrl });
+      readFileAsDataUrl(file, async (base64LogoString) => {
+        setLogoUrl(base64LogoString);
+        updateSettings({ logoUrl: base64LogoString, storeLogo: base64LogoString });
+        try {
+          await setDoc(
+            doc(db, 'settings', 'general'),
+            { storeLogo: base64LogoString, logoUrl: base64LogoString, updatedAt: Date.now() },
+            { merge: true }
+          );
+        } catch (err) {
+          console.warn('Gagal sinkronisasi logo ke Cloud Firestore:', err);
+        }
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
       });
     }
     e.target.value = '';
   };
 
-  // Upload QRIS image directly from browser
+  // Upload QRIS image directly from browser & sync to Cloud Firestore `settings/general`
   const handleQrisUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      readFileAsDataUrl(file, (dataUrl) => {
-        setQrisUrl(dataUrl);
-        updateSettings({ qrisUrl: dataUrl });
+      readFileAsDataUrl(file, async (base64QrisString) => {
+        setQrisUrl(base64QrisString);
+        updateSettings({ qrisUrl: base64QrisString, qrisImage: base64QrisString });
+        try {
+          await setDoc(
+            doc(db, 'settings', 'general'),
+            { qrisImage: base64QrisString, qrisUrl: base64QrisString, updatedAt: Date.now() },
+            { merge: true }
+          );
+        } catch (err) {
+          console.warn('Gagal sinkronisasi QRIS ke Cloud Firestore:', err);
+        }
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
       });
     }
+    e.target.value = '';
   };
 
   // Save general store settings
@@ -200,6 +251,7 @@ export const SettingsView: React.FC = () => {
       email,
       footerText,
       qrisUrl,
+      qrisImage: qrisUrl,
       logoUrl,
       storeLogo: logoUrl,
       initialCapital: cleanCapital,
@@ -341,22 +393,22 @@ export const SettingsView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#F5F5F5]">
+    <div className="flex-1 flex flex-col min-h-screen w-full bg-slate-50">
       {/* Top Header */}
-      <div className="p-6 bg-white border-b border-[#E5E5E5] shrink-0">
+      <div className="p-4 sm:p-6 bg-white border-b border-slate-200 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-black">
-              Pengaturan Toko & POS
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+              <Store className="w-4 h-4 stroke-[2]" />
+            </div>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              Pengaturan Toko &amp; POS
             </h1>
-            <p className="text-xs text-[#666666] mt-0.5">
-              Kelola logo toko, gambar QRIS, kategori menu, produk kasir, dan keamanan PIN
-            </p>
           </div>
 
           <div className="flex items-center gap-3">
             {saveSuccess && (
-              <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-3 py-1 flex items-center gap-1.5 border border-amber-300">
+              <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-3 py-1.5 rounded-lg flex items-center gap-1.5 border border-amber-300">
                 <Check className="w-3.5 h-3.5" />
                 <span>Pengaturan Tersimpan</span>
               </span>
@@ -364,7 +416,7 @@ export const SettingsView: React.FC = () => {
             <button
               type="button"
               onClick={handleSaveSettings}
-              className="px-5 py-2.5 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-amber-600/20"
+              className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs uppercase tracking-wider rounded-lg flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
             >
               <Save className="w-4 h-4" />
               <span>Simpan Perubahan</span>
@@ -374,19 +426,19 @@ export const SettingsView: React.FC = () => {
       </div>
 
       {/* Settings Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 max-w-5xl">
+      <div className="flex-1 p-4 sm:p-6 space-y-6 max-w-5xl">
         {/* Section 1: Logo Toko & Identitas Brand (Direct Upload Logo) */}
-        <div className="bg-white border border-[#E5E5E5] p-6">
-          <div className="flex items-center gap-2 pb-4 mb-4 border-b border-[#E5E5E5]">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
+          <div className="flex items-center gap-2 pb-4 mb-4 border-b border-slate-100">
             <Store className="w-4 h-4 text-amber-600 stroke-[1.5]" />
-            <h2 className="text-sm font-bold text-black uppercase tracking-wider">
-              1. Identitas Brand & Upload Logo Toko
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+              1. Identitas Brand &amp; Upload Logo Toko
             </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Logo Preview & Upload Button */}
-            <div className="p-4 bg-[#FAFAFA] border border-[#E5E5E5] flex flex-col items-center justify-center text-center">
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col items-center justify-center text-center">
               <span className="text-xs font-semibold text-[#666666] uppercase tracking-wider mb-2">
                 Logo Toko
               </span>
@@ -566,22 +618,17 @@ export const SettingsView: React.FC = () => {
         </div>
 
         {/* Section 2: Modal Awal Usaha & Rekap Arus Kas (Laporan Dosen / Tim) */}
-        <div className="bg-white border border-[#E5E5E5] p-6">
-          <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E5E5]">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
+          <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <Coins className="w-4 h-4 text-amber-600 stroke-[1.8]" />
-              <div>
-                <h2 className="text-sm font-bold text-black uppercase tracking-wider">
-                  2. Pengaturan Modal Awal Usaha &amp; Arus Kas
-                </h2>
-                <p className="text-xs text-[#666666] mt-0.5">
-                  Digunakan untuk perhitungan akuntansi arus kas, rasio serapan belanja, dan ROI pada presentasi dosen
-                </p>
-              </div>
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                2. Pengaturan Modal Awal Usaha &amp; Arus Kas
+              </h2>
             </div>
 
             {capitalSaved && (
-              <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-3 py-1 flex items-center gap-1.5 border border-emerald-300">
+              <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-lg flex items-center gap-1.5 border border-emerald-300">
                 <Check className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Modal Disimpan</span>
               </span>
@@ -686,13 +733,106 @@ export const SettingsView: React.FC = () => {
               </button>
             </div>
           </form>
+
+          {/* Sub-section: Pengaturan Batch Produksi / Penjualan Aktif & Drag-and-Drop Reorder */}
+          <div className="mt-6 pt-5 border-t border-slate-100 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Gelombang Produksi / Batch Penjualan
+                </h3>
+                <span className="text-xs font-mono font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-md border border-amber-300">
+                  Aktif: {settings.activeBatch || 'Batch 1'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={newBatchInput}
+                  onChange={(e) => setNewBatchInput(e.target.value)}
+                  placeholder="Cth: Batch 3"
+                  className="px-3 py-1.5 text-xs border border-slate-300 focus:border-amber-500 bg-white rounded-lg w-36 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newBatchInput.trim()) {
+                      addBatch(newBatchInput.trim());
+                      setNewBatchInput('');
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg cursor-pointer flex items-center gap-1 shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Tambah Batch</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Daftar Batch dengan HTML5 Drag-and-Drop Reorder */}
+            <div className="space-y-2">
+              {availableBatches.map((batchName, index) => {
+                const isCurrent = (settings.activeBatch || 'Batch 1') === batchName;
+                return (
+                  <div
+                    key={batchName}
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    onClick={() => setActiveBatch(batchName)}
+                    className={`flex items-center justify-between px-3.5 py-2.5 rounded-lg border transition-all cursor-grab active:cursor-grabbing ${
+                      draggedIndex === index
+                        ? 'opacity-50 border-amber-500 bg-amber-50'
+                        : isCurrent
+                        ? 'bg-amber-50/50 border-amber-300 hover:border-amber-400'
+                        : 'bg-white border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="text-slate-400 hover:text-slate-600 select-none text-base leading-none"
+                        title="Tahan dan geser untuk mengubah urutan"
+                      >
+                        ⋮⋮
+                      </span>
+                      <span className="text-sm font-medium text-slate-900">{batchName}</span>
+                      {isCurrent && (
+                        <span className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Aktif
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {!isCurrent && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveBatch(batchName);
+                          }}
+                          className="px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg cursor-pointer transition-colors"
+                        >
+                          Jadikan Aktif
+                        </button>
+                      )}
+                      <span className="text-xs text-slate-400 hidden sm:inline">
+                        Geser untuk memindahkan
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
-        {/* Section 3: QRIS Digital & Upload Gambar QRIS Langsung (NMID REMOVED) */}
-        <div className="bg-white border border-[#E5E5E5] p-6">
-          <div className="flex items-center gap-2 pb-4 mb-4 border-b border-[#E5E5E5]">
+        {/* Section 3: QRIS Digital & Upload Gambar QRIS Langsung (Cloud Firestore Sync) */}
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
+          <div className="flex items-center gap-2 pb-4 mb-4 border-b border-slate-100">
             <QrCode className="w-4 h-4 text-amber-600 stroke-[1.5]" />
-            <h2 className="text-sm font-bold text-black uppercase tracking-wider">
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
               3. Konfigurasi &amp; Upload Gambar QRIS Toko
             </h2>
           </div>
@@ -705,7 +845,7 @@ export const SettingsView: React.FC = () => {
               </span>
               <div className="w-40 h-40 bg-white border border-[#E5E5E5] p-2 mb-3 shadow-sm flex items-center justify-center">
                 <img
-                  src={qrisUrl || '/assets/qris.png'}
+                  src={qrisUrl || settings.qrisImage || settings.qrisUrl || '/assets/qris.png'}
                   alt="QRIS Preview"
                   className="w-full h-full object-contain"
                   onError={(e) => {
@@ -735,9 +875,18 @@ export const SettingsView: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setQrisUrl('/assets/qris.png');
-                    updateSettings({ qrisUrl: '/assets/qris.png' });
+                    updateSettings({ qrisUrl: '/assets/qris.png', qrisImage: '/assets/qris.png' });
+                    try {
+                      await setDoc(
+                        doc(db, 'settings', 'general'),
+                        { qrisImage: '/assets/qris.png', qrisUrl: '/assets/qris.png', updatedAt: Date.now() },
+                        { merge: true }
+                      );
+                    } catch {
+                      // Ignore error
+                    }
                   }}
                   className="text-[11px] text-[#666666] hover:text-black py-1 cursor-pointer underline"
                 >
@@ -749,29 +898,29 @@ export const SettingsView: React.FC = () => {
             {/* QRIS Description & Guidance */}
             <div className="md:col-span-2 space-y-3">
               <div className="p-4 bg-[#FAFAFA] border border-[#E5E5E5] text-xs text-[#444444] leading-relaxed">
-                <strong className="text-black text-sm block mb-1">Kemudahan Pembayaran QRIS:</strong>
+                <strong className="text-black text-sm block mb-1">Kemudahan Pembayaran QRIS (Sinkronisasi Cloud):</strong>
                 <p className="mb-2">
                   Anda dapat langsung mengunggah foto atau screenshot kode QRIS resmi toko Anda (BCA, Mandiri, GoPay, OVO, ShopeePay, DANA, dsb).
                 </p>
                 <p className="text-[#666666]">
-                  Gambar QRIS ini akan otomatis tampil berukuran penuh dan tajam di layar kasir ketika kasir memilih metode pembayaran <strong>QRIS</strong>.
+                  Gambar QRIS dikompresi otomatis dan disimpan langsung ke Cloud Firestore (<code>settings/general</code>) sehingga langsung tampil di HP/laptop seluruh kasir tanpa perlu unggah ulang.
                 </p>
               </div>
 
               <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 text-xs text-amber-800">
                 <Check className="w-4 h-4 shrink-0 text-amber-600" />
-                <span>Gambar QRIS otomatis tersimpan secara persistent di browser kasir Anda.</span>
+                <span>Gambar QRIS &amp; Logo Toko tersinkronisasi real-time di seluruh perangkat via Cloud Firestore.</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Section 4: Manajemen Kategori Menu (Tambah, Ubah, Hapus) */}
-        <div className="bg-white border border-[#E5E5E5] p-6">
-          <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E5E5]">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
+          <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-amber-600 stroke-[1.5]" />
-              <h2 className="text-sm font-bold text-black uppercase tracking-wider">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
                 4. Manajemen Kategori Menu Kasir ({categories.length})
               </h2>
             </div>
@@ -780,17 +929,17 @@ export const SettingsView: React.FC = () => {
           {/* Inline Feedback Banner */}
           {catFeedback && (
             <div
-              className={`p-3 mb-4 text-xs border flex items-center justify-between ${
+              className={`p-3 mb-4 text-xs border rounded-lg flex items-center justify-between ${
                 catFeedback.type === 'success'
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                  : 'bg-red-50 text-red-700 border-red-200'
+                  : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}
             >
               <div className="flex items-center gap-2">
                 {catFeedback.type === 'success' ? (
                   <Check className="w-4 h-4 text-emerald-600" />
                 ) : (
-                  <AlertCircle className="w-4 h-4 text-red-600" />
+                  <AlertCircle className="w-4 h-4 text-rose-600" />
                 )}
                 <span className="font-medium">{catFeedback.text}</span>
               </div>
@@ -811,12 +960,12 @@ export const SettingsView: React.FC = () => {
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
               placeholder="Tambah kategori baru (cth: Pastry, Tea, Snack, Dessert)..."
-              className="flex-1 px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white font-medium focus:outline-none"
+              className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg focus:border-amber-500 bg-white font-medium focus:outline-none"
             />
             <button
               type="submit"
               onClick={() => handleAddCategory()}
-              className="px-4 py-2 bg-amber-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-amber-700 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Tambah Kategori</span>
@@ -825,25 +974,25 @@ export const SettingsView: React.FC = () => {
 
           {/* Edit Category Inline Bar */}
           {editingCat && (
-            <form onSubmit={handleSaveEditCategory} className="p-3 bg-amber-50 border border-amber-500 mb-4 flex items-center gap-2">
-              <span className="text-xs font-semibold text-black">Ubah Kategori "{editingCat.oldName}":</span>
+            <form onSubmit={handleSaveEditCategory} className="p-3 bg-amber-50 border border-amber-500 rounded-lg mb-4 flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-900">Ubah Kategori "{editingCat.oldName}":</span>
               <input
                 type="text"
                 value={editingCat.newName}
                 onChange={(e) => setEditingCat({ ...editingCat, newName: e.target.value })}
-                className="flex-1 px-2.5 py-1 text-xs border border-[#CCCCCC] bg-white font-medium focus:border-amber-500 focus:outline-none"
+                className="flex-1 px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-white font-medium focus:border-amber-500 focus:outline-none"
                 autoFocus
               />
               <button
                 type="submit"
-                className="px-3 py-1 bg-amber-600 text-white text-xs font-bold uppercase cursor-pointer hover:bg-amber-700"
+                className="px-3 py-1 bg-amber-600 text-white text-xs font-medium rounded-lg cursor-pointer hover:bg-amber-700"
               >
                 Simpan
               </button>
               <button
                 type="button"
                 onClick={() => setEditingCat(null)}
-                className="px-2 py-1 text-xs text-[#666666] hover:text-black cursor-pointer"
+                className="px-2 py-1 text-xs text-slate-600 hover:text-slate-900 cursor-pointer"
               >
                 Batal
               </button>
@@ -857,11 +1006,11 @@ export const SettingsView: React.FC = () => {
               return (
                 <div
                   key={cat}
-                  className="p-3 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-between hover:border-amber-500 transition-colors"
+                  className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between hover:border-amber-500 transition-colors"
                 >
                   <div className="min-w-0 pr-2">
-                    <span className="text-xs font-bold text-black block truncate">{cat}</span>
-                    <span className="text-[10px] text-[#666666] block">
+                    <span className="text-xs font-bold text-slate-900 block truncate">{cat}</span>
+                    <span className="text-[10px] text-slate-500 block">
                       {productCount} produk terkait
                     </span>
                   </div>
@@ -870,7 +1019,7 @@ export const SettingsView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setEditingCat({ oldName: cat, newName: cat })}
-                      className="p-1.5 text-[#666666] hover:text-amber-700 hover:bg-white border border-transparent hover:border-[#CCCCCC] transition-colors cursor-pointer"
+                      className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-white rounded-md border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
                       title={`Ubah nama kategori ${cat}`}
                     >
                       <Edit2 className="w-3.5 h-3.5" />
@@ -878,7 +1027,7 @@ export const SettingsView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setCategoryToDelete(cat)}
-                      className="p-1.5 text-[#666666] hover:text-red-600 hover:bg-white border border-transparent hover:border-[#CCCCCC] transition-colors cursor-pointer"
+                      className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-white rounded-md border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
                       title={`Hapus kategori ${cat}`}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -891,11 +1040,11 @@ export const SettingsView: React.FC = () => {
         </div>
 
         {/* Section 5: Manajemen Menu Produk (Tambah, Edit, Hapus + Upload Foto Langsung) */}
-        <div className="bg-white border border-[#E5E5E5] p-6">
-          <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E5E5]">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
+          <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <RisolIcon className="w-4 h-4 text-amber-600 stroke-[1.8]" />
-              <h2 className="text-sm font-bold text-black uppercase tracking-wider">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
                 5. Manajemen Menu Produk ({products.length} Menu • {products.reduce((acc, p) => acc + (p.stockQuantity || 0), 0)} Porsi Stok)
               </h2>
             </div>
@@ -903,7 +1052,7 @@ export const SettingsView: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowAddProduct(!showAddProduct)}
-              className="px-3.5 py-1.5 bg-amber-600 text-white text-xs font-semibold uppercase tracking-wider hover:bg-amber-700 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+              className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Tambah Menu Baru</span>
@@ -1191,19 +1340,19 @@ export const SettingsView: React.FC = () => {
         </div>
 
         {/* Section 6: Keamanan, Akun Kasir & Password */}
-        <div className="bg-white border border-[#E5E5E5] p-6">
-          <div className="flex items-center gap-2 pb-4 mb-4 border-b border-[#E5E5E5]">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
+          <div className="flex items-center gap-2 pb-4 mb-4 border-b border-slate-100">
             <Lock className="w-4 h-4 text-amber-600 stroke-[1.5]" />
-            <h2 className="text-sm font-bold text-black uppercase tracking-wider">
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
               6. Keamanan, Akun Kasir &amp; Password Masuk
             </h2>
           </div>
 
           {/* Cashier accounts info box */}
-          <div className="mb-4 p-3 bg-amber-50/70 border border-amber-200 rounded text-xs space-y-1.5">
+          <div className="mb-4 p-3 bg-amber-50/70 border border-amber-200 rounded-lg text-xs space-y-1.5">
             <div className="font-bold text-slate-900 flex items-center justify-between">
               <span>Akun Login Kasir Resmi:</span>
-              <span className="font-mono text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded text-[11px]">
+              <span className="font-mono text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md text-[11px]">
                 5 User Kasir Aktif
               </span>
             </div>
@@ -1211,14 +1360,14 @@ export const SettingsView: React.FC = () => {
               User kasir: <strong>Harits</strong>, <strong>Rafi</strong>, <strong>Barra</strong>, <strong>Dimas</strong>, dan <strong>Akhyar</strong>.
             </p>
             <p className="text-slate-600">
-              Password masuk sistem: <code className="bg-white px-2 py-0.5 rounded font-mono font-bold text-amber-800 border border-amber-300">RisoLogyKeren</code> (atau PIN alternatif: <code>{settings.pinCode}</code>)
+              Password masuk sistem: <code className="bg-white px-2 py-0.5 rounded-md font-mono font-bold text-amber-800 border border-amber-300">RisoLogyKeren</code> (atau PIN alternatif: <code>{settings.pinCode}</code>)
             </p>
           </div>
 
           <form onSubmit={handleChangePin} className="space-y-4 max-w-md">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-[#666666] uppercase mb-1">
+                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">
                   PIN Lama
                 </label>
                 <input
@@ -1226,13 +1375,13 @@ export const SettingsView: React.FC = () => {
                   maxLength={6}
                   value={oldPin}
                   onChange={(e) => setOldPin(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 font-mono text-black bg-white focus:outline-none"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:border-amber-500 font-mono text-slate-900 bg-white focus:outline-none"
                   placeholder="******"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#666666] uppercase mb-1">
+                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">
                   PIN Baru (6 Digit)
                 </label>
                 <input
@@ -1240,7 +1389,7 @@ export const SettingsView: React.FC = () => {
                   maxLength={6}
                   value={newPin}
                   onChange={(e) => setNewPin(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 font-mono text-black bg-white focus:outline-none"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:border-amber-500 font-mono text-slate-900 bg-white focus:outline-none"
                   placeholder="******"
                 />
               </div>
@@ -1249,17 +1398,17 @@ export const SettingsView: React.FC = () => {
             <button
               type="submit"
               disabled={!oldPin || newPin.length !== 6}
-              className="px-4 py-2 bg-amber-600 text-white hover:bg-amber-700 text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-40 cursor-pointer shadow-sm"
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-40 cursor-pointer shadow-xs"
             >
               Ubah PIN Kasir
             </button>
 
             {pinMessage && (
               <div
-                className={`p-2.5 text-xs border ${
+                className={`p-2.5 text-xs border rounded-lg ${
                   pinMessage.success
                     ? 'bg-amber-600 text-white border-amber-600'
-                    : 'bg-red-50 text-red-600 border-red-200'
+                    : 'bg-rose-50 text-rose-600 border-rose-200'
                 }`}
               >
                 {pinMessage.text}
@@ -1268,25 +1417,20 @@ export const SettingsView: React.FC = () => {
           </form>
         </div>
 
-        {/* Section 6: Reset Data */}
-        <div className="p-4 border border-dashed border-[#CCCCCC] bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="text-xs font-bold text-black uppercase tracking-wider">
-                Reset Data Awal RisoLogy
-              </h4>
-              <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                Dilindungi Password
-              </span>
-            </div>
-            <p className="text-[11px] text-[#666666] mt-0.5">
-              Mengembalikan menu awal, diskon, dan mengosongkan riwayat order. Logo dan QRIS toko tetap aman dipertahankan.
-            </p>
+        {/* Section 7: Reset Data */}
+        <div className="p-5 border border-slate-200 rounded-xl bg-white shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+              Reset Data Awal RisoLogy
+            </h4>
+            <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+              Dilindungi Password
+            </span>
           </div>
 
           <div className="flex items-center gap-3">
             {resetSuccess && (
-              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 border border-emerald-200">
+              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200">
                 Data Berhasil Direset (Logo &amp; QRIS Aman)
               </span>
             )}
@@ -1297,7 +1441,7 @@ export const SettingsView: React.FC = () => {
                 setResetError('');
                 setShowResetConfirm(true);
               }}
-              className="px-3.5 py-2 bg-white text-rose-700 border border-rose-300 hover:bg-rose-50 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium rounded-lg flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset Data Awal</span>

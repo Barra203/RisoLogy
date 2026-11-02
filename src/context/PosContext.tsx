@@ -143,6 +143,9 @@ interface PosContextType {
   settings: StoreSettings;
   updateSettings: (newSettings: Partial<StoreSettings>) => void;
   updateInitialCapital: (amount: number, source: string, date?: string) => Promise<void>;
+  setActiveBatch: (batchName: string) => void;
+  addBatch: (batchName: string) => boolean;
+  reorderBatches: (newBatchList: string[]) => Promise<void>;
   sendReceiptEmail: (
     tx: Transaction,
     email: string
@@ -194,15 +197,18 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [cashierList, setCashierList] = useState<string[]>(Array.from(INITIAL_CASHIERS));
   const [shiftInfo, setShiftInfo] = useState<ShiftConfig | null>(null);
 
-  // Store Settings (Brand Identity, Logo & QRIS) - Cloud Firestore dengan fallback localStorage
+  // Store Settings (Brand Identity, Logo, QRIS & Batch) - Cloud Firestore dengan fallback localStorage
   const [settings, setSettings] = useState<StoreSettings>(() => {
     const baseSettings: StoreSettings = {
       ...INITIAL_STORE_SETTINGS,
       storeLogo: INITIAL_STORE_SETTINGS.logoUrl,
+      qrisImage: INITIAL_STORE_SETTINGS.qrisUrl,
       soundEnabled: true,
       initialCapital: INITIAL_STORE_SETTINGS.initialCapital ?? 500000,
       capitalSource: INITIAL_STORE_SETTINGS.capitalSource ?? 'Modal Kelompok / Mandiri',
       capitalDate: INITIAL_STORE_SETTINGS.capitalDate ?? new Date().toISOString().split('T')[0],
+      activeBatch: INITIAL_STORE_SETTINGS.activeBatch ?? 'Batch 1',
+      availableBatches: INITIAL_STORE_SETTINGS.availableBatches ?? ['Batch 1', 'Batch 2'],
     };
     try {
       const cached = localStorage.getItem('pos_store_settings');
@@ -210,12 +216,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsed = JSON.parse(cached) as Partial<StoreSettings>;
         const resolvedLogo =
           parsed.storeLogo || parsed.logoUrl || INITIAL_STORE_SETTINGS.logoUrl;
+        const resolvedQris =
+          parsed.qrisImage || parsed.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl;
+        const resolvedBatches =
+          Array.isArray(parsed.availableBatches) && parsed.availableBatches.length > 0
+            ? parsed.availableBatches
+            : baseSettings.availableBatches;
         return {
           ...baseSettings,
           ...parsed,
           logoUrl: resolvedLogo,
           storeLogo: resolvedLogo,
-          qrisUrl: parsed.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl,
+          qrisUrl: resolvedQris,
+          qrisImage: resolvedQris,
           storeName: parsed.storeName || INITIAL_STORE_SETTINGS.storeName,
           brandName: parsed.brandName || INITIAL_STORE_SETTINGS.brandName,
           soundEnabled: parsed.soundEnabled ?? true,
@@ -225,6 +238,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               : baseSettings.initialCapital,
           capitalSource: parsed.capitalSource || baseSettings.capitalSource,
           capitalDate: parsed.capitalDate || baseSettings.capitalDate,
+          activeBatch: parsed.activeBatch || baseSettings.activeBatch || 'Batch 1',
+          availableBatches: resolvedBatches,
         };
       }
     } catch {
@@ -377,9 +392,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const data = docSnap.data();
           const resolvedStock = Number(data.stock ?? data.stockQuantity ?? 0);
           const resolvedImage = String(data.image ?? data.imageUrl ?? '');
+          const rawName = String(data.name || '').replace(/Rlsol/gi, 'Risol');
           return {
             ...data,
             id: docSnap.id,
+            name: rawName,
             stock: resolvedStock,
             stockQuantity: resolvedStock,
             inStock: resolvedStock > 0,
@@ -428,7 +445,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const list: Transaction[] = [];
         snapshot.forEach((d) => {
-          list.push({ ...(d.data() as Transaction), id: d.id });
+          const raw = d.data() as Transaction;
+          const sanitizedItems = Array.isArray(raw.items)
+            ? raw.items.map((item) => ({
+                ...item,
+                name: String(item.name || '').replace(/Rlsol/gi, 'Risol'),
+              }))
+            : [];
+          list.push({
+            ...raw,
+            id: d.id,
+            items: sanitizedItems,
+            batch: raw.batch || 'Batch 1',
+          });
         });
         list.sort((a, b) => b.timestamp - a.timestamp);
         setTransactions(list);
@@ -552,6 +581,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             supplierLocation: raw.supplierLocation || '-',
             cashierName: resolvedCashier,
             cashier: resolvedCashier,
+            batch: raw.batch || 'Batch 1',
           });
         });
         list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
@@ -650,17 +680,44 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSettings((prev) => {
         const hasIncomingLogo = 'storeLogo' in data || 'logoUrl' in data;
         const incomingLogo = data.storeLogo ?? data.logoUrl;
+        const prevLogo = prev.storeLogo || prev.logoUrl || INITIAL_STORE_SETTINGS.logoUrl;
+        // Jika incomingLogo ada dan bukan kosong, gunakan incomingLogo.
+        // Namun jika prevLogo sudah berupa custom Base64 dan incoming dari dokumen lama masih '/logo.png' tanpa flag reset eksplisit, utamakan yang valid:
         const resolvedLogo = hasIncomingLogo
           ? incomingLogo && incomingLogo.trim() !== ''
             ? incomingLogo
             : '/logo.png'
-          : prev.storeLogo || prev.logoUrl || INITIAL_STORE_SETTINGS.logoUrl;
+          : prevLogo;
+
+        const hasIncomingQris = 'qrisImage' in data || 'qrisUrl' in data;
+        const incomingQris = data.qrisImage ?? data.qrisUrl;
+        const prevQris = prev.qrisImage || prev.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl;
+        const resolvedQris = hasIncomingQris
+          ? incomingQris && incomingQris.trim() !== ''
+            ? incomingQris
+            : '/assets/qris.png'
+          : prevQris;
+
+        const resolvedBatches =
+          Array.isArray(data.availableBatches) && data.availableBatches.length > 0
+            ? data.availableBatches
+            : Array.isArray(prev.availableBatches) && prev.availableBatches.length > 0
+            ? prev.availableBatches
+            : INITIAL_STORE_SETTINGS.availableBatches || ['Batch 1', 'Batch 2'];
+
+        const resolvedActiveBatch =
+          data.activeBatch ||
+          prev.activeBatch ||
+          INITIAL_STORE_SETTINGS.activeBatch ||
+          'Batch 1';
+
         const nextSettings: StoreSettings = {
           ...prev,
           ...data,
           logoUrl: resolvedLogo,
           storeLogo: resolvedLogo,
-          qrisUrl: data.qrisUrl || prev.qrisUrl || INITIAL_STORE_SETTINGS.qrisUrl,
+          qrisUrl: resolvedQris,
+          qrisImage: resolvedQris,
           storeName: data.storeName || prev.storeName || INITIAL_STORE_SETTINGS.storeName,
           brandName: data.brandName || prev.brandName || INITIAL_STORE_SETTINGS.brandName,
           soundEnabled: data.soundEnabled ?? prev.soundEnabled ?? true,
@@ -671,6 +728,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           capitalSource:
             data.capitalSource || prev.capitalSource || INITIAL_STORE_SETTINGS.capitalSource,
           capitalDate: data.capitalDate || prev.capitalDate || INITIAL_STORE_SETTINGS.capitalDate,
+          activeBatch: resolvedActiveBatch,
+          availableBatches: resolvedBatches,
         };
         try {
           localStorage.setItem('pos_store_settings', JSON.stringify(nextSettings));
@@ -681,8 +740,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     };
 
-    const unsubscribeStoreConfig = onSnapshot(
-      settingsDocRef,
+    const unsubscribeGeneral = onSnapshot(
+      generalDocRef,
       (snapshot) => {
         setIsSyncing(false);
         if (snapshot.exists()) {
@@ -692,31 +751,25 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const seedPayload = cleanFirestoreData({
             ...INITIAL_STORE_SETTINGS,
             storeLogo: INITIAL_STORE_SETTINGS.logoUrl,
+            qrisImage: INITIAL_STORE_SETTINGS.qrisUrl,
+            activeBatch: INITIAL_STORE_SETTINGS.activeBatch || 'Batch 1',
+            availableBatches: INITIAL_STORE_SETTINGS.availableBatches || ['Batch 1', 'Batch 2'],
             updatedAt: Date.now(),
           });
-          setDoc(settingsDocRef, seedPayload).catch((err) =>
-            reportError(
-              err,
-              OperationType.WRITE,
-              `${FIRESTORE_COLLECTIONS.SETTINGS}/${FIRESTORE_COLLECTIONS.SETTINGS_DOC}`
-            )
-          );
-          setDoc(generalDocRef, seedPayload).catch(() => {});
+          setDoc(generalDocRef, seedPayload, { merge: true }).catch(() => {});
+          setDoc(settingsDocRef, seedPayload, { merge: true }).catch(() => {});
         }
       },
       (error) => {
         setIsSyncing(false);
-        reportError(
-          error,
-          OperationType.GET,
-          `${FIRESTORE_COLLECTIONS.SETTINGS}/${FIRESTORE_COLLECTIONS.SETTINGS_DOC}`
-        );
+        reportError(error, OperationType.GET, 'settings/general');
       }
     );
 
-    const unsubscribeGeneral = onSnapshot(
-      generalDocRef,
+    const unsubscribeStoreConfig = onSnapshot(
+      settingsDocRef,
       (snapshot) => {
+        setIsSyncing(false);
         if (snapshot.exists()) {
           applySettingsSnapshot(snapshot.data() as Partial<StoreSettings>);
         }
@@ -725,8 +778,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     return () => {
-      unsubscribeStoreConfig();
       unsubscribeGeneral();
+      unsubscribeStoreConfig();
     };
   }, []);
 
@@ -1069,6 +1122,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const resolvedCashier =
       (expense.cashier || expense.cashierName || activeCashier || currentUser || 'Kasir').trim();
     const resolvedDate = expense.date || new Date().toISOString().split('T')[0];
+    const resolvedBatch = (expense.batch || settings.activeBatch || 'Batch 1').trim();
     const nowIso = new Date().toISOString();
 
     const newExpensePayload = {
@@ -1085,6 +1139,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       supplierLocation: expense.supplierLocation?.trim() || '-',
       cashier: resolvedCashier,
       cashierName: resolvedCashier,
+      batch: resolvedBatch,
       createdAt: nowIso,
       // Fallback agar tabel lama tidak error jika membaca properti qty:
       quantity: expense.quantity ?? 1,
@@ -1215,6 +1270,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cashierName: activeCashier || 'Harits',
       cashier: activeCashier || 'Harits',
       pic: activeCashier || 'Harits',
+      batch: settings.activeBatch || 'Batch 1',
       notes: '',
       status: 'PAID',
     };
@@ -1561,7 +1617,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveReceipt(tx);
   };
 
-  // Pembaruan Pengaturan Toko, Logo (`storeLogo` & `logoUrl`) & QRIS di Firestore + LocalStorage
+  // Pembaruan Pengaturan Toko, Logo (`storeLogo` & `logoUrl`), QRIS (`qrisImage` & `qrisUrl`), & Batch di Firestore + LocalStorage
   const updateSettings = (newSettings: Partial<StoreSettings>) => {
     const hasLogoKey = 'storeLogo' in newSettings || 'logoUrl' in newSettings;
     const rawLogo = newSettings.storeLogo ?? newSettings.logoUrl;
@@ -1571,9 +1627,18 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         : '/logo.png'
       : undefined;
 
+    const hasQrisKey = 'qrisImage' in newSettings || 'qrisUrl' in newSettings;
+    const rawQris = newSettings.qrisImage ?? newSettings.qrisUrl;
+    const syncedQris = hasQrisKey
+      ? rawQris && rawQris.trim() !== ''
+        ? rawQris
+        : '/assets/qris.png'
+      : undefined;
+
     const normalizedUpdates: Partial<StoreSettings> = {
       ...newSettings,
       ...(syncedLogo !== undefined ? { logoUrl: syncedLogo, storeLogo: syncedLogo } : {}),
+      ...(syncedQris !== undefined ? { qrisUrl: syncedQris, qrisImage: syncedQris } : {}),
     };
 
     setSettings((prev) => {
@@ -1591,6 +1656,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: Date.now(),
     });
 
+    // Simpan ke dokumen utama `settings/general` dan sinkronkan ke `store_settings/store_config`
+    setDoc(doc(db, 'settings', 'general'), payload, { merge: true }).catch((err) =>
+      reportError(err, OperationType.WRITE, 'settings/general')
+    );
+
     setDoc(
       doc(db, FIRESTORE_COLLECTIONS.SETTINGS, FIRESTORE_COLLECTIONS.SETTINGS_DOC),
       payload,
@@ -1602,8 +1672,70 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         `${FIRESTORE_COLLECTIONS.SETTINGS}/${FIRESTORE_COLLECTIONS.SETTINGS_DOC}`
       )
     );
+  };
 
-    setDoc(doc(db, 'settings', 'general'), payload, { merge: true }).catch(() => {});
+  // Pembaruan Batch Aktif & Penambahan Batch Baru di Firestore (`settings/general`)
+  const setActiveBatch = (batchName: string) => {
+    const trimmed = batchName.trim();
+    if (!trimmed) return;
+    const currentList = settings.availableBatches || ['Batch 1', 'Batch 2'];
+    const nextList = currentList.includes(trimmed) ? currentList : [...currentList, trimmed];
+    updateSettings({
+      activeBatch: trimmed,
+      availableBatches: nextList,
+    });
+  };
+
+  const addBatch = (batchName: string): boolean => {
+    const trimmed = batchName.trim();
+    if (!trimmed) return false;
+    const currentList = settings.availableBatches || ['Batch 1', 'Batch 2'];
+    const exists = currentList.some((b) => b.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      updateSettings({ activeBatch: trimmed });
+      return true;
+    }
+    const nextList = [...currentList, trimmed];
+    updateSettings({
+      activeBatch: trimmed,
+      availableBatches: nextList,
+    });
+    return true;
+  };
+
+  // Mengubah urutan daftar batch (Drag-and-Drop Reorder) & simpan permanen ke Firestore
+  const reorderBatches = async (newBatchList: string[]): Promise<void> => {
+    const cleanedList = newBatchList.map((b) => b.trim()).filter(Boolean);
+    if (cleanedList.length === 0) return;
+
+    setSettings((prev) => {
+      const next = { ...prev, availableBatches: cleanedList };
+      try {
+        localStorage.setItem('pos_store_settings', JSON.stringify(next));
+      } catch {
+        // Ignore storage error
+      }
+      return next;
+    });
+
+    try {
+      await updateDoc(doc(db, 'settings', 'general'), {
+        availableBatches: cleanedList,
+        updatedAt: Date.now(),
+      });
+    } catch {
+      await setDoc(
+        doc(db, 'settings', 'general'),
+        { availableBatches: cleanedList, updatedAt: Date.now() },
+        { merge: true }
+      ).catch((err) => reportError(err, OperationType.WRITE, 'settings/general'));
+    }
+
+    setDoc(
+      doc(db, FIRESTORE_COLLECTIONS.SETTINGS, FIRESTORE_COLLECTIONS.SETTINGS_DOC),
+      { availableBatches: cleanedList, updatedAt: Date.now() },
+      { merge: true }
+    ).catch(() => {});
   };
 
   // Pembaruan Modal Awal Usaha & Rekap Arus Kas (Persistent ke Firestore & LocalStorage)
@@ -2005,6 +2137,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         settings,
         updateSettings,
         updateInitialCapital,
+        setActiveBatch,
+        addBatch,
+        reorderBatches,
         sendReceiptEmail,
         viewReceipt,
         activeReceipt,

@@ -237,21 +237,21 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
               </div>
             </div>
           ) : (
-            <div className="p-4 border border-[#E5E5E5] bg-[#FAFAFA] flex flex-col items-center text-center space-y-3">
-              <div className="p-3 bg-white border border-[#E5E5E5] shadow-sm">
-                <img
-                  src={settings.qrisUrl || '/assets/qris.png'}
-                  alt="QRIS Code"
-                  className="w-48 h-48 object-contain"
-                  onError={(e) => {
+            <div className="p-4 border border-[#E5E5E5] bg-[#FAFAFA] flex flex-col items-center text-center space-y-3 rounded-xl">
+              <img
+                src={settings?.qrisImage || settings?.qrisUrl || '/default-qris.png'}
+                alt="QRIS Pembayaran Toko"
+                className="w-56 h-56 object-contain rounded-xl border border-slate-200 p-2 bg-white shadow-xs"
+                onError={(e) => {
+                  if (!e.currentTarget.src.endsWith('/assets/qris.png')) {
                     e.currentTarget.src = '/assets/qris.png';
-                  }}
-                />
-              </div>
+                  }
+                }}
+              />
 
               <div className="space-y-1">
                 <div className="text-xs font-bold text-black uppercase tracking-wider">
-                  {settings.storeName}
+                  {settings.storeName} • {settings.activeBatch || 'Batch 1'}
                 </div>
                 <p className="text-[11px] text-[#666666] max-w-xs mt-1">
                   Pindai QRIS menggunakan BCA Mobile, GoPay, OVO, Dana, ShopeePay, atau m-Banking lainnya.

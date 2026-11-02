@@ -14,10 +14,17 @@
 }
 
 @layer base {
+  html, body, #root {
+    min-height: 100%;
+    height: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    background-color: #F5F5F5;
-    color: #000000;
+    background-color: #F8FAFC;
+    color: #1E293B;
   }
 
   code, pre, .font-mono {

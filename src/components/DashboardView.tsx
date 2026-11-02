@@ -79,7 +79,36 @@ export const DashboardView: React.FC = () => {
     discounts,
     settings,
     updateInitialCapital,
+    setActiveBatch,
+    addBatch,
   } = usePos();
+
+  // State Filter Batch & Tambah Batch Baru di Dashboard
+  const [selectedBatch, setSelectedBatch] = useState<string>('ALL');
+  const [isAddingBatch, setIsAddingBatch] = useState<boolean>(false);
+  const [newBatchInput, setNewBatchInput] = useState<string>('');
+
+  const availableBatches = useMemo(() => {
+    const set = new Set<string>(settings.availableBatches || ['Batch 1', 'Batch 2']);
+    if (settings.activeBatch) set.add(settings.activeBatch);
+    transactions.forEach((tx) => {
+      if (tx.batch) set.add(tx.batch);
+    });
+    expenses.forEach((exp) => {
+      if (exp.batch) set.add(exp.batch);
+    });
+    return Array.from(set);
+  }, [settings.availableBatches, settings.activeBatch, transactions, expenses]);
+
+  const handleCreateBatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = newBatchInput.trim();
+    if (!cleaned) return;
+    await addBatch(cleaned);
+    setSelectedBatch(cleaned);
+    setNewBatchInput('');
+    setIsAddingBatch(false);
+  };
 
   // State Modal Awal Quick Edit Modal di Dashboard
   const [showCapitalModal, setShowCapitalModal] = useState<boolean>(false);
@@ -132,9 +161,14 @@ export const DashboardView: React.FC = () => {
     setTimeout(() => setDownloadSuccessMsg(''), 3000);
   };
 
-  // Filter transactions according to selected time range
+  // Filter transactions according to selectedBatch & selected time range
   const filteredTransactions = useMemo(() => {
-    if (timeRange === 'all') return transactions;
+    const batchFiltered =
+      selectedBatch === 'ALL'
+        ? transactions
+        : transactions.filter((t) => (t.batch || 'Batch 1') === selectedBatch);
+
+    if (timeRange === 'all') return batchFiltered;
 
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
@@ -144,7 +178,7 @@ export const DashboardView: React.FC = () => {
     const sevenDaysAgo = startOfToday - 7 * 86400000;
     const thirtyDaysAgo = startOfToday - 30 * 86400000;
 
-    return transactions.filter((tx) => {
+    return batchFiltered.filter((tx) => {
       const txDateObj = new Date(tx.timestamp);
       const txDateStr = `${txDateObj.getFullYear()}-${String(txDateObj.getMonth() + 1).padStart(
         2,
@@ -156,11 +190,16 @@ export const DashboardView: React.FC = () => {
       if (timeRange === '30days') return tx.timestamp >= thirtyDaysAgo;
       return true;
     });
-  }, [transactions, timeRange]);
+  }, [transactions, timeRange, selectedBatch]);
 
-  // Filter expenses according to selected time range (dengan pencocokan `exp.date` YYYY-MM-DD & fallback ke seluruh `expenses` jika rentang kosong)
+  // Filter expenses according to selectedBatch & selected time range
   const filteredExpenses = useMemo(() => {
-    if (timeRange === 'all') return expenses;
+    const batchFiltered =
+      selectedBatch === 'ALL'
+        ? expenses
+        : expenses.filter((e) => (e.batch || 'Batch 1') === selectedBatch);
+
+    if (timeRange === 'all') return batchFiltered;
 
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
@@ -170,7 +209,7 @@ export const DashboardView: React.FC = () => {
     const sevenDaysAgo = startOfToday - 7 * 86400000;
     const thirtyDaysAgo = startOfToday - 30 * 86400000;
 
-    const matched = expenses.filter((exp) => {
+    const matched = batchFiltered.filter((exp) => {
       const expTime = getExpenseTimestamp(exp);
       if (timeRange === 'today') return exp.date === todayStr || expTime >= startOfToday;
       if (timeRange === '7days') return expTime >= sevenDaysAgo;
@@ -178,10 +217,34 @@ export const DashboardView: React.FC = () => {
       return true;
     });
 
-    // Jika pada filter tanggal tertentu tidak ada nota belanja hari itu padahal data belanja bahan ada,
-    // tampilkan akumulasi data belanja bahan yang tersimpan agar tidak menampilkan Rp 0
-    return matched.length > 0 ? matched : expenses;
-  }, [expenses, timeRange]);
+    // Jika pada filter tanggal tertentu tidak ada nota belanja hari itu padahal data belanja bahan batch tersebut ada,
+    // tampilkan akumulasi data belanja bahan pada batch tersebut agar tidak menampilkan Rp 0 saat Semua Batch aktif
+    if (selectedBatch !== 'ALL') return matched;
+    return matched.length > 0 ? matched : batchFiltered;
+  }, [expenses, timeRange, selectedBatch]);
+
+  // Perbandingan Ringkasan Per-Batch untuk Presentasi Dosen
+  const batchComparisonList = useMemo(() => {
+    return availableBatches.map((batchName) => {
+      const batchTxs = transactions.filter(
+        (t) =>
+          (t.batch || 'Batch 1') === batchName &&
+          (t.status === 'PAID' || t.status === 'Lunas')
+      );
+      const batchExps = expenses.filter((e) => (e.batch || 'Batch 1') === batchName);
+      const omzetBatch = batchTxs.reduce((sum, t) => sum + (Number(t.total) || 0), 0);
+      const belanjaBatch = batchExps.reduce((sum, e) => sum + getExpenseNominal(e), 0);
+      const labaBersihBatch = omzetBatch - belanjaBatch;
+      return {
+        batchName,
+        omzetBatch,
+        belanjaBatch,
+        labaBersihBatch,
+        orderCount: batchTxs.length,
+        expenseCount: batchExps.length,
+      };
+    });
+  }, [availableBatches, transactions, expenses]);
 
   // Kalkulasi Total & Jumlah Nota Belanja Bahan
   const totalBelanjaBahan = useMemo(() => {
@@ -411,7 +474,7 @@ export const DashboardView: React.FC = () => {
 
         let amount = 0;
         let count = 0;
-        transactions.forEach((tx) => {
+        filteredTransactions.forEach((tx) => {
           if (!isPaidStatus(tx.status)) return;
           const txDay = new Date(tx.timestamp).toISOString().split('T')[0];
           if (txDay === dayStr) {
@@ -422,7 +485,7 @@ export const DashboardView: React.FC = () => {
         return { label: dayLabel, amount, count };
       });
     }
-  }, [filteredTransactions, transactions, timeRange]);
+  }, [filteredTransactions, timeRange]);
 
   const maxTrendAmount = Math.max(...trendData.map((d) => d.amount), 0);
 
@@ -568,38 +631,33 @@ export const DashboardView: React.FC = () => {
   const bepShortfall = Math.max(0, totalExpenses - netSales);
 
   return (
-    <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#F5F5F5]">
+    <div className="flex-1 flex flex-col min-h-screen w-full bg-slate-50">
       {/* Top Header */}
-      <div className="p-5 sm:p-6 bg-white border-b border-[#E5E5E5] shrink-0">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
-                <LayoutDashboard className="w-4 h-4 stroke-[2]" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-                  <span>Dashboard Operasional Terpadu</span>
-                  <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-mono font-bold uppercase">
-                    Semua Halaman
-                  </span>
-                </h1>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Agregasi otomatis dari Kasir, Riwayat Transaksi, Menu/Stok, Pelanggan, Belanja Bahan &amp; Ekspor
-                </p>
-              </div>
+      <div className="p-4 sm:p-6 bg-white border-b border-slate-200 shrink-0 space-y-3 w-full overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+              <LayoutDashboard className="w-4 h-4 stroke-[2]" />
+            </div>
+            <div className="min-w-0 flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                Dashboard Operasional
+              </h1>
+              <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md font-mono font-bold uppercase">
+                {selectedBatch === 'ALL' ? 'Semua Batch' : selectedBatch}
+              </span>
             </div>
           </div>
 
           {/* Time range selector & Active Shift badge */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-1.5 bg-[#F5F5F5] p-1 border border-[#E5E5E5] rounded-md">
+          <div className="flex items-center justify-between sm:justify-end gap-2 overflow-x-auto no-scrollbar py-0.5">
+            <div className="flex items-center gap-1 bg-slate-100 p-1 border border-slate-200 rounded-xl shrink-0">
               {(['today', '7days', '30days', 'all'] as const).map((r) => (
                 <button
                   key={r}
                   type="button"
                   onClick={() => setTimeRange(r)}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded cursor-pointer transition-colors ${
+                  className={`px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg cursor-pointer transition-colors whitespace-nowrap ${
                     timeRange === r
                       ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/20'
                       : 'text-slate-700 hover:text-amber-700 hover:bg-amber-50'
@@ -616,10 +674,109 @@ export const DashboardView: React.FC = () => {
               ))}
             </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-xs font-semibold">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-semibold shrink-0">
               <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
               <span>Shift: {activeCashier}</span>
             </div>
+          </div>
+        </div>
+
+        {/* BARIS FILTER BATCH HORIZONTAL (Ramah Jempol Mobile: overflow-x-auto no-scrollbar) */}
+        <div className="pt-2.5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="overflow-x-auto no-scrollbar flex items-center gap-2 py-1">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+              Filter Batch:
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedBatch('ALL')}
+              className={`touch-manipulation px-3.5 py-1.5 text-xs font-bold rounded-xl cursor-pointer transition-all shrink-0 whitespace-nowrap ${
+                selectedBatch === 'ALL'
+                  ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/20'
+                  : 'bg-slate-100 text-slate-700 hover:bg-amber-50 hover:text-amber-800 border border-slate-200'
+              }`}
+            >
+              Semua Batch
+            </button>
+            {availableBatches.map((batchName) => (
+              <button
+                key={batchName}
+                type="button"
+                onClick={() => setSelectedBatch(batchName)}
+                className={`touch-manipulation px-3.5 py-1.5 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                  selectedBatch === batchName
+                    ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/20'
+                    : 'bg-slate-100 text-slate-700 hover:bg-amber-50 hover:text-amber-800 border border-slate-200'
+                }`}
+              >
+                <span>{batchName}</span>
+                {settings.activeBatch === batchName && (
+                  <span
+                    className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono uppercase ${
+                      selectedBatch === batchName
+                        ? 'bg-white/25 text-white'
+                        : 'bg-emerald-100 text-emerald-800'
+                    }`}
+                  >
+                    Aktif
+                  </span>
+                )}
+              </button>
+            ))}
+
+            {!isAddingBatch ? (
+              <button
+                type="button"
+                onClick={() => setIsAddingBatch(true)}
+                className="touch-manipulation px-3 py-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 border-dashed rounded-xl cursor-pointer transition-colors shrink-0 whitespace-nowrap"
+              >
+                + Tambah Batch
+              </button>
+            ) : (
+              <form onSubmit={handleCreateBatch} className="inline-flex items-center gap-1.5 shrink-0">
+                <input
+                  type="text"
+                  placeholder="Cth: Batch 3"
+                  value={newBatchInput}
+                  onChange={(e) => setNewBatchInput(e.target.value)}
+                  className="px-2.5 py-1 text-xs bg-white border border-amber-400 rounded-lg focus:outline-none w-28 font-semibold text-slate-900"
+                />
+                <button
+                  type="submit"
+                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg cursor-pointer"
+                >
+                  Simpan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddingBatch(false);
+                    setNewBatchInput('');
+                  }}
+                  className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg cursor-pointer"
+                >
+                  Batal
+                </button>
+              </form>
+            )}
+          </div>
+
+          {/* Quick Selector Batch Aktif untuk Kasir/Belanja */}
+          <div className="flex items-center justify-between sm:justify-end gap-2 text-xs shrink-0">
+            <span className="text-[11px] font-semibold text-slate-500">
+              Batch Input Aktif:
+            </span>
+            <select
+              value={settings.activeBatch || 'Batch 1'}
+              onChange={(e) => setActiveBatch(e.target.value)}
+              className="px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold cursor-pointer focus:outline-none focus:border-amber-500"
+            >
+              {availableBatches.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -634,11 +791,11 @@ export const DashboardView: React.FC = () => {
         )}
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+      {/* Main Content Area (Natural vertical scroll without nested overflow traps) */}
+      <div className="flex-1 w-full p-4 sm:p-6 space-y-6">
         {/* ROW 1: REAL-TIME OVERVIEW & POS CART ALERT */}
         {cart.length > 0 && (
-          <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="w-full overflow-hidden p-4 bg-amber-50 border border-amber-200 rounded-xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-amber-600 text-white rounded-lg flex items-center justify-center shrink-0">
                 <ShoppingCart className="w-5 h-5" />
@@ -654,14 +811,14 @@ export const DashboardView: React.FC = () => {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between sm:justify-end gap-3">
               <span className="font-mono text-base font-bold text-emerald-700">
                 {formatCurrency(subtotal)}
               </span>
               <button
                 type="button"
                 onClick={() => setActiveTab('pos')}
-                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded cursor-pointer transition-colors flex items-center gap-1 shadow-xs"
+                className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg cursor-pointer transition-colors flex items-center gap-1 shadow-xs"
               >
                 <span>Lanjutkan Order</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -670,10 +827,115 @@ export const DashboardView: React.FC = () => {
           </div>
         )}
 
+        {/* ROW 1.5: REKAPITULASI & PERBANDINGAN KEUANGAN PER-BATCH PRODUKSI */}
+        <div className="w-full overflow-hidden bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+            <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-900 flex items-center gap-2 flex-wrap">
+              <span>Rekapitulasi &amp; Perbandingan Keuangan Per-Batch Produksi</span>
+              <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md text-[10px] font-mono">
+                Filter: {selectedBatch === 'ALL' ? 'Semua Batch Digabung' : selectedBatch}
+              </span>
+            </h2>
+            {selectedBatch !== 'ALL' && (
+              <button
+                type="button"
+                onClick={() => setSelectedBatch('ALL')}
+                className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-semibold rounded-lg cursor-pointer self-start sm:self-auto"
+              >
+                Tampilkan Semua Batch
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {batchComparisonList.map((bItem) => {
+              const isSelected = selectedBatch === bItem.batchName;
+              const isActiveBatch = settings.activeBatch === bItem.batchName;
+              return (
+                <div
+                  key={bItem.batchName}
+                  onClick={() =>
+                    setSelectedBatch(isSelected ? 'ALL' : bItem.batchName)
+                  }
+                  className={`w-full overflow-hidden rounded-2xl border p-4 shadow-sm space-y-3 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-amber-50/70 border-2 border-amber-500 ring-2 ring-amber-500/15'
+                      : 'bg-white hover:border-amber-300 border-slate-200/80'
+                  }`}
+                >
+                  {/* Header Kartu Batch: Nama Batch, Status (Aktif/Selesai), & Jumlah Order/Belanja */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-extrabold text-sm text-slate-900 truncate">
+                        {bItem.batchName}
+                      </span>
+                      {isActiveBatch ? (
+                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold uppercase rounded-full shrink-0">
+                          Aktif
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-semibold uppercase rounded-full shrink-0">
+                          Selesai
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] font-mono font-semibold text-slate-500 shrink-0">
+                      {bItem.orderCount} Order • {bItem.expenseCount} Belanja
+                    </span>
+                  </div>
+
+                  {/* Ringkasan Esensial Vertikal/Grid Bersih */}
+                  <div className="grid grid-cols-3 gap-2 pt-2.5 border-t border-slate-100 text-xs">
+                    <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl p-2">
+                      <span className="text-[10px] font-bold text-emerald-800 uppercase block">
+                        Omzet
+                      </span>
+                      <span className="font-mono font-extrabold text-emerald-700 text-xs sm:text-sm tabular-nums block mt-0.5">
+                        {formatCurrency(bItem.omzetBatch)}
+                      </span>
+                    </div>
+                    <div className="bg-rose-50/60 border border-rose-100 rounded-xl p-2">
+                      <span className="text-[10px] font-bold text-rose-800 uppercase block">
+                        Belanja
+                      </span>
+                      <span className="font-mono font-extrabold text-rose-600 text-xs sm:text-sm tabular-nums block mt-0.5">
+                        {formatCurrency(bItem.belanjaBatch)}
+                      </span>
+                    </div>
+                    <div
+                      className={`rounded-xl p-2 border ${
+                        bItem.labaBersihBatch >= 0
+                          ? 'bg-teal-50/70 border-teal-200'
+                          : 'bg-rose-50/70 border-rose-200'
+                      }`}
+                    >
+                      <span
+                        className={`text-[10px] font-bold uppercase block ${
+                          bItem.labaBersihBatch >= 0 ? 'text-teal-800' : 'text-rose-800'
+                        }`}
+                      >
+                        Laba Bersih
+                      </span>
+                      <span
+                        className={`font-mono font-extrabold text-xs sm:text-sm tabular-nums block mt-0.5 ${
+                          bItem.labaBersihBatch >= 0 ? 'text-teal-700' : 'text-rose-600'
+                        }`}
+                      >
+                        {bItem.labaBersihBatch >= 0 ? '+' : '-'}
+                        {formatCurrency(Math.abs(bItem.labaBersihBatch))}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {/* ROW 2: PRIMARY FINANCIAL & CAPITAL RECONCILIATION KPI CARDS (5 CARDS ESENSIAL PRESENTASI DOSEN) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 w-full">
           {/* Card 1: Modal Awal Usaha */}
-          <div className="p-4 bg-white border border-amber-200 rounded-lg shadow-xs relative overflow-hidden flex flex-col justify-between">
+          <div className="w-full overflow-hidden p-4 bg-white border border-amber-200 rounded-2xl shadow-xs relative flex flex-col justify-between">
             <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -683,7 +945,7 @@ export const DashboardView: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleOpenCapitalModal}
-                  className="px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                  className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
                   title="Atur / Ubah Modal Awal"
                 >
                   <Edit2 className="w-2.5 h-2.5" />
@@ -705,7 +967,7 @@ export const DashboardView: React.FC = () => {
           </div>
 
           {/* Card 2: Belanja Bahan (Pengeluaran Beban) */}
-          <div className="p-4 bg-white border border-rose-200 rounded-lg shadow-xs relative overflow-hidden flex flex-col justify-between">
+          <div className="w-full overflow-hidden p-4 bg-white border border-rose-200 rounded-2xl shadow-xs relative flex flex-col justify-between">
             <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -727,7 +989,7 @@ export const DashboardView: React.FC = () => {
           </div>
 
           {/* Card 3: Omzet Penjualan (Pemasukan Kasir) */}
-          <div className="p-4 bg-white border border-emerald-200 rounded-lg shadow-xs relative overflow-hidden flex flex-col justify-between">
+          <div className="w-full overflow-hidden p-4 bg-white border border-emerald-200 rounded-2xl shadow-xs relative flex flex-col justify-between">
             <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500" />
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -749,7 +1011,7 @@ export const DashboardView: React.FC = () => {
           </div>
 
           {/* Card 4: Estimasi Laba Bersih & ROI */}
-          <div className="p-4 bg-white border border-teal-200 rounded-lg shadow-xs relative overflow-hidden flex flex-col justify-between">
+          <div className="w-full overflow-hidden p-4 bg-white border border-teal-200 rounded-2xl shadow-xs relative flex flex-col justify-between">
             <div
               className={`absolute top-0 left-0 right-0 h-1 ${
                 estimatedNetProfit >= 0 ? 'bg-teal-600' : 'bg-rose-500'
@@ -783,7 +1045,7 @@ export const DashboardView: React.FC = () => {
           </div>
 
           {/* Card 5: Sisa Kas Toko (Cash on Hand) */}
-          <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50/70 border-2 border-amber-400 rounded-lg shadow-xs relative overflow-hidden flex flex-col justify-between">
+          <div className="w-full overflow-hidden p-4 bg-amber-50 border-2 border-amber-400 rounded-xl shadow-xs relative flex flex-col justify-between">
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-amber-600" />
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -806,23 +1068,18 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* ROW 2.5: TRANSPARANSI ARUS KAS PROYEK (CASHFLOW STATEMENT) & BEP STATUS */}
-        <div className="p-5 bg-white border border-slate-200 rounded-lg shadow-xs space-y-4">
+        <div className="w-full overflow-hidden p-4 sm:p-5 bg-white border border-slate-200 rounded-xl shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
                 <Coins className="w-4 h-4" />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight flex items-center gap-2 flex-wrap">
-                  <span>Transparansi Arus Kas Proyek (Cashflow Statement)</span>
-                  <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono font-bold">
-                    Rekonsiliasi Laporan Dosen
-                  </span>
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Alur dana akuntansi: Rekonsiliasi kas disetor, serapan operasional belanja bahan, hingga saldo kas akhir
-                </p>
-              </div>
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight flex items-center gap-2 flex-wrap">
+                <span>Transparansi Arus Kas Proyek (Cashflow Statement)</span>
+                <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono font-bold">
+                  Rekonsiliasi Laporan Dosen
+                </span>
+              </h3>
             </div>
 
             <div className="flex items-center gap-2 shrink-0 flex-wrap">
@@ -925,7 +1182,7 @@ export const DashboardView: React.FC = () => {
             </div>
 
             {/* Step 4: Saldo Kas Toko */}
-            <div className="p-3 bg-gradient-to-br from-amber-100/70 to-amber-200/50 border border-amber-400 rounded-lg flex flex-col justify-between">
+            <div className="p-3 bg-amber-100/70 border border-amber-400 rounded-lg flex flex-col justify-between">
               <div>
                 <span className="text-[10px] font-extrabold text-amber-900 uppercase block mb-1">
                   4. Saldo Kas Riil (Cash on Hand)
@@ -942,10 +1199,10 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* ROW 3: CHART TREN OMZET & BEST SELLERS */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
           {/* Chart Tren Omzet (2 Columns) */}
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5 shadow-xs flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
+          <div className="lg:col-span-2 w-full overflow-hidden bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-amber-600" />
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight">
@@ -984,7 +1241,7 @@ export const DashboardView: React.FC = () => {
                         style={{ height: `${barHeightPercent}%` }}
                         className={`w-full max-w-[42px] rounded-t transition-all duration-300 ${
                           d.amount > 0
-                            ? 'bg-gradient-to-t from-[#D97706] to-amber-400 group-hover:from-emerald-600 group-hover:to-emerald-400'
+                            ? 'bg-amber-600 group-hover:bg-emerald-600'
                             : barHeightPercent > 0
                             ? 'bg-slate-100'
                             : 'h-0'
@@ -1014,7 +1271,7 @@ export const DashboardView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[11px] text-slate-500">Metode Bayar:</span>
                 <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-800 font-mono text-[11px]">
                   Cash: {formatCurrency(metrics.cashSales)}
@@ -1027,7 +1284,7 @@ export const DashboardView: React.FC = () => {
           </div>
 
           {/* List Best Seller (1 Column) */}
-          <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs flex flex-col justify-between">
+          <div className="w-full overflow-hidden bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -1056,7 +1313,7 @@ export const DashboardView: React.FC = () => {
                     return (
                       <div
                         key={item.name}
-                        className="p-3 bg-slate-50 rounded-lg border border-slate-200"
+                        className="p-3 bg-slate-50 rounded-xl border border-slate-200"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
@@ -1108,7 +1365,7 @@ export const DashboardView: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('pos')}
-              className="w-full mt-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-amber-600/20"
+              className="w-full mt-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-amber-600/20"
             >
               <RisolIcon className="w-4 h-4 text-amber-200" />
               <span>Buka Kasir Pesanan Baru</span>
@@ -1117,9 +1374,9 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* ROW 4: INTEGRATED TABLES (PELANGGAN LOYAL & BELANJA BAHAN SUPPLIER TERBARU) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
           {/* Card: Top Pelanggan Loyal (From Customers Page) */}
-          <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
+          <div className="w-full overflow-hidden bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-purple-600" />
@@ -1183,7 +1440,7 @@ export const DashboardView: React.FC = () => {
           </div>
 
           {/* Card: Belanja Bahan Supplier Terbaru (From Expenses Page) */}
-          <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
+          <div className="w-full overflow-hidden bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Truck className="w-4 h-4 text-rose-600" />
@@ -1252,7 +1509,7 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* ROW 5: CASHIER SHIFT PERFORMANCE (Harits, Rafi, Barra, Dimas, Akhyar) */}
-        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
+        <div className="w-full overflow-hidden bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-amber-600" />
@@ -1275,7 +1532,7 @@ export const DashboardView: React.FC = () => {
               return (
                 <div
                   key={cashierName}
-                  className={`p-3.5 rounded-lg border transition-all ${
+                  className={`p-3.5 rounded-xl border transition-all ${
                     isActive
                       ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500/20'
                       : 'border-slate-200 bg-white hover:border-slate-300'
@@ -1323,18 +1580,13 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* ROW 6: MODUL EKSPOR SHORTCUTS (6 TEMPLATE 1-CLICK DOWNLOADS) */}
-        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
+        <div className="w-full overflow-hidden bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight">
-                  Pusat Unduh Laporan Cepat (6 Template Ekspor)
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Unduh langsung file CSV dari dashboard atau buka Modul Ekspor untuk pratinjau tabel lengkap
-                </p>
-              </div>
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight">
+                Pusat Unduh Laporan Cepat (6 Template Ekspor)
+              </h3>
             </div>
             <button
               type="button"
@@ -1350,7 +1602,7 @@ export const DashboardView: React.FC = () => {
             <button
               type="button"
               onClick={handleExportStock}
-              className="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-lg text-left transition-colors cursor-pointer group flex flex-col justify-between"
+              className="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-xl text-left transition-colors cursor-pointer group flex flex-col justify-between"
             >
               <div>
                 <span className="text-[10px] font-bold text-emerald-700 uppercase block mb-1">
@@ -1371,7 +1623,7 @@ export const DashboardView: React.FC = () => {
             <button
               type="button"
               onClick={handleExportItemSales}
-              className="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-lg text-left transition-colors cursor-pointer group flex flex-col justify-between"
+              className="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-xl text-left transition-colors cursor-pointer group flex flex-col justify-between"
             >
               <div>
                 <span className="text-[10px] font-bold text-emerald-700 uppercase block mb-1">
@@ -1392,7 +1644,7 @@ export const DashboardView: React.FC = () => {
             <button
               type="button"
               onClick={handleExportCustomers}
-              className="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-lg text-left transition-colors cursor-pointer group flex flex-col justify-between"
+              className="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-xl text-left transition-colors cursor-pointer group flex flex-col justify-between"
             >
               <div>
                 <span className="text-[10px] font-bold text-emerald-700 uppercase block mb-1">
@@ -1413,7 +1665,7 @@ export const DashboardView: React.FC = () => {
             <button
               type="button"
               onClick={handleExportFinancial}
-              className="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-lg text-left transition-colors cursor-pointer group flex flex-col justify-between"
+              className="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-xl text-left transition-colors cursor-pointer group flex flex-col justify-between"
             >
               <div>
                 <span className="text-[10px] font-bold text-emerald-700 uppercase block mb-1">
@@ -1434,7 +1686,7 @@ export const DashboardView: React.FC = () => {
             <button
               type="button"
               onClick={handleExportExpenses}
-              className="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-lg text-left transition-colors cursor-pointer group flex flex-col justify-between"
+              className="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-xl text-left transition-colors cursor-pointer group flex flex-col justify-between"
             >
               <div>
                 <span className="text-[10px] font-bold text-emerald-700 uppercase block mb-1">
@@ -1455,7 +1707,7 @@ export const DashboardView: React.FC = () => {
             <button
               type="button"
               onClick={handleExportTransactions}
-              className="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-lg text-left transition-colors cursor-pointer group flex flex-col justify-between"
+              className="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-xl text-left transition-colors cursor-pointer group flex flex-col justify-between"
             >
               <div>
                 <span className="text-[10px] font-bold text-emerald-700 uppercase block mb-1">
@@ -1475,9 +1727,9 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* ROW 7: STOK MENIPIS & PROMO DISKON AKTIF (From Settings & POS) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
           {/* Card: Status Stok Produk (Mengikuti list menu produk) */}
-          <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
+          <div className="w-full overflow-hidden bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Package className="w-4 h-4 text-amber-600" />
@@ -1499,7 +1751,7 @@ export const DashboardView: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+            <div className="space-y-2.5">
               {products.length === 0 ? (
                 <div className="text-center py-8 text-xs text-slate-400">
                   Belum ada menu produk terdaftar.
@@ -1514,7 +1766,7 @@ export const DashboardView: React.FC = () => {
                   return (
                     <div
                       key={prod.id}
-                      className="p-3 bg-slate-50 rounded border border-slate-200 hover:border-slate-300 transition-colors"
+                      className="p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-slate-300 transition-colors"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
@@ -1574,7 +1826,7 @@ export const DashboardView: React.FC = () => {
           </div>
 
           {/* Card: Promo Diskon Transaksi Aktif */}
-          <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs flex flex-col justify-between">
+          <div className="w-full overflow-hidden bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -1598,7 +1850,7 @@ export const DashboardView: React.FC = () => {
                   .map((disc) => (
                     <div
                       key={disc.id}
-                      className="p-3 bg-amber-50/50 rounded border border-amber-200 flex items-center justify-between"
+                      className="p-3 bg-amber-50/50 rounded-xl border border-amber-200 flex items-center justify-between"
                     >
                       <div>
                         <div className="text-xs font-bold text-slate-900">{disc.name}</div>
