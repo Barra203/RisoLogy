@@ -50,6 +50,9 @@ export const INITIAL_STORE_SETTINGS: StoreSettings = {
   qrisUrl: '/assets/qris.png',
   pinCode: '666666',
   soundEnabled: true,
+  initialCapital: 500000,
+  capitalSource: 'Modal Kelompok / Mandiri',
+  capitalDate: new Date().toISOString().split('T')[0],
 };
 
 export const INITIAL_CATEGORIES: string[] = ['Risol Mayo', 'Risol Gurih', 'Risol Manis'];

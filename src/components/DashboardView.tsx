@@ -34,6 +34,12 @@ import {
   UserCheck,
   ShoppingCart,
   ArrowRight,
+  Coins,
+  Landmark,
+  Edit2,
+  X,
+  Check,
+  Sparkles,
 } from 'lucide-react';
 import { RisolIcon } from './RisolIcon';
 
@@ -71,7 +77,40 @@ export const DashboardView: React.FC = () => {
     subtotal,
     customerName,
     discounts,
+    settings,
+    updateInitialCapital,
   } = usePos();
+
+  // State Modal Awal Quick Edit Modal di Dashboard
+  const [showCapitalModal, setShowCapitalModal] = useState<boolean>(false);
+  const [modalAmount, setModalAmount] = useState<string>(
+    String(settings.initialCapital ?? 500000)
+  );
+  const [modalSource, setModalSource] = useState<string>(
+    settings.capitalSource || 'Modal Kelompok / Mandiri'
+  );
+  const [modalDate, setModalDate] = useState<string>(
+    settings.capitalDate || new Date().toISOString().split('T')[0]
+  );
+  const [capitalFeedback, setCapitalFeedback] = useState<string>('');
+
+  const handleOpenCapitalModal = () => {
+    setModalAmount(String(settings.initialCapital ?? 500000));
+    setModalSource(settings.capitalSource || 'Modal Kelompok / Mandiri');
+    setModalDate(settings.capitalDate || new Date().toISOString().split('T')[0]);
+    setShowCapitalModal(true);
+  };
+
+  const handleSaveModalCapital = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanAmount = Math.max(0, parseInt(modalAmount.replace(/\D/g, ''), 10) || 0);
+    await updateInitialCapital(cleanAmount, modalSource, modalDate);
+    setCapitalFeedback('Modal awal berhasil diperbarui!');
+    setTimeout(() => {
+      setCapitalFeedback('');
+      setShowCapitalModal(false);
+    }, 800);
+  };
 
   // Default ke 'all' agar seluruh akumulasi transaksi dan belanja bahan langsung tampil sinkron
   const [timeRange, setTimeRange] = useState<'today' | '7days' | '30days' | 'all'>('all');
@@ -511,6 +550,23 @@ export const DashboardView: React.FC = () => {
     );
   };
 
+  // Metrik Keuangan Terpadu & Rekonsiliasi Kas (Untuk Presentasi Dosen / Tim)
+  const initialCapital = Number(settings.initialCapital ?? 500000);
+  const capitalSource = settings.capitalSource || 'Modal Kelompok / Mandiri';
+  const capitalDate = settings.capitalDate || '';
+
+  const netSales = metrics.netSales; // Total omzet penjualan lunas (PAID)
+  const totalExpenses = totalBelanjaBahan; // Total beban belanja bahan
+  const estimatedNetProfit = netSales - totalExpenses; // Estimasi laba/rugi operasional
+  const cashOnHand = initialCapital + netSales - totalExpenses; // Posisi kas riil di tangan
+
+  const capitalAbsorption =
+    initialCapital > 0 ? ((totalExpenses / initialCapital) * 100).toFixed(1) : '0';
+  const roiPercentage =
+    initialCapital > 0 ? ((estimatedNetProfit / initialCapital) * 100).toFixed(1) : '0';
+  const isBepReached = netSales >= totalExpenses;
+  const bepShortfall = Math.max(0, totalExpenses - netSales);
+
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#F5F5F5]">
       {/* Top Header */}
@@ -614,105 +670,273 @@ export const DashboardView: React.FC = () => {
           </div>
         )}
 
-        {/* ROW 2: PRIMARY FINANCIAL & TRANSACTION KPI CARDS (4 CARDS ESENSIAL) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Jumlah Transaksi & AOV */}
-          <div className="p-4 bg-white border border-amber-200 rounded-lg shadow-xs relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-amber-600" />
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">
-                Jumlah Transaksi
-              </span>
-              <Receipt className="w-4 h-4 text-amber-600" />
-            </div>
-            <div className="font-mono text-3xl font-extrabold text-slate-900 tabular-nums">
-              {metrics.totalTransactions}
-            </div>
-            <div className="mt-2 flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-              <span>Rata-rata Order (AOV):</span>
-              <span className="font-semibold text-slate-800 font-mono">
-                {formatCurrency(metrics.avgTicket)}
-              </span>
-            </div>
-          </div>
-
-          {/* Card 2: Transaksi Berhasil & Success Rate */}
-          <div className="p-4 bg-white border border-emerald-200 rounded-lg shadow-xs relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-600" />
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">
-                Transaksi Berhasil
-              </span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div className="flex items-baseline gap-2">
-              <div className="font-mono text-3xl font-extrabold text-emerald-700 tabular-nums">
-                {metrics.successfulTransactions}
-              </div>
-              <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                {metrics.successRate}% Lunas
-              </span>
-            </div>
-            <div className="mt-2 flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-              <span>Belum Bayar / Refund:</span>
-              <span className="font-semibold font-mono flex items-center gap-1.5">
-                <span className="text-amber-700">{metrics.unpaidCount} belum</span>
-                <span className="text-slate-300">•</span>
-                <span className="text-rose-600">{metrics.refundedTransactions} refund</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Card 3: Omzet Bersih Penjualan (+ Hijau) */}
-          <div className="p-4 bg-white border border-teal-200 rounded-lg shadow-xs relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-teal-600" />
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-teal-800 uppercase tracking-wider">
-                Omzet Bersih Penjualan
-              </span>
-              <TrendingUp className="w-4 h-4 text-teal-600" />
-            </div>
-            <div className="font-mono text-2xl font-extrabold text-emerald-700 tabular-nums">
-              + {formatCurrency(metrics.netSales)}
-            </div>
-            <div className="mt-2 flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-              <span>Total Diskon (-)</span>
-              <span className="font-semibold text-rose-600 font-mono">
-                - {formatCurrency(metrics.totalDiscount)}
-              </span>
-            </div>
-          </div>
-
-          {/* Card 4: Belanja Supplier & Estimasi Laba Bersih */}
-          <div className="p-4 bg-white border border-amber-200 rounded-lg shadow-xs relative overflow-hidden">
+        {/* ROW 2: PRIMARY FINANCIAL & CAPITAL RECONCILIATION KPI CARDS (5 CARDS ESENSIAL PRESENTASI DOSEN) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+          {/* Card 1: Modal Awal Usaha */}
+          <div className="p-4 bg-white border border-amber-200 rounded-lg shadow-xs relative overflow-hidden flex flex-col justify-between">
             <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-amber-900 uppercase tracking-wider">
-                Belanja Bahan &amp; Laba
-              </span>
-              <Wallet className="w-4 h-4 text-amber-600" />
-            </div>
-            <div className="flex items-baseline justify-between">
-              <div>
-                <span className="text-[10px] text-slate-500 block">Belanja Supplier:</span>
-                <span className="font-mono text-sm font-bold text-rose-600">
-                  - Rp {totalBelanjaBahan.toLocaleString('id-ID')}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+                  1. Modal Awal Usaha
                 </span>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] text-slate-500 block">Est. Laba Bersih:</span>
-                <span
-                  className={`font-mono text-base font-extrabold ${
-                    metrics.estimatedNetProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'
-                  }`}
+                <button
+                  type="button"
+                  onClick={handleOpenCapitalModal}
+                  className="px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Atur / Ubah Modal Awal"
                 >
-                  {formatCurrency(metrics.estimatedNetProfit)}
-                </span>
+                  <Edit2 className="w-2.5 h-2.5" />
+                  <span>Atur</span>
+                </button>
+              </div>
+              <div className="font-mono text-2xl font-extrabold text-amber-900 tabular-nums">
+                {formatCurrency(initialCapital)}
               </div>
             </div>
-            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
-              <span>Margin Bersih ({totalNotaBelanja} Nota):</span>
-              <span className="font-mono font-bold text-slate-800">{metrics.profitMargin}%</span>
+            <div className="mt-2.5 pt-2 border-t border-amber-100 text-[11px] text-slate-600 flex flex-col gap-0.5">
+              <span className="truncate font-medium" title={capitalSource}>
+                Sumber: <strong className="text-slate-800">{capitalSource}</strong>
+              </span>
+              <span className="text-slate-600 text-[10px]">
+                {capitalDate ? `Tgl: ${capitalDate}` : 'Kas Modal Awal'}
+              </span>
+            </div>
+          </div>
+
+          {/* Card 2: Belanja Bahan (Pengeluaran Beban) */}
+          <div className="p-4 bg-white border border-rose-200 rounded-lg shadow-xs relative overflow-hidden flex flex-col justify-between">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold text-rose-800 uppercase tracking-wider">
+                  2. Belanja Bahan
+                </span>
+                <ShoppingBag className="w-4 h-4 text-rose-500" />
+              </div>
+              <div className="font-mono text-2xl font-extrabold text-rose-600 tabular-nums">
+                - {formatCurrency(totalExpenses)}
+              </div>
+            </div>
+            <div className="mt-2.5 pt-2 border-t border-rose-100 text-[11px] text-slate-600 flex items-center justify-between">
+              <span>{totalNotaBelanja} Nota Belanja</span>
+              <span className="font-bold text-rose-700 font-mono text-[10px]">
+                {capitalAbsorption}% Modal
+              </span>
+            </div>
+          </div>
+
+          {/* Card 3: Omzet Penjualan (Pemasukan Kasir) */}
+          <div className="p-4 bg-white border border-emerald-200 rounded-lg shadow-xs relative overflow-hidden flex flex-col justify-between">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500" />
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                  3. Omzet Penjualan
+                </span>
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="font-mono text-2xl font-extrabold text-emerald-700 tabular-nums">
+                + {formatCurrency(netSales)}
+              </div>
+            </div>
+            <div className="mt-2.5 pt-2 border-t border-emerald-100 text-[11px] text-slate-600 flex items-center justify-between">
+              <span>{metrics.successfulTransactions} Order Lunas</span>
+              <span className="font-bold text-emerald-800 font-mono text-[10px]">
+                {metrics.profitMargin}% Margin
+              </span>
+            </div>
+          </div>
+
+          {/* Card 4: Estimasi Laba Bersih & ROI */}
+          <div className="p-4 bg-white border border-teal-200 rounded-lg shadow-xs relative overflow-hidden flex flex-col justify-between">
+            <div
+              className={`absolute top-0 left-0 right-0 h-1 ${
+                estimatedNetProfit >= 0 ? 'bg-teal-600' : 'bg-rose-500'
+              }`}
+            />
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wider">
+                  4. Est. Laba Bersih
+                </span>
+                <Award className="w-4 h-4 text-teal-600" />
+              </div>
+              <div
+                className={`font-mono text-2xl font-extrabold tabular-nums ${
+                  estimatedNetProfit >= 0 ? 'text-teal-700' : 'text-rose-600'
+                }`}
+              >
+                {estimatedNetProfit >= 0 ? '+' : '-'} {formatCurrency(Math.abs(estimatedNetProfit))}
+              </div>
+            </div>
+            <div className="mt-2.5 pt-2 border-t border-teal-100 text-[11px] text-slate-600 flex items-center justify-between">
+              <span>ROI Modal:</span>
+              <span
+                className={`font-bold font-mono text-[10px] ${
+                  Number(roiPercentage) >= 0 ? 'text-teal-700' : 'text-rose-600'
+                }`}
+              >
+                {roiPercentage}% ROI
+              </span>
+            </div>
+          </div>
+
+          {/* Card 5: Sisa Kas Toko (Cash on Hand) */}
+          <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50/70 border-2 border-amber-400 rounded-lg shadow-xs relative overflow-hidden flex flex-col justify-between">
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-amber-600" />
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-extrabold text-amber-900 uppercase tracking-wider">
+                  5. Sisa Kas (Cash on Hand)
+                </span>
+                <Wallet className="w-4 h-4 text-amber-700" />
+              </div>
+              <div className="font-mono text-2xl sm:text-[25px] font-extrabold text-amber-800 tabular-nums leading-tight">
+                {formatCurrency(cashOnHand)}
+              </div>
+            </div>
+            <div className="mt-2.5 pt-2 border-t border-amber-200/80 text-[10px] text-amber-900 font-semibold flex items-center justify-between">
+              <span>Kas Nyata di Tangan</span>
+              <span className="font-mono text-[9px] text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded">
+                [Modal + Omzet - Belanja]
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ROW 2.5: TRANSPARANSI ARUS KAS PROYEK (CASHFLOW STATEMENT) & BEP STATUS */}
+        <div className="p-5 bg-white border border-slate-200 rounded-lg shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                <Coins className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight flex items-center gap-2 flex-wrap">
+                  <span>Transparansi Arus Kas Proyek (Cashflow Statement)</span>
+                  <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono font-bold">
+                    Rekonsiliasi Laporan Dosen
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Alur dana akuntansi: Rekonsiliasi kas disetor, serapan operasional belanja bahan, hingga saldo kas akhir
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              {isBepReached ? (
+                <div className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-full text-xs font-bold flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>BEP TERCAPAI (Titik Impas Terlampaui)</span>
+                </div>
+              ) : (
+                <div className="px-3 py-1 bg-amber-50 text-amber-800 border border-amber-300 rounded-full text-xs font-bold flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5 text-amber-600" />
+                  <span>PROSES MENUJU BEP (-{formatCurrency(bepShortfall)})</span>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handleOpenCapitalModal}
+                className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+              >
+                <Edit2 className="w-3 h-3" />
+                <span>Atur Modal</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Cashflow Narrative for Lecturer / Presentation */}
+          <div
+            className={`p-3.5 rounded-lg border text-xs leading-relaxed ${
+              isBepReached
+                ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                : 'bg-amber-50/70 border-amber-200 text-amber-950'
+            }`}
+          >
+            <div className="flex items-start gap-2.5">
+              {isBepReached ? (
+                <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              ) : (
+                <Landmark className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+              )}
+              <div>
+                <p className="font-bold mb-0.5 text-slate-900">
+                  {isBepReached
+                    ? 'Evaluasi Finansial: Usaha Menghasilkan Laba Operasional Bersih (Di Atas BEP)'
+                    : 'Evaluasi Finansial: Usaha Berada dalam Tahap Pemulihan Modal Bahan (Menuju BEP)'}
+                </p>
+                <p className="text-slate-700 text-[11px]">
+                  {isBepReached
+                    ? `Total omzet penjualan lunas (${formatCurrency(netSales)}) telah melampaui 100% total beban belanja bahan baku (${formatCurrency(totalExpenses)}). Usaha berhasil membukukan laba operasional bersih sebesar ${formatCurrency(estimatedNetProfit)} dengan Return on Investment (ROI) sebesar ${roiPercentage}% terhadap modal awal usaha ${formatCurrency(initialCapital)}.`
+                    : `Dibutuhkan tambahan omzet penjualan sebesar ${formatCurrency(bepShortfall)} lagi agar penjualan kasir menutup 100% biaya belanja bahan (${formatCurrency(totalExpenses)}). Saat ini tingkat serapan belanja adalah ${capitalAbsorption}% dari modal awal usaha ${formatCurrency(initialCapital)}.`}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Visual 4-Step Cashflow Statement Strip */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+            {/* Step 1: Modal Awal */}
+            <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-lg flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-amber-800 uppercase block mb-1">
+                  1. Modal Awal Disetor
+                </span>
+                <div className="font-mono text-lg font-extrabold text-amber-900">
+                  + {formatCurrency(initialCapital)}
+                </div>
+              </div>
+              <span className="text-[10px] text-slate-500 mt-1.5 block truncate">
+                {capitalSource}
+              </span>
+            </div>
+
+            {/* Step 2: Belanja Bahan */}
+            <div className="p-3 bg-rose-50/60 border border-rose-200 rounded-lg flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-rose-800 uppercase block mb-1">
+                  2. Serapan Belanja Bahan
+                </span>
+                <div className="font-mono text-lg font-extrabold text-rose-600">
+                  - {formatCurrency(totalExpenses)}
+                </div>
+              </div>
+              <span className="text-[10px] text-slate-500 mt-1.5 block">
+                {totalNotaBelanja} nota transaksi supplier
+              </span>
+            </div>
+
+            {/* Step 3: Omzet Penjualan */}
+            <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-lg flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-emerald-800 uppercase block mb-1">
+                  3. Akumulasi Omzet Kasir
+                </span>
+                <div className="font-mono text-lg font-extrabold text-emerald-700">
+                  + {formatCurrency(netSales)}
+                </div>
+              </div>
+              <span className="text-[10px] text-slate-500 mt-1.5 block">
+                {metrics.successfulTransactions} transaksi kasir lunas
+              </span>
+            </div>
+
+            {/* Step 4: Saldo Kas Toko */}
+            <div className="p-3 bg-gradient-to-br from-amber-100/70 to-amber-200/50 border border-amber-400 rounded-lg flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] font-extrabold text-amber-900 uppercase block mb-1">
+                  4. Saldo Kas Riil (Cash on Hand)
+                </span>
+                <div className="font-mono text-lg font-extrabold text-amber-900">
+                  = {formatCurrency(cashOnHand)}
+                </div>
+              </div>
+              <span className="text-[10px] text-amber-800 font-bold mt-1.5 block">
+                Kas nyata &amp; rekening kasir
+              </span>
             </div>
           </div>
         </div>
@@ -1406,6 +1630,118 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* QUICK MODAL: Atur Modal Awal Usaha (Direct on Dashboard for Lecturer Presentation) */}
+      {showCapitalModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white border border-[#E5E5E5] shadow-2xl p-6">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E5E5E5]">
+              <div className="flex items-center gap-2 text-amber-700">
+                <Landmark className="w-5 h-5 stroke-[1.8]" />
+                <h3 className="text-sm font-bold uppercase tracking-wider text-black">
+                  Atur Modal Awal Usaha
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCapitalModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-800 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {capitalFeedback && (
+              <div className="p-3 mb-4 bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-medium rounded flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>{capitalFeedback}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveModalCapital} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-black uppercase tracking-wider block">
+                  Nominal Modal Awal (Rp)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-500 font-mono">
+                    Rp
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={
+                      modalAmount === ''
+                        ? ''
+                        : Number(modalAmount.replace(/\D/g, '')).toLocaleString('id-ID')
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setModalAmount(val);
+                    }}
+                    placeholder="500.000"
+                    className="w-full pl-10 pr-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white font-mono font-bold text-slate-900 focus:outline-none"
+                    required
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Uang tunai operasional yang disetor tim di awal kegiatan usaha
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-black uppercase tracking-wider block">
+                  Sumber / Asal Modal
+                </label>
+                <input
+                  type="text"
+                  list="quick-modal-sources"
+                  value={modalSource}
+                  onChange={(e) => setModalSource(e.target.value)}
+                  placeholder="Cth: Modal Kelompok / Mandiri"
+                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white font-medium text-slate-800 focus:outline-none"
+                  required
+                />
+                <datalist id="quick-modal-sources">
+                  <option value="Modal Kelompok / Mandiri" />
+                  <option value="Hibah PMW Kampus" />
+                  <option value="Iuran Kas Mahasiswa" />
+                  <option value="Investor / Pembina Usaha" />
+                </datalist>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-black uppercase tracking-wider block">
+                  Tanggal Alokasi Modal
+                </label>
+                <input
+                  type="date"
+                  value={modalDate}
+                  onChange={(e) => setModalDate(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white font-medium text-slate-800 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowCapitalModal(false)}
+                  className="px-3.5 py-2 text-xs border border-[#CCCCCC] hover:border-black cursor-pointer font-medium"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold uppercase tracking-wider cursor-pointer shadow-xs"
+                >
+                  Simpan Modal
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

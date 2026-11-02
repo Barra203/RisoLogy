@@ -145,6 +145,9 @@ export interface StoreSettings {
   qrisNmid?: string;
   pinCode: string;
   soundEnabled?: boolean; // Status aktif/nonaktif suara notifikasi kasir (default: true)
+  initialCapital?: number; // Modal awal operasional usaha (default: Rp 500.000)
+  capitalSource?: string; // Asal modal (cth: "Modal Kelompok / Mandiri", "Hibah Kampus / PMW")
+  capitalDate?: string; // Tanggal alokasi modal YYYY-MM-DD
 }
 
 export type ActiveTab =

@@ -142,6 +142,7 @@ interface PosContextType {
   // Settings & Actions
   settings: StoreSettings;
   updateSettings: (newSettings: Partial<StoreSettings>) => void;
+  updateInitialCapital: (amount: number, source: string, date?: string) => Promise<void>;
   sendReceiptEmail: (
     tx: Transaction,
     email: string
@@ -199,6 +200,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...INITIAL_STORE_SETTINGS,
       storeLogo: INITIAL_STORE_SETTINGS.logoUrl,
       soundEnabled: true,
+      initialCapital: INITIAL_STORE_SETTINGS.initialCapital ?? 500000,
+      capitalSource: INITIAL_STORE_SETTINGS.capitalSource ?? 'Modal Kelompok / Mandiri',
+      capitalDate: INITIAL_STORE_SETTINGS.capitalDate ?? new Date().toISOString().split('T')[0],
     };
     try {
       const cached = localStorage.getItem('pos_store_settings');
@@ -215,6 +219,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           storeName: parsed.storeName || INITIAL_STORE_SETTINGS.storeName,
           brandName: parsed.brandName || INITIAL_STORE_SETTINGS.brandName,
           soundEnabled: parsed.soundEnabled ?? true,
+          initialCapital:
+            typeof parsed.initialCapital === 'number'
+              ? parsed.initialCapital
+              : baseSettings.initialCapital,
+          capitalSource: parsed.capitalSource || baseSettings.capitalSource,
+          capitalDate: parsed.capitalDate || baseSettings.capitalDate,
         };
       }
     } catch {
@@ -654,6 +664,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           storeName: data.storeName || prev.storeName || INITIAL_STORE_SETTINGS.storeName,
           brandName: data.brandName || prev.brandName || INITIAL_STORE_SETTINGS.brandName,
           soundEnabled: data.soundEnabled ?? prev.soundEnabled ?? true,
+          initialCapital:
+            typeof data.initialCapital === 'number'
+              ? data.initialCapital
+              : prev.initialCapital ?? INITIAL_STORE_SETTINGS.initialCapital,
+          capitalSource:
+            data.capitalSource || prev.capitalSource || INITIAL_STORE_SETTINGS.capitalSource,
+          capitalDate: data.capitalDate || prev.capitalDate || INITIAL_STORE_SETTINGS.capitalDate,
         };
         try {
           localStorage.setItem('pos_store_settings', JSON.stringify(nextSettings));
@@ -1589,6 +1606,23 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDoc(doc(db, 'settings', 'general'), payload, { merge: true }).catch(() => {});
   };
 
+  // Pembaruan Modal Awal Usaha & Rekap Arus Kas (Persistent ke Firestore & LocalStorage)
+  const updateInitialCapital = async (
+    amount: number,
+    source: string,
+    date?: string
+  ): Promise<void> => {
+    const resolvedAmount = Math.max(0, Number(amount) || 0);
+    const resolvedSource = source.trim() || 'Modal Kelompok / Mandiri';
+    const resolvedDate = date || new Date().toISOString().split('T')[0];
+
+    updateSettings({
+      initialCapital: resolvedAmount,
+      capitalSource: resolvedSource,
+      capitalDate: resolvedDate,
+    });
+  };
+
   // Manajemen Produk di Firestore (Sinkronisasi Real-Time & CRUD Permanen)
   const addProduct = async (newProduct: Omit<Product, 'id'>): Promise<void> => {
     try {
@@ -1970,6 +2004,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteCustomer,
         settings,
         updateSettings,
+        updateInitialCapital,
         sendReceiptEmail,
         viewReceipt,
         activeReceipt,

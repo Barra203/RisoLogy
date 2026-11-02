@@ -21,6 +21,8 @@ import {
   EyeOff,
   Volume2,
   VolumeX,
+  Coins,
+  Landmark,
 } from 'lucide-react';
 import { RisolIcon } from './RisolIcon';
 import { playSuccessChime } from '../utils/sound';
@@ -29,6 +31,7 @@ export const SettingsView: React.FC = () => {
   const {
     settings,
     updateSettings,
+    updateInitialCapital,
     products,
     categories,
     addCategory,
@@ -51,6 +54,18 @@ export const SettingsView: React.FC = () => {
   const [qrisUrl, setQrisUrl] = useState(settings.qrisUrl);
   const [logoUrl, setLogoUrl] = useState(settings.storeLogo || settings.logoUrl || '/logo.png');
 
+  // Local form state for Modal Awal Usaha (Presentation to Lecturer)
+  const [capitalAmount, setCapitalAmount] = useState<string>(
+    String(settings.initialCapital ?? 500000)
+  );
+  const [capitalSource, setCapitalSource] = useState<string>(
+    settings.capitalSource || 'Modal Kelompok / Mandiri'
+  );
+  const [capitalDate, setCapitalDate] = useState<string>(
+    settings.capitalDate || new Date().toISOString().split('T')[0]
+  );
+  const [capitalSaved, setCapitalSaved] = useState<boolean>(false);
+
   // Sync state with real-time Firestore settings
   React.useEffect(() => {
     setStoreName(settings.storeName);
@@ -61,6 +76,9 @@ export const SettingsView: React.FC = () => {
     setFooterText(settings.footerText);
     setQrisUrl(settings.qrisUrl);
     setLogoUrl(settings.storeLogo || settings.logoUrl || '/logo.png');
+    setCapitalAmount(String(settings.initialCapital ?? 500000));
+    setCapitalSource(settings.capitalSource || 'Modal Kelompok / Mandiri');
+    setCapitalDate(settings.capitalDate || new Date().toISOString().split('T')[0]);
   }, [settings]);
 
   // Hidden file input refs for direct uploads
@@ -173,6 +191,7 @@ export const SettingsView: React.FC = () => {
   // Save general store settings
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanCapital = Math.max(0, parseInt(capitalAmount.replace(/\D/g, ''), 10) || 0);
     updateSettings({
       storeName,
       brandName,
@@ -183,9 +202,21 @@ export const SettingsView: React.FC = () => {
       qrisUrl,
       logoUrl,
       storeLogo: logoUrl,
+      initialCapital: cleanCapital,
+      capitalSource: capitalSource.trim() || 'Modal Kelompok / Mandiri',
+      capitalDate: capitalDate || new Date().toISOString().split('T')[0],
     });
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
+  };
+
+  // Save Modal Awal Usaha (Presentation to Lecturer)
+  const handleSaveCapital = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanNum = Math.max(0, parseInt(capitalAmount.replace(/\D/g, ''), 10) || 0);
+    updateInitialCapital(cleanNum, capitalSource, capitalDate);
+    setCapitalSaved(true);
+    setTimeout(() => setCapitalSaved(false), 3000);
   };
 
   // Change PIN
@@ -534,12 +565,135 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Section 2: QRIS Digital & Upload Gambar QRIS Langsung (NMID REMOVED) */}
+        {/* Section 2: Modal Awal Usaha & Rekap Arus Kas (Laporan Dosen / Tim) */}
+        <div className="bg-white border border-[#E5E5E5] p-6">
+          <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E5E5]">
+            <div className="flex items-center gap-2">
+              <Coins className="w-4 h-4 text-amber-600 stroke-[1.8]" />
+              <div>
+                <h2 className="text-sm font-bold text-black uppercase tracking-wider">
+                  2. Pengaturan Modal Awal Usaha &amp; Arus Kas
+                </h2>
+                <p className="text-xs text-[#666666] mt-0.5">
+                  Digunakan untuk perhitungan akuntansi arus kas, rasio serapan belanja, dan ROI pada presentasi dosen
+                </p>
+              </div>
+            </div>
+
+            {capitalSaved && (
+              <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-3 py-1 flex items-center gap-1.5 border border-emerald-300">
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Modal Disimpan</span>
+              </span>
+            )}
+          </div>
+
+          <form onSubmit={handleSaveCapital} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Field 1: Nominal Modal Awal */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-black uppercase tracking-wider block">
+                  Nominal Modal Awal (Rp)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-500 font-mono">
+                    Rp
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={
+                      capitalAmount === ''
+                        ? ''
+                        : Number(capitalAmount.replace(/\D/g, '')).toLocaleString('id-ID')
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setCapitalAmount(val);
+                    }}
+                    placeholder="500.000"
+                    className="w-full pl-10 pr-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white font-mono font-bold text-slate-900 focus:outline-none"
+                    required
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Uang tunai operasional yang disetor di awal usaha
+                </p>
+              </div>
+
+              {/* Field 2: Sumber / Asal Modal */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-black uppercase tracking-wider block">
+                  Sumber / Asal Modal
+                </label>
+                <input
+                  type="text"
+                  list="capital-source-suggestions"
+                  value={capitalSource}
+                  onChange={(e) => setCapitalSource(e.target.value)}
+                  placeholder="Cth: Modal Mandiri / Kelompok"
+                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white font-medium text-slate-800 focus:outline-none"
+                  required
+                />
+                <datalist id="capital-source-suggestions">
+                  <option value="Modal Kelompok / Mandiri" />
+                  <option value="Hibah PMW Kampus" />
+                  <option value="Iuran Kas Mahasiswa" />
+                  <option value="Investor / Pembina Usaha" />
+                </datalist>
+                <p className="text-[11px] text-slate-500">
+                  Keterangan asal pendanaan untuk laporan akuntansi
+                </p>
+              </div>
+
+              {/* Field 3: Tanggal Alokasi Modal */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-black uppercase tracking-wider block">
+                  Tanggal Alokasi Modal
+                </label>
+                <input
+                  type="date"
+                  value={capitalDate}
+                  onChange={(e) => setCapitalDate(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white font-medium text-slate-800 focus:outline-none"
+                  required
+                />
+                <p className="text-[11px] text-slate-500">
+                  Tanggal pencatatan penerimaan modal usaha
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Preview & Save Button */}
+            <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <Landmark className="w-4 h-4 text-amber-700 shrink-0" />
+                <div className="text-xs text-slate-700">
+                  <span>Modal Aktif Tersimpan: </span>
+                  <strong className="font-mono text-amber-800 font-bold">
+                    {formatCurrency(Number(capitalAmount.replace(/\D/g, '')) || 0)}
+                  </strong>
+                  <span className="text-slate-500"> ({capitalSource})</span>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold uppercase tracking-wider rounded transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs self-end sm:self-auto"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Simpan Modal Usaha</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Section 3: QRIS Digital & Upload Gambar QRIS Langsung (NMID REMOVED) */}
         <div className="bg-white border border-[#E5E5E5] p-6">
           <div className="flex items-center gap-2 pb-4 mb-4 border-b border-[#E5E5E5]">
             <QrCode className="w-4 h-4 text-amber-600 stroke-[1.5]" />
             <h2 className="text-sm font-bold text-black uppercase tracking-wider">
-              2. Konfigurasi & Upload Gambar QRIS Toko
+              3. Konfigurasi &amp; Upload Gambar QRIS Toko
             </h2>
           </div>
 
@@ -612,13 +766,13 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Section 3: Manajemen Kategori Menu (Tambah, Ubah, Hapus) */}
+        {/* Section 4: Manajemen Kategori Menu (Tambah, Ubah, Hapus) */}
         <div className="bg-white border border-[#E5E5E5] p-6">
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E5E5]">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-amber-600 stroke-[1.5]" />
               <h2 className="text-sm font-bold text-black uppercase tracking-wider">
-                3. Manajemen Kategori Menu Kasir ({categories.length})
+                4. Manajemen Kategori Menu Kasir ({categories.length})
               </h2>
             </div>
           </div>
@@ -736,13 +890,13 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Section 4: Manajemen Produk (Tambah, Edit, Hapus + Upload Foto Langsung) */}
+        {/* Section 5: Manajemen Menu Produk (Tambah, Edit, Hapus + Upload Foto Langsung) */}
         <div className="bg-white border border-[#E5E5E5] p-6">
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E5E5]">
             <div className="flex items-center gap-2">
               <RisolIcon className="w-4 h-4 text-amber-600 stroke-[1.8]" />
               <h2 className="text-sm font-bold text-black uppercase tracking-wider">
-                4. Manajemen Menu Produk ({products.length} Menu • {products.reduce((acc, p) => acc + (p.stockQuantity || 0), 0)} Porsi Stok)
+                5. Manajemen Menu Produk ({products.length} Menu • {products.reduce((acc, p) => acc + (p.stockQuantity || 0), 0)} Porsi Stok)
               </h2>
             </div>
 
@@ -1036,12 +1190,12 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Section 5: Keamanan, Akun Kasir & Password */}
+        {/* Section 6: Keamanan, Akun Kasir & Password */}
         <div className="bg-white border border-[#E5E5E5] p-6">
           <div className="flex items-center gap-2 pb-4 mb-4 border-b border-[#E5E5E5]">
             <Lock className="w-4 h-4 text-amber-600 stroke-[1.5]" />
             <h2 className="text-sm font-bold text-black uppercase tracking-wider">
-              5. Keamanan, Akun Kasir &amp; Password Masuk
+              6. Keamanan, Akun Kasir &amp; Password Masuk
             </h2>
           </div>
 
