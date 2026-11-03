@@ -143,7 +143,12 @@ interface PosContextType {
   settings: StoreSettings;
   availableBatches: string[];
   updateSettings: (newSettings: Partial<StoreSettings>) => void;
-  updateInitialCapital: (amount: number, source: string, date?: string) => Promise<void>;
+  updateInitialCapital: (
+    amount: number,
+    source: string,
+    batch?: string,
+    date?: string
+  ) => Promise<void>;
   setActiveBatch: (batchName: string) => void;
   addBatch: (batchName: string) => boolean;
   reorderBatches: (newBatchList: string[]) => Promise<void>;
@@ -205,11 +210,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       storeLogo: INITIAL_STORE_SETTINGS.logoUrl,
       qrisImage: INITIAL_STORE_SETTINGS.qrisUrl,
       soundEnabled: true,
-      initialCapital: INITIAL_STORE_SETTINGS.initialCapital ?? 500000,
+      initialCapital: INITIAL_STORE_SETTINGS.initialCapital ?? 250000,
       capitalSource: INITIAL_STORE_SETTINGS.capitalSource ?? 'Modal Kelompok / Mandiri',
+      capitalBatch: INITIAL_STORE_SETTINGS.capitalBatch ?? 'Testing',
       capitalDate: INITIAL_STORE_SETTINGS.capitalDate ?? new Date().toISOString().split('T')[0],
       activeBatch: INITIAL_STORE_SETTINGS.activeBatch ?? 'Batch 1',
-      availableBatches: INITIAL_STORE_SETTINGS.availableBatches ?? ['Batch 1', 'Batch 2'],
+      availableBatches: INITIAL_STORE_SETTINGS.availableBatches ?? ['Testing', 'Batch 1', 'Batch 2'],
     };
     try {
       const cached = localStorage.getItem('pos_store_settings');
@@ -238,6 +244,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ? parsed.initialCapital
               : baseSettings.initialCapital,
           capitalSource: parsed.capitalSource || baseSettings.capitalSource,
+          capitalBatch: parsed.capitalBatch || baseSettings.capitalBatch || 'Testing',
           capitalDate: parsed.capitalDate || baseSettings.capitalDate,
           activeBatch: parsed.activeBatch || baseSettings.activeBatch || 'Batch 1',
           availableBatches: resolvedBatches,
@@ -446,16 +453,43 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const list: Transaction[] = [];
         snapshot.forEach((d) => {
-          const raw = d.data() as Transaction;
+          const raw = d.data() as Transaction & {
+            createdAt?: { toDate?: () => Date } | string | number;
+            date?: string | number;
+          };
           const sanitizedItems = Array.isArray(raw.items)
             ? raw.items.map((item) => ({
                 ...item,
                 name: String(item.name || '').replace(/Rlsol/gi, 'Risol'),
               }))
             : [];
+
+          let resolvedTimestamp = Number(raw.timestamp) || 0;
+          if (!resolvedTimestamp && raw.createdAt) {
+            if (
+              typeof raw.createdAt === 'object' &&
+              typeof raw.createdAt.toDate === 'function'
+            ) {
+              resolvedTimestamp = raw.createdAt.toDate().getTime();
+            } else {
+              const parsed = new Date(raw.createdAt as string | number).getTime();
+              if (!isNaN(parsed)) resolvedTimestamp = parsed;
+            }
+          }
+          if (!resolvedTimestamp && raw.date) {
+            const parsed = new Date(raw.date).getTime();
+            if (!isNaN(parsed)) resolvedTimestamp = parsed;
+          }
+          if (!resolvedTimestamp) {
+            resolvedTimestamp = Date.now();
+          }
+
           list.push({
             ...raw,
             id: d.id,
+            timestamp: resolvedTimestamp,
+            createdAt:
+              raw.createdAt ?? new Date(resolvedTimestamp).toISOString(),
             items: sanitizedItems,
             batch: raw.batch || 'Batch 1',
           });
@@ -728,6 +762,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               : prev.initialCapital ?? INITIAL_STORE_SETTINGS.initialCapital,
           capitalSource:
             data.capitalSource || prev.capitalSource || INITIAL_STORE_SETTINGS.capitalSource,
+          capitalBatch:
+            data.capitalBatch ||
+            prev.capitalBatch ||
+            INITIAL_STORE_SETTINGS.capitalBatch ||
+            'Testing',
           capitalDate: data.capitalDate || prev.capitalDate || INITIAL_STORE_SETTINGS.capitalDate,
           activeBatch: resolvedActiveBatch,
           availableBatches: resolvedBatches,
@@ -1240,10 +1279,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const tempTxId = `tx-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     const resolvedCustomerName = (customerName || '').trim() || 'Pelanggan';
 
+    const nowMs = Date.now();
     const newTransaction: Transaction = {
       id: tempTxId,
       transactionNumber: txNumber,
-      timestamp: Date.now(),
+      timestamp: nowMs,
+      createdAt: new Date(nowMs).toISOString(),
       customerName: resolvedCustomerName,
       items: cart.map((item) => {
         const trimmedNote = (item.note ?? item.description ?? '').trim();
@@ -1743,17 +1784,36 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateInitialCapital = async (
     amount: number,
     source: string,
+    batch?: string,
     date?: string
   ): Promise<void> => {
     const resolvedAmount = Math.max(0, Number(amount) || 0);
-    const resolvedSource = source.trim() || 'Modal Kelompok / Mandiri';
-    const resolvedDate = date || new Date().toISOString().split('T')[0];
+    const resolvedSource = (source || '').trim() || 'Modal Awal';
+    const isThirdArgDate = Boolean(batch && /^\d{4}-\d{2}-\d{2}$/.test(batch) && !date);
+    const resolvedBatch = isThirdArgDate
+      ? settings.capitalBatch || 'Testing'
+      : (batch || '').trim() || settings.capitalBatch || 'Testing';
+    const resolvedDate = isThirdArgDate
+      ? (batch as string)
+      : date || new Date().toISOString().split('T')[0];
 
     updateSettings({
       initialCapital: resolvedAmount,
       capitalSource: resolvedSource,
+      capitalBatch: resolvedBatch,
       capitalDate: resolvedDate,
     });
+
+    try {
+      await updateDoc(doc(db, 'settings', 'general'), {
+        initialCapital: resolvedAmount,
+        capitalSource: resolvedSource,
+        capitalBatch: resolvedBatch,
+        capitalDate: resolvedDate,
+      });
+    } catch (err) {
+      console.error('Gagal memperbarui modal usaha:', err);
+    }
   };
 
   // Manajemen Produk di Firestore (Sinkronisasi Real-Time & CRUD Permanen)

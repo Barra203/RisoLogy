@@ -10,9 +10,9 @@ import {
   Check,
   X,
   Edit2,
-  ChevronDown,
   ArrowUpRight,
 } from 'lucide-react';
+import { useSmoothDragScroll } from '../hooks/useDragScroll';
 
 // Helper untuk mengekstrak nominal pengeluaran secara konsisten
 const getExpenseNominal = (item: SupplierExpense): number => {
@@ -42,20 +42,6 @@ const getExpenseTimestamp = (item: SupplierExpense): number => {
 // Format Rupiah penuh: Rp 204.000
 const formatCurrency = (val: number): string => {
   return `Rp ${Math.round(val).toLocaleString('id-ID')}`;
-};
-
-// Format Rupiah ringkas untuk label grafik: Rp 204K / Rp 12k
-const formatCompactRupiah = (val: number, uppercase = false): string => {
-  if (val >= 1000000) {
-    const jt = val / 1000000;
-    const formatted = Number.isInteger(jt) ? String(jt) : jt.toFixed(1).replace('.0', '');
-    return `Rp ${formatted}${uppercase ? 'JT' : 'jt'}`;
-  }
-  if (val >= 1000) {
-    const k = Math.round(val / 1000);
-    return `Rp ${k}${uppercase ? 'K' : 'k'}`;
-  }
-  return `Rp ${val}`;
 };
 
 // Ikon Risol Bulat Keemasan Tanpa Border Hitam untuk Daftar Menu Terlaris
@@ -117,27 +103,31 @@ export const DashboardView: React.FC = () => {
   const [isAddingBatch, setIsAddingBatch] = useState<boolean>(false);
   const [newBatchInput, setNewBatchInput] = useState<string>('');
 
-  // Dropdown rentang grafik mingguan
-  const [weeklyRangeMode, setWeeklyRangeMode] = useState<'7d' | '14d'>('7d');
-
   // Modal Edit Cepat Modal Awal Usaha
   const [showCapitalModal, setShowCapitalModal] = useState<boolean>(false);
   const [modalAmount, setModalAmount] = useState<string>(
-    String(settings.initialCapital ?? 500000)
+    String(settings.initialCapital ?? 250000)
   );
   const [modalSource, setModalSource] = useState<string>(
     settings.capitalSource || 'Iuran Kelompok'
+  );
+  const [modalBatch, setModalBatch] = useState<string>(
+    settings.capitalBatch || 'Testing'
   );
   const [modalDate, setModalDate] = useState<string>(
     settings.capitalDate || new Date().toISOString().split('T')[0]
   );
 
+  // Smooth Drag-to-Scroll untuk Tabel Transaksi Terbaru (Tanpa Mouse Wheel Horizontal)
+  const { scrollRef, dragProps, isDragging } = useSmoothDragScroll();
+
   const availableBatches = useMemo(() => {
     const set = new Set<string>(
       contextBatches && contextBatches.length > 0
         ? contextBatches
-        : settings.availableBatches || ['Batch 1', 'Batch 2']
+        : settings.availableBatches || ['Testing', 'Batch 1', 'Batch 2']
     );
+    if (settings.capitalBatch) set.add(settings.capitalBatch);
     if (settings.activeBatch) set.add(settings.activeBatch);
     transactions.forEach((tx) => {
       if (tx.batch) set.add(tx.batch);
@@ -146,7 +136,19 @@ export const DashboardView: React.FC = () => {
       if (exp.batch) set.add(exp.batch);
     });
     return Array.from(set);
-  }, [contextBatches, settings.availableBatches, settings.activeBatch, transactions, expenses]);
+  }, [
+    contextBatches,
+    settings.availableBatches,
+    settings.capitalBatch,
+    settings.activeBatch,
+    transactions,
+    expenses,
+  ]);
+
+  const capitalBatchOptions = useMemo(() => {
+    const set = new Set<string>(['Testing', ...availableBatches]);
+    return Array.from(set);
+  }, [availableBatches]);
 
   const handleCreateBatch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,12 +161,13 @@ export const DashboardView: React.FC = () => {
   };
 
   const handleOpenCapitalModal = () => {
-    setModalAmount(String(settings.initialCapital ?? 500000));
+    setModalAmount(String(settings.initialCapital ?? 250000));
     setModalSource(
       settings.capitalSource && settings.capitalSource !== 'Modal Kelompok / Mandiri'
         ? settings.capitalSource
         : 'Iuran Kelompok'
     );
+    setModalBatch(settings.capitalBatch || 'Testing');
     setModalDate(settings.capitalDate || new Date().toISOString().split('T')[0]);
     setShowCapitalModal(true);
   };
@@ -172,7 +175,12 @@ export const DashboardView: React.FC = () => {
   const handleSaveModalCapital = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanAmount = Math.max(0, parseInt(modalAmount.replace(/\D/g, ''), 10) || 0);
-    await updateInitialCapital(cleanAmount, modalSource.trim() || 'Iuran Kelompok', modalDate);
+    await updateInitialCapital(
+      cleanAmount,
+      modalSource.trim() || 'Iuran Kelompok',
+      modalBatch || 'Testing',
+      modalDate
+    );
     setShowCapitalModal(false);
   };
 
@@ -282,18 +290,44 @@ export const DashboardView: React.FC = () => {
     };
   }, [activePaidTransactions]);
 
+  // 1. Tentukan modal awal untuk batch yang sedang aktif dilihat
+  const activeInitialCapital = useMemo(() => {
+    const designatedBatch = settings?.capitalBatch || 'Testing';
+    if (selectedBatch === 'ALL' || selectedBatch === designatedBatch) {
+      return Number(settings?.initialCapital) || 0;
+    }
+    return 0; // Batch lain tidak menerima injeksi modal baru
+  }, [selectedBatch, settings?.capitalBatch, settings?.initialCapital]);
+
+  // 2. Akumulasi pemasukan dan pengeluaran batch terpilih (hanya transaksi PAID)
+  const batchRevenue = useMemo(() => {
+    return filteredTransactions
+      .filter(
+        (t) =>
+          (t.status || '').toUpperCase() === 'PAID' ||
+          (t.status || '').toLowerCase() === 'lunas'
+      )
+      .reduce((sum, t) => sum + (Number(t.total) || 0), 0);
+  }, [filteredTransactions]);
+
+  const batchExpenses = useMemo(() => {
+    return filteredExpenses.reduce((sum, e) => sum + getExpenseNominal(e), 0);
+  }, [filteredExpenses]);
+
+  // 3. Estimasi Sisa Kas Akurat (Modal Aktif + Omzet Masuk - Pengeluaran)
+  const cashOnHand = activeInitialCapital + batchRevenue - batchExpenses;
+
   // Kalkulasi Metrik Keuangan Utama
   const metrics = useMemo(() => {
-    const netSales = activePaidTransactions.reduce((sum, t) => sum + (Number(t.total) || 0), 0);
-    const totalExpenses = filteredExpenses.reduce((sum, e) => sum + getExpenseNominal(e), 0);
-    const initialCapital =
-      typeof settings.initialCapital === 'number' ? settings.initialCapital : 500000;
+    const netSales = batchRevenue;
+    const totalExpenses = batchExpenses;
+    const designatedBatch = settings?.capitalBatch || 'Testing';
     const capitalSourceLabel =
       !settings.capitalSource || settings.capitalSource === 'Modal Kelompok / Mandiri'
         ? 'Iuran Kelompok'
         : settings.capitalSource;
 
-    const estimatedRemainingCash = initialCapital + netSales - totalExpenses;
+    const estimatedRemainingCash = cashOnHand;
 
     // Hitung Menu Terlaris dari transaksi riil
     const itemSalesMap: Record<
@@ -338,7 +372,8 @@ export const DashboardView: React.FC = () => {
     }
 
     return {
-      initialCapital,
+      initialCapital: activeInitialCapital,
+      designatedBatch,
       capitalSourceLabel,
       netSales,
       paidCount: activePaidTransactions.length,
@@ -348,7 +383,18 @@ export const DashboardView: React.FC = () => {
       estimatedRemainingCash,
       bestSellers: bestSellers.slice(0, 3),
     };
-  }, [activePaidTransactions, filteredTransactions.length, filteredExpenses, settings.initialCapital, settings.capitalSource, products]);
+  }, [
+    activeInitialCapital,
+    batchRevenue,
+    batchExpenses,
+    cashOnHand,
+    activePaidTransactions,
+    filteredTransactions.length,
+    filteredExpenses.length,
+    settings?.capitalBatch,
+    settings.capitalSource,
+    products,
+  ]);
 
   // Geometri SVG Donut Chart 2 Segmen (QRIS & Cash)
   const donutChartGeometry = useMemo(() => {
@@ -366,31 +412,85 @@ export const DashboardView: React.FC = () => {
     };
   }, [paymentSummary.qrisPercent, paymentSummary.cashPercent]);
 
-  // Data Grafik Batang Vertikal 7 Hari (Mon - Sun) dari Transaksi Riil
-  const weeklyBarData = useMemo(() => {
-    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const buckets = [0, 0, 0, 0, 0, 0, 0];
+  // Helper untuk mendapatkan rentang hari Senin s/d Minggu minggu ini dari transaksi riil
+  const weeklySalesData = useMemo(() => {
+    const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    activePaidTransactions.forEach((tx) => {
-      const d = new Date(tx.timestamp);
-      // getDay(): 0 = Sun, 1 = Mon ... 6 = Sat -> konversi ke 0 = Mon ... 6 = Sun
-      const dayIdx = (d.getDay() + 6) % 7;
-      buckets[dayIdx] += Number(tx.total) || 0;
+    // Ambil tanggal awal minggu ini (Senin)
+    const now = new Date();
+    const currentDayIndex = now.getDay(); // 0 = Minggu, 1 = Senin, ...
+    const distanceToMonday = (currentDayIndex + 6) % 7;
+
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - distanceToMonday);
+    monday.setHours(0, 0, 0, 0);
+
+    // Siapkan map penampung total per hari
+    const dayTotals: { [key: string]: number } = {
+      Mon: 0,
+      Tue: 0,
+      Wed: 0,
+      Thu: 0,
+      Fri: 0,
+      Sat: 0,
+      Sun: 0,
+    };
+
+    // Hanya proses transaksi lunas yang lolos filter batch
+    const paidTx = filteredTransactions.filter((tx) => {
+      const st = (tx.status || 'PAID').toUpperCase();
+      return st === 'PAID' || st === 'LUNAS';
     });
 
-    const maxVal = Math.max(...buckets, 1);
-
-    return dayLabels.map((label, idx) => {
-      const amount = buckets[idx];
-      const heightPct = amount > 0 ? Math.max(14, Math.round((amount / maxVal) * 100)) : 6;
-      return {
-        label,
-        amount,
-        heightPct,
-        formattedShort: formatCompactRupiah(amount, false),
+    paidTx.forEach((tx) => {
+      let txDate: Date | null = null;
+      const rawTx = tx as Transaction & {
+        createdAt?: { toDate?: () => Date } | string | number;
+        date?: string | number;
       };
+
+      // Parse tanggal transaksi (baik Timestamp Firestore, string ISO, string tanggal, atau timestamp)
+      if (
+        rawTx.createdAt &&
+        typeof rawTx.createdAt === 'object' &&
+        typeof rawTx.createdAt.toDate === 'function'
+      ) {
+        txDate = rawTx.createdAt.toDate();
+      } else if (rawTx.createdAt) {
+        txDate = new Date(rawTx.createdAt as string | number);
+      } else if (rawTx.date) {
+        txDate = new Date(rawTx.date);
+      } else if (rawTx.timestamp) {
+        txDate = new Date(rawTx.timestamp);
+      }
+
+      if (txDate && !isNaN(txDate.getTime())) {
+        // Hitung selisih hari dari Senin minggu ini
+        const diffTime = txDate.getTime() - monday.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        // Masuk dalam rentang 7 hari (Senin = 0 s/d Minggu = 6)
+        if (diffDays >= 0 && diffDays < 7) {
+          const dayKey = daysOfWeek[diffDays];
+          dayTotals[dayKey] += Number(tx.total) || 0;
+        }
+      }
     });
-  }, [activePaidTransactions]);
+
+    // Susun array final untuk grafik
+    const result = daysOfWeek.map((day) => ({
+      day,
+      amount: dayTotals[day],
+      formattedLabel:
+        dayTotals[day] > 0
+          ? `Rp ${(dayTotals[day] / 1000).toLocaleString('id-ID')}k`
+          : 'Rp 0',
+    }));
+
+    const maxAmount = Math.max(...result.map((d) => d.amount), 1);
+
+    return { sales: result, maxAmount };
+  }, [filteredTransactions]);
 
   // Daftar Transaksi Terbaru (5 Baris Teratas dari Transaksi Riil)
   const recentTransactionsList = useMemo(() => {
@@ -563,16 +663,25 @@ export const DashboardView: React.FC = () => {
                   </button>
                 </div>
                 <div className="text-2xl font-bold text-slate-900 tabular-nums tracking-tight">
-                  {formatCurrency(metrics.initialCapital)}
+                  {`Rp ${activeInitialCapital.toLocaleString('id-ID')}`}
                 </div>
               </div>
               <div className="w-9 h-9 rounded-lg bg-amber-50 border border-amber-200/70 flex items-center justify-center text-[#D97706] shrink-0">
                 <Wallet className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3 text-xs text-slate-500 font-medium truncate">
-              Dari: {metrics.capitalSourceLabel}
-            </div>
+            {activeInitialCapital > 0 ? (
+              <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate-500 font-medium">
+                <span className="truncate">Dari: {metrics.capitalSourceLabel}</span>
+                <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold shrink-0">
+                  {settings?.capitalBatch || 'Testing'}
+                </span>
+              </div>
+            ) : (
+              <div className="mt-3 text-xs text-slate-500 font-medium truncate">
+                {`Teralokasi di Batch ${settings?.capitalBatch || 'Testing'}`}
+              </div>
+            )}
           </div>
 
           {/* Kartu 2: Uang Masuk / Omset */}
@@ -738,55 +847,52 @@ export const DashboardView: React.FC = () => {
 
           {/* Kanan: Penjualan Sepekan (Hari) */}
           <div className="rounded-xl border border-slate-200/80 shadow-sm bg-white p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center justify-between gap-2 mb-2">
               <h2 className="text-sm font-bold text-slate-900 tracking-tight">
                 Penjualan Sepekan (Hari)
               </h2>
-
-              <div className="relative">
-                <select
-                  value={weeklyRangeMode}
-                  onChange={(e) => setWeeklyRangeMode(e.target.value as '7d' | '14d')}
-                  aria-label="Rentang Penjualan Sepekan"
-                  className="appearance-none bg-slate-50 border border-slate-200/80 text-slate-700 text-xs font-semibold rounded-lg pl-3 pr-7 py-1.5 focus:outline-none focus:border-amber-600 cursor-pointer"
-                >
-                  <option value="7d">7 Hari Terakhir</option>
-                  <option value="14d">Minggu Ini</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
+              <span className="text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200/80 rounded-lg px-2.5 py-1">
+                Senin – Minggu Ini
+              </span>
             </div>
 
-            {/* Grafik Batang Vertikal 7 Hari (Mon - Sun) */}
-            <div className="h-44 pt-5 pb-1 px-2 flex items-end justify-between gap-3 border-b border-slate-100">
-              {weeklyBarData.map((day) => (
-                <div
-                  key={day.label}
-                  className="flex-1 flex flex-col items-center justify-end h-full"
-                >
-                  <div className="w-full flex-1 flex flex-col items-center justify-end">
-                    <span className="text-[11px] font-bold text-slate-600 tabular-nums mb-1.5 whitespace-nowrap">
-                      {day.formattedShort}
+            {/* Grafik Batang Vertikal Dinamis 7 Hari (Mon - Sun) */}
+            <div className="h-56 flex items-end justify-between gap-2 pt-8 pb-2 px-2">
+              {weeklySalesData.sales.map((item) => {
+                const heightPercent =
+                  item.amount > 0
+                    ? Math.max((item.amount / weeklySalesData.maxAmount) * 100, 14)
+                    : 6;
+
+                return (
+                  <div
+                    key={item.day}
+                    className="flex-1 flex flex-col items-center h-full justify-end group"
+                  >
+                    {/* Label Angka Nominal */}
+                    <span className="text-[11px] font-bold text-slate-700 mb-1.5 transition-all group-hover:text-amber-600 tabular-nums whitespace-nowrap">
+                      {item.formattedLabel}
                     </span>
-                    <div
-                      style={{ height: `${day.heightPct}%` }}
-                      className="w-full max-w-[36px] bg-[#D97706] hover:bg-amber-700 rounded-t-md transition-all"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
 
-            {/* Label Hari (Mon - Sun) */}
-            <div className="grid grid-cols-7 gap-3 pt-2.5 px-2 text-center">
-              {weeklyBarData.map((day) => (
-                <span
-                  key={day.label}
-                  className="text-xs font-semibold text-slate-500"
-                >
-                  {day.label}
-                </span>
-              ))}
+                    {/* Batang Bar */}
+                    <div className="w-full max-w-[42px] bg-slate-100 rounded-t-lg overflow-hidden flex items-end h-full">
+                      <div
+                        style={{ height: `${heightPercent}%` }}
+                        className={`w-full rounded-t-lg transition-all duration-500 ${
+                          item.amount > 0
+                            ? 'bg-amber-600 group-hover:bg-amber-700'
+                            : 'bg-amber-600/20'
+                        }`}
+                      />
+                    </div>
+
+                    {/* Label Nama Hari */}
+                    <span className="text-xs font-semibold text-slate-500 mt-2">
+                      {item.day}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -810,8 +916,15 @@ export const DashboardView: React.FC = () => {
                 </button>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+              <div
+                ref={scrollRef}
+                {...dragProps}
+                className={`w-full overflow-x-auto select-none scroll-smooth transition-all ${
+                  isDragging ? 'cursor-grabbing' : 'cursor-grab'
+                }`}
+                style={{ scrollbarWidth: 'thin' }}
+              >
+                <table className="w-full text-left border-collapse min-w-[560px]">
                   <thead>
                     <tr className="border-b border-slate-200/80 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                       <th className="pb-2.5 pr-3">ID Nota</th>
@@ -968,6 +1081,23 @@ export const DashboardView: React.FC = () => {
                   placeholder="Iuran Kelompok"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Alokasikan Modal Pada Batch
+                </label>
+                <select
+                  value={modalBatch}
+                  onChange={(e) => setModalBatch(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                >
+                  {(capitalBatchOptions || ['Testing', 'Batch 1', 'Batch 2']).map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">

@@ -41,6 +41,7 @@ import {
   Search,
 } from 'lucide-react';
 import { RisolIcon } from './RisolIcon';
+import { useSmoothDragScroll } from '../hooks/useDragScroll';
 
 export type ExportTemplateId =
   | 'stock'
@@ -56,14 +57,45 @@ export const ExportView: React.FC = () => {
   const { products, transactions, customers, expenses, settings } = usePos();
 
   const [activeTemplate, setActiveTemplate] = useState<ExportTemplateId>('transactions');
-  const [period, setPeriod] = useState<PeriodFilter>('TODAY');
+  const [period, setPeriod] = useState<PeriodFilter>('ALL');
   const [copied, setCopied] = useState<boolean>(false);
+  const [copiedRekap, setCopiedRekap] = useState<boolean>(false);
   const [searchTableQuery, setSearchTableQuery] = useState<string>('');
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+
+  // Smooth Drag-to-Scroll untuk Tabel Preview Ekspor (Tanpa Mouse Wheel Horizontal)
+  const { scrollRef, dragProps, isDragging } = useSmoothDragScroll();
 
   // Date range
   const todayStr = new Date().toISOString().split('T')[0];
   const [startDate, setStartDate] = useState<string>(todayStr);
   const [endDate, setEndDate] = useState<string>(todayStr);
+
+  // Helper client-side CSV download dengan UTF-8 BOM (\uFEFF) & pemisah titik koma (;) agar kompatibel Excel & Google Sheets
+  const exportToCSV = (filename: string, headers: string[], rows: (string | number)[][]) => {
+    const BOM = '\uFEFF'; // Agar Excel membaca encoding UTF-8 dengan benar
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map((row) =>
+        row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(';')
+      ),
+    ].join('\r\n');
+
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const dateSuffix = new Date().toISOString().split('T')[0];
+    const cleanName = filename.replace(/\.csv$/i, '');
+    const finalFilename = cleanName.endsWith(dateSuffix)
+      ? `${cleanName}.csv`
+      : `${cleanName}_${dateSuffix}.csv`;
+    link.setAttribute('download', finalFilename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   // Filter transactions by period
   const filteredTransactions = useMemo(() => {
@@ -100,8 +132,18 @@ export const ExportView: React.FC = () => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
 
-    return expenses.filter((exp) => {
-      const expTime = exp.timestamp;
+    return expenses.filter((exp: any) => {
+      let expTime = Number(exp.timestamp) || 0;
+      if (exp.date && /^\d{4}-\d{2}-\d{2}$/.test(String(exp.date))) {
+        const [y, m, d] = String(exp.date).split('-').map(Number);
+        expTime = new Date(y, m - 1, d, 12, 0, 0).getTime();
+      } else if (!expTime && exp.createdAt?.toDate) {
+        expTime = exp.createdAt.toDate().getTime();
+      } else if (!expTime && exp.createdAt) {
+        const parsed = new Date(exp.createdAt).getTime();
+        if (!isNaN(parsed)) expTime = parsed;
+      }
+
       if (period === 'TODAY') {
         return expTime >= startOfToday && expTime <= endOfToday;
       }
@@ -116,6 +158,165 @@ export const ExportView: React.FC = () => {
       return true;
     });
   }, [expenses, period, startDate, endDate]);
+
+  // Fitur 1: Ekspor Riwayat Transaksi (Download CSV Transaksi)
+  const handleExportTransactions = () => {
+    const sourceTransactions =
+      filteredTransactions.length > 0 ? filteredTransactions : transactions;
+    const headers = [
+      'No Transaksi',
+      'Tanggal',
+      'Waktu',
+      'Nama Pelanggan',
+      'Kasir',
+      'Batch',
+      'Metode Pembayaran',
+      'Status',
+      'Total Belanja',
+      'Rincian Pesanan',
+      'Catatan',
+    ];
+    const rows = sourceTransactions.map((t: any) => {
+      const dt = formatDateTime(t.timestamp);
+      return [
+        t.transactionNumber || t.id,
+        t.date || dt.date || '-',
+        t.time || dt.time || '-',
+        t.customerName || 'Umum',
+        t.cashierName || t.cashier || '-',
+        t.batch || 'Batch 1',
+        t.paymentMethod === 'CASH' ? 'Tunai' : t.paymentMethod || 'Tunai',
+        t.status || 'PAID',
+        t.total || 0,
+        (t.items || [])
+          .map((i: any) => `${String(i.name || '').replace(/Rlsol/gi, 'Risol')} (${i.quantity ?? i.qty ?? 1}x)`)
+          .join(', '),
+        t.notes || '-',
+      ];
+    });
+    exportToCSV('Laporan_Transaksi_RisoLogy', headers, rows);
+  };
+
+  // Fitur 2: Ekspor Belanja Bahan / Pengeluaran Supplier (Download CSV Pengeluaran)
+  const handleExportExpenses = () => {
+    if (!expenses || expenses.length === 0) {
+      setExportNotice('Belum ada data belanja bahan / pengeluaran untuk diekspor.');
+      setTimeout(() => setExportNotice(null), 3500);
+      return;
+    }
+
+    const sourceExpenses = filteredExpenses.length > 0 ? filteredExpenses : expenses;
+
+    const headers = [
+      'No',
+      'Tanggal Belanja',
+      'Kategori',
+      'Nama Bahan / Keperluan',
+      'Tempat Beli / Supplier',
+      'Kasir / PIC',
+      'Batch',
+      'Total Biaya (Rp)',
+    ];
+
+    const rows = sourceExpenses.map((exp: any, index: number) => {
+      // Ambil tanggal dari berbagai kemungkinan field (date, createdAt, timestamp)
+      let formattedDate = '-';
+      if (exp.date) {
+        formattedDate = exp.date;
+      } else if (exp.createdAt?.toDate) {
+        formattedDate = exp.createdAt.toDate().toLocaleDateString('id-ID');
+      } else if (exp.createdAt) {
+        formattedDate = new Date(exp.createdAt).toLocaleDateString('id-ID');
+      } else if (exp.timestamp) {
+        formattedDate = new Date(exp.timestamp).toLocaleDateString('id-ID');
+      }
+
+      // Ambil nama item, supplier, PIC, dan nominal dari field yang tersedia di objek expense
+      const itemName = exp.name || exp.itemName || exp.description || '-';
+      const category = exp.category || 'Bahan Utama';
+      const supplier = exp.supplier || exp.supplierName || exp.store || '-';
+      const pic = exp.cashier || exp.cashierName || exp.pic || '-';
+      const batch = exp.batch || 'Batch 1';
+      const totalAmount = Number(
+        exp.total ?? exp.amount ?? exp.unitPrice ?? exp.totalBelanja ?? exp.totalPrice ?? 0
+      );
+
+      return [
+        index + 1,
+        formattedDate,
+        category,
+        itemName,
+        supplier,
+        pic,
+        batch,
+        totalAmount,
+      ];
+    });
+
+    exportToCSV('Laporan_Pengeluaran_Supplier_RisoLogy', headers, rows);
+  };
+
+  // Fitur 3: Salin Rekap ke Clipboard (Excel Ready - berpemisah tab \t)
+  const handleCopyRekapClipboard = () => {
+    const isPaid = (s?: string) => {
+      const u = (s || 'PAID').toUpperCase();
+      return u === 'PAID' || u === 'LUNAS';
+    };
+
+    const paidTxs = filteredTransactions.filter((t) => isPaid(t.status));
+    const totalOmzet = paidTxs.reduce((acc, t) => acc + (Number(t.total) || 0), 0);
+    const totalPengeluaran = filteredExpenses.reduce(
+      (acc, e) => acc + (Number(e.total ?? e.totalBelanja ?? e.amount ?? e.totalPrice) || 0),
+      0
+    );
+    const labaBersih = totalOmzet - totalPengeluaran;
+
+    // Rincian per Batch
+    const batchMap = new Map<
+      string,
+      { txCount: number; omzet: number; pengeluaran: number }
+    >();
+
+    paidTxs.forEach((t) => {
+      const b = t.batch || 'Batch 1';
+      const cur = batchMap.get(b) || { txCount: 0, omzet: 0, pengeluaran: 0 };
+      cur.txCount += 1;
+      cur.omzet += Number(t.total) || 0;
+      batchMap.set(b, cur);
+    });
+
+    filteredExpenses.forEach((e) => {
+      const b = e.batch || 'Batch 1';
+      const cur = batchMap.get(b) || { txCount: 0, omzet: 0, pengeluaran: 0 };
+      cur.pengeluaran += Number(e.total ?? e.totalBelanja ?? e.amount ?? e.totalPrice) || 0;
+      batchMap.set(b, cur);
+    });
+
+    const lines: string[] = [
+      ['REKAP LAPORAN KEUANGAN RISOLOGY', new Date().toISOString().slice(0, 10)].join('\t'),
+      ['Metrik', 'Nilai (Rp)', 'Keterangan'].join('\t'),
+      ['Total Omzet Masuk (Lunas)', String(totalOmzet), `${paidTxs.length} Transaksi`].join('\t'),
+      ['Total Pengeluaran Bahan', String(totalPengeluaran), `${filteredExpenses.length} Catatan Belanja`].join('\t'),
+      ['Estimasi Laba Bersih', String(labaBersih), labaBersih >= 0 ? 'Surplus' : 'Defisit'].join('\t'),
+      '',
+      ['RINCIAN REKAP PER BATCH'].join('\t'),
+      ['Nama Batch', 'Jumlah Transaksi', 'Omzet Masuk (Rp)', 'Pengeluaran Bahan (Rp)', 'Laba Bersih Batch (Rp)'].join('\t'),
+      ...Array.from(batchMap.entries()).map(([batchName, stat]) =>
+        [
+          batchName,
+          String(stat.txCount),
+          String(stat.omzet),
+          String(stat.pengeluaran),
+          String(stat.omzet - stat.pengeluaran),
+        ].join('\t')
+      ),
+    ];
+
+    navigator.clipboard.writeText(lines.join('\r\n')).then(() => {
+      setCopiedRekap(true);
+      setTimeout(() => setCopiedRekap(false), 2200);
+    });
+  };
 
   // 1. Template: Rincian Stok
   const stockData = useMemo<StockExportRow[]>(() => {
@@ -221,7 +422,7 @@ export const ExportView: React.FC = () => {
     filteredExpenses.forEach((exp) => {
       const d = formatDateTime(exp.timestamp).date;
       const cur = dateMap.get(d) || { txs: [], expenses: 0 };
-      cur.expenses += exp.totalPrice;
+      cur.expenses += Number(exp.total ?? exp.totalBelanja ?? exp.amount ?? exp.totalPrice) || 0;
       dateMap.set(d, cur);
     });
 
@@ -262,25 +463,38 @@ export const ExportView: React.FC = () => {
 
   // 5. Template: Pengeluaran (Belanja Bahan Supplier)
   const expensesData = useMemo<ExpenseExportRow[]>(() => {
-    return filteredExpenses.map((exp) => {
-      const resolvedTotal =
-        Number(exp.total ?? exp.totalBelanja ?? exp.amount ?? exp.totalPrice) || 0;
+    const source = filteredExpenses.length > 0 ? filteredExpenses : expenses;
+    return source.map((exp: any, index: number) => {
+      let formattedDate = '-';
+      if (exp.date) {
+        formattedDate = exp.date;
+      } else if (exp.createdAt?.toDate) {
+        formattedDate = exp.createdAt.toDate().toLocaleDateString('id-ID');
+      } else if (exp.createdAt) {
+        formattedDate = new Date(exp.createdAt).toLocaleDateString('id-ID');
+      } else if (exp.timestamp) {
+        formattedDate = new Date(exp.timestamp).toLocaleDateString('id-ID');
+      }
+
+      const resolvedTotal = Number(
+        exp.total ?? exp.amount ?? exp.unitPrice ?? exp.totalBelanja ?? exp.totalPrice ?? 0
+      );
       return {
-        expenseNumber: exp.expenseNumber,
-        date: exp.date,
-        itemName: exp.itemName || exp.name || 'Belanja Bahan',
-        category: exp.category,
+        expenseNumber: exp.expenseNumber || `#EXP-${String(index + 1).padStart(4, '0')}`,
+        date: formattedDate,
+        itemName: exp.name || exp.itemName || exp.description || '-',
+        category: exp.category || 'Bahan Utama',
         quantity: exp.quantity ?? 1,
         unit: exp.unit ?? 'paket',
         unitPrice: exp.unitPrice ?? resolvedTotal,
         totalPrice: resolvedTotal,
-        supplierName: exp.supplierName || exp.supplier || '-',
-        supplierLocation: exp.supplierLocation || '-',
-        cashierName: exp.cashierName || exp.cashier || 'Kasir',
+        supplierName: exp.supplier || exp.supplierName || exp.store || '-',
+        supplierLocation: exp.supplierLocation || exp.batch || 'Batch 1',
+        cashierName: exp.cashier || exp.cashierName || exp.pic || '-',
         notes: exp.notes,
       };
     });
-  }, [filteredExpenses]);
+  }, [filteredExpenses, expenses]);
 
   // 6. Template: Rincian Transaksi
   const transactionsDetailData = useMemo<TransactionDetailExportRow[]>(() => {
@@ -362,9 +576,18 @@ export const ExportView: React.FC = () => {
     transactionsDetailData,
   ]);
 
-  // Download CSV Action
+  // Download Active Template CSV Action (menggunakan UTF-8 BOM & semicolon format)
   const handleDownloadCsv = () => {
-    const blob = new Blob([currentCsv], { type: 'text/csv;charset=utf-8;' });
+    if (activeTemplate === 'transactions') {
+      handleExportTransactions();
+      return;
+    }
+    if (activeTemplate === 'expenses') {
+      handleExportExpenses();
+      return;
+    }
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + currentCsv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
@@ -427,39 +650,67 @@ export const ExportView: React.FC = () => {
     <div className="flex-1 flex flex-col min-h-screen w-full bg-[#F5F5F5]">
       {/* Top Header */}
       <div className="p-4 sm:p-6 bg-white border-b border-slate-200 shrink-0 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">Ekspor Laporan</h1>
           </div>
 
-          {/* Action Download & Copy Buttons */}
-          <div className="flex items-center gap-2">
+          {/* Primary Real Export Action Buttons (CSV Transaksi, CSV Pengeluaran, Salin Rekap Clipboard) */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={handleCopyTsv}
-              className="px-3.5 py-2.5 bg-white text-slate-800 border border-[#CCCCCC] hover:border-amber-600 hover:text-amber-700 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer rounded shadow-2xs"
-              title="Salin dalam format TSV (Siap Paste ke Excel / Google Sheets)"
+              onClick={handleExportTransactions}
+              className="px-3.5 py-2 bg-amber-600 text-white hover:bg-amber-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs rounded-lg"
             >
-              {copied ? (
+              <Download className="w-3.5 h-3.5" />
+              <span>Download CSV Transaksi</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportExpenses}
+              className="px-3.5 py-2 bg-white text-slate-800 border border-slate-200 hover:bg-slate-50 hover:border-amber-500 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs rounded-lg"
+            >
+              <Download className="w-3.5 h-3.5 text-rose-600" />
+              <span>Download CSV Pengeluaran</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyRekapClipboard}
+              className="px-3.5 py-2 bg-white text-slate-800 border border-slate-200 hover:bg-slate-50 hover:border-amber-500 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs rounded-lg"
+              title="Salin ringkasan keuangan & rekap per batch berpemisah Tab untuk di-paste ke Excel / Google Sheets"
+            >
+              {copiedRekap ? (
                 <>
-                  <Check className="w-4 h-4 text-emerald-600" />
-                  <span className="text-emerald-700 font-bold">Tersalin ke Clipboard!</span>
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-emerald-700 font-bold">Rekap Tersalin!</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-4 h-4 text-slate-600" />
-                  <span>Salin ke Sheets/Excel</span>
+                  <Copy className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Salin Rekap ke Clipboard (Excel Ready)</span>
                 </>
               )}
             </button>
 
             <button
               type="button"
-              onClick={handleDownloadCsv}
-              className="px-5 py-2.5 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-amber-600/20 rounded"
+              onClick={handleCopyTsv}
+              className="px-3 py-2 bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer rounded-lg"
+              title="Salin tabel preview aktif ke Clipboard"
             >
-              <Download className="w-4 h-4" />
-              <span>Download File CSV</span>
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-emerald-700 font-bold">Tabel Tersalin!</span>
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Salin Tabel Aktif</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -581,10 +832,30 @@ export const ExportView: React.FC = () => {
 
       {/* Main Table Preview Area with Color-Coded Money (+ Green, - Red) */}
       <div className="flex-1 overflow-y-auto p-6">
+        {exportNotice && (
+          <div className="mb-4 px-4 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold flex items-center justify-between">
+            <span>{exportNotice}</span>
+            <button
+              type="button"
+              onClick={() => setExportNotice(null)}
+              className="text-amber-600 hover:text-amber-900 ml-3 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
+          <div
+            ref={scrollRef}
+            {...dragProps}
+            className={`w-full overflow-x-auto select-none scroll-smooth transition-all ${
+              isDragging ? 'cursor-grabbing' : 'cursor-grab'
+            }`}
+            style={{ scrollbarWidth: 'thin' }}
+          >
           {/* Table 1: Rincian Stok */}
           {activeTemplate === 'stock' && (
-            <div className="overflow-x-auto">
+            <div>
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
@@ -952,6 +1223,7 @@ export const ExportView: React.FC = () => {
               </table>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

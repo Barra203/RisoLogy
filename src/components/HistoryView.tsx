@@ -19,6 +19,7 @@ import {
   StickyNote,
   UserCheck,
 } from 'lucide-react';
+import { useSmoothDragScroll } from '../hooks/useDragScroll';
 
 interface EditFormState {
   customerName: string;
@@ -44,8 +45,7 @@ export const renderStatusBadge = (status: string) => {
 
   if (normalized === 'UNPAID' || normalized === 'BELUM BAYAR') {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-300">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-300">
         Belum Bayar
       </span>
     );
@@ -53,8 +53,7 @@ export const renderStatusBadge = (status: string) => {
 
   if (normalized === 'REFUNDED' || normalized === 'REFUND') {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
         Refund
       </span>
     );
@@ -62,8 +61,7 @@ export const renderStatusBadge = (status: string) => {
 
   // Default: PAID / Lunas
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
       Lunas
     </span>
   );
@@ -98,6 +96,9 @@ export const HistoryView: React.FC = () => {
   // State Modal Konfirmasi Hapus Transaksi
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  // Smooth Drag-to-Scroll untuk Tabel Riwayat Transaksi (Tanpa Mouse Wheel Horizontal)
+  const { scrollRef, dragProps, isDragging } = useSmoothDragScroll();
 
   // Notifikasi Umpan Balik Aksi (Light Mode Toast)
   const [feedbackMsg, setFeedbackMsg] = useState<{
@@ -562,11 +563,11 @@ export const HistoryView: React.FC = () => {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
                           onClick={() => viewReceipt(tx)}
-                          className="touch-manipulation py-2 px-3 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 text-xs font-bold rounded-lg inline-flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                          className="h-7 px-2.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1 shadow-sm transition-all cursor-pointer"
                         >
                           <FileText className="w-3.5 h-3.5" />
                           <span>Struk</span>
@@ -575,7 +576,7 @@ export const HistoryView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenEditModal(tx)}
-                          className="touch-manipulation py-2 px-3 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold rounded-lg inline-flex items-center gap-1 cursor-pointer shadow-xs active:scale-95 transition-all"
+                          className="h-7 px-2.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1 transition-all cursor-pointer"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                           <span>Edit</span>
@@ -584,7 +585,7 @@ export const HistoryView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setDeletingTransaction(tx)}
-                          className="touch-manipulation py-2 px-3 bg-rose-600 text-white hover:bg-rose-700 text-xs font-bold rounded-lg inline-flex items-center gap-1 cursor-pointer shadow-xs active:scale-95 transition-all"
+                          className="h-7 px-2.5 rounded-lg text-xs font-semibold bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 flex items-center gap-1 transition-all cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           <span>Hapus</span>
@@ -599,8 +600,16 @@ export const HistoryView: React.FC = () => {
             {/* ============================================================= */}
             {/* TAMPILAN DESKTOP: TABEL LENGKAP (hidden md:block)             */}
             {/* ============================================================= */}
-            <div className="hidden md:block bg-white border border-slate-200 rounded-xl shadow-xs overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+            <div className="hidden md:block bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+              <div
+                ref={scrollRef}
+                {...dragProps}
+                className={`w-full overflow-x-auto select-none scroll-smooth transition-all ${
+                  isDragging ? 'cursor-grabbing' : 'cursor-grab'
+                }`}
+                style={{ scrollbarWidth: 'thin' }}
+              >
+                <table className="w-full text-left text-xs border-collapse min-w-[760px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] tracking-wider font-semibold">
                     <th className="py-3 px-4">No. Transaksi</th>
@@ -612,7 +621,7 @@ export const HistoryView: React.FC = () => {
                     <th className="py-3 px-4 text-right">Diskon (-)</th>
                     <th className="py-3 px-4 text-right">Total Masuk (+)</th>
                     <th className="py-3 px-4 text-center">Status</th>
-                    <th className="py-3 px-4 text-center">Aksi</th>
+                    <th className="py-3 px-4 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -625,38 +634,39 @@ export const HistoryView: React.FC = () => {
                       normalizedStatus === 'UNPAID' || normalizedStatus === 'BELUM BAYAR';
                     const totalItems = tx.items.reduce((a, b) => a + b.quantity, 0);
                     const cashierPic = tx.cashierName || tx.cashier || tx.pic || 'Harits';
+                    const rawTxNum = String(tx.transactionNumber || tx.id || '');
+                    const displayTxNum = rawTxNum.startsWith('#') ? rawTxNum : `#${rawTxNum}`;
 
                     return (
                       <tr key={tx.id} className="hover:bg-amber-50/30 transition-colors group">
-                        {/* Transaction # & Batch Badge */}
-                        <td className="py-3.5 px-4 whitespace-nowrap align-top">
+                        {/* Kolom No. Transaksi */}
+                        <td className="py-3.5 px-4 whitespace-nowrap align-middle">
                           <div className="flex flex-col gap-1 items-start">
-                            <span className="font-mono font-bold text-slate-800 text-xs bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md">
-                              {tx.transactionNumber}
+                            <span className="px-2 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                              {displayTxNum}
                             </span>
                             {(tx.batch || 'Batch 1') && (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
                                 {tx.batch || 'Batch 1'}
                               </span>
                             )}
                           </div>
                         </td>
 
-                        {/* Time */}
-                        <td className="py-3.5 px-4 text-slate-600 whitespace-nowrap align-top">
-                          <div className="font-medium text-slate-800">{dt.date}</div>
-                          <div className="text-[10px] font-mono text-slate-500">{dt.time}</div>
+                        {/* Kolom Waktu & Tanggal */}
+                        <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                          <div className="text-xs font-medium text-slate-800">{dt.date}</div>
+                          <div className="text-[11px] text-slate-400">{dt.time}</div>
                         </td>
 
-                        {/* Customer Name & Kasir / PIC Shift Badge */}
-                        <td className="py-3.5 px-4 font-medium text-slate-900 whitespace-nowrap align-top">
-                          <div className="font-semibold text-slate-900">{tx.customerName}</div>
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-[10px] font-bold">
-                              <UserCheck className="w-3 h-3 text-amber-600" />
-                              <span>Kasir / PIC: {cashierPic}</span>
-                            </span>
+                        {/* Kolom Pelanggan & Kasir */}
+                        <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                          <div className="text-xs font-semibold text-slate-900">
+                            {tx.customerName}
                           </div>
+                          <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
+                            PIC: {cashierPic}
+                          </span>
                           {tx.customerEmail && (
                             <div className="text-[10px] text-amber-600 flex items-center gap-1 mt-0.5">
                               <CheckCircle className="w-2.5 h-2.5 text-amber-600" />
@@ -665,27 +675,27 @@ export const HistoryView: React.FC = () => {
                           )}
                         </td>
 
-                        {/* Items & Notes */}
-                        <td className="py-3.5 px-4 min-w-[240px] max-w-sm align-top">
+                        {/* Kolom Pesanan & Catatan */}
+                        <td className="py-3.5 px-4 min-w-[240px] max-w-sm align-middle">
                           <div>
                             <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-semibold mb-1">
                               {totalItems} item
                             </span>
                           </div>
-                          <div className="divide-y divide-slate-100 space-y-2">
+                          <div className="divide-y divide-slate-100 space-y-1.5">
                             {tx.items.map((i, idx) => {
                               const cleanName = String(i.name || '').replace(/Rlsol/gi, 'Risol');
                               const itemNote = i.note || i.description;
                               return (
                                 <div
                                   key={`${i.productId}-${idx}`}
-                                  className={idx > 0 ? 'pt-2' : ''}
+                                  className={idx > 0 ? 'pt-1.5' : ''}
                                 >
-                                  <div className="text-sm font-semibold text-slate-900">
+                                  <div className="text-xs font-semibold text-slate-900">
                                     {cleanName} ({i.quantity}x)
                                   </div>
                                   {itemNote && (
-                                    <div className="mt-1.5 flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50/90 border border-amber-200/70 text-xs font-medium text-amber-950">
+                                    <div className="mt-1 flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50/90 border border-amber-200/70 text-xs font-medium text-amber-950">
                                       <span className="font-bold text-amber-800 shrink-0">
                                         Catatan:
                                       </span>
@@ -704,92 +714,79 @@ export const HistoryView: React.FC = () => {
                           )}
                         </td>
 
-                        {/* Payment Method Badge */}
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          {tx.paymentMethod === 'CASH' ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200/90 rounded text-[11px] font-semibold">
-                              <Banknote className="w-3.5 h-3.5 text-amber-700" />
-                              <span>Cash</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 text-amber-700 border border-amber-500/20 rounded text-[11px] font-semibold">
-                              <QrCode className="w-3.5 h-3.5 text-amber-600" />
-                              <span>QRIS</span>
-                            </span>
-                          )}
+                        {/* Kolom Metode Pembayaran */}
+                        <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            {tx.paymentMethod === 'CASH' ? 'Cash' : tx.paymentMethod}
+                          </span>
                         </td>
 
                         {/* Subtotal */}
-                        <td className="py-3.5 px-4 text-right font-mono font-medium text-slate-700 tabular-nums whitespace-nowrap">
+                        <td className="py-3.5 px-4 text-right font-mono text-xs font-medium text-slate-700 tabular-nums whitespace-nowrap align-middle">
                           {formatCurrency(tx.subtotal)}
                         </td>
 
                         {/* Discount: MINUS = RED */}
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap align-middle">
                           {tx.discountAmount > 0 ? (
-                            <span className="font-mono font-bold text-xs text-rose-600 bg-rose-50 border border-rose-200/80 px-2 py-0.5 rounded tabular-nums inline-block">
-                              -{formatCurrency(tx.discountAmount)}
+                            <span className="text-xs font-bold text-rose-600 tabular-nums">
+                              -Rp {tx.discountAmount.toLocaleString('id-ID')}
                             </span>
                           ) : (
-                            <span className="font-mono text-slate-400 text-xs tabular-nums">
-                              Rp 0
-                            </span>
+                            <span className="text-xs text-slate-400 tabular-nums">Rp 0</span>
                           )}
                         </td>
 
-                        {/* Total: PLUS = GREEN (or AMBER if UNPAID, RED if REFUNDED) */}
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        {/* Kolom Nominal Omzet (+) */}
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap align-middle">
                           {isRefund ? (
-                            <span className="font-mono font-bold text-xs text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded tabular-nums inline-block">
-                              -{formatCurrency(tx.total)}
+                            <span className="text-xs font-bold text-rose-600 tabular-nums">
+                              -Rp {(tx.total || 0).toLocaleString('id-ID')}
                             </span>
                           ) : isUnpaid ? (
-                            <span className="font-mono font-bold text-xs text-amber-700 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded tabular-nums inline-block">
-                              {formatCurrency(tx.total)}
+                            <span className="text-xs font-bold text-amber-700 tabular-nums">
+                              Rp {(tx.total || 0).toLocaleString('id-ID')}
                             </span>
                           ) : (
-                            <span className="font-mono font-bold text-sm text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded tabular-nums inline-block shadow-2xs">
-                              +{formatCurrency(tx.total)}
+                            <span className="text-xs font-bold text-emerald-600 tabular-nums">
+                              +Rp {(tx.total || 0).toLocaleString('id-ID')}
                             </span>
                           )}
                         </td>
 
-                        {/* Status */}
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        {/* Kolom Status Pembayaran */}
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap align-middle">
                           {renderStatusBadge(tx.status)}
                         </td>
 
-                        {/* Action Buttons: Lihat Struk, Edit, Hapus */}
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                          <div className="inline-flex items-center gap-1.5">
-                            {/* Tombol Lihat Struk */}
+                        {/* Kolom Aksi (Tombol Struk, Edit, Hapus) */}
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap align-middle">
+                          <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
                               onClick={() => viewReceipt(tx)}
                               title="Lihat Struk"
-                              className="px-2.5 py-1.5 bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 text-xs font-medium transition-colors cursor-pointer inline-flex items-center gap-1 rounded-lg active:scale-95"
+                              className="h-7 px-2.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1 shadow-sm transition-all cursor-pointer"
                             >
                               <FileText className="w-3.5 h-3.5" />
                               <span>Struk</span>
                             </button>
 
-                            {/* Tombol Edit Transaksi */}
                             <button
                               type="button"
                               onClick={() => handleOpenEditModal(tx)}
                               title="Edit Transaksi"
-                              className="px-2.5 py-1.5 bg-amber-600 text-white hover:bg-amber-700 text-xs font-medium transition-colors cursor-pointer inline-flex items-center gap-1 rounded-lg shadow-xs active:scale-95"
+                              className="h-7 px-2.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1 transition-all cursor-pointer"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                               <span>Edit</span>
                             </button>
 
-                            {/* Tombol Hapus Transaksi */}
                             <button
                               type="button"
                               onClick={() => setDeletingTransaction(tx)}
                               title="Hapus Transaksi"
-                              className="px-2.5 py-1.5 bg-rose-600 text-white hover:bg-rose-700 text-xs font-medium transition-colors cursor-pointer inline-flex items-center gap-1 rounded-lg shadow-xs active:scale-95"
+                              className="h-7 px-2.5 rounded-lg text-xs font-semibold bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 flex items-center gap-1 transition-all cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                               <span>Hapus</span>
@@ -801,6 +798,7 @@ export const HistoryView: React.FC = () => {
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
           </>
         )}

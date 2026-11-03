@@ -148,8 +148,9 @@ export interface StoreSettings {
   qrisNmid?: string;
   pinCode: string;
   soundEnabled?: boolean; // Status aktif/nonaktif suara notifikasi kasir (default: true)
-  initialCapital?: number; // Modal awal operasional usaha (default: Rp 500.000)
-  capitalSource?: string; // Asal modal (cth: "Modal Kelompok / Mandiri", "Hibah Kampus / PMW")
+  initialCapital?: number; // Nominal modal awal (misal: 250000)
+  capitalSource?: string; // Sumber modal
+  capitalBatch?: string; // Batch tempat modal dialokasikan (misal: "Testing" atau "Batch 1")
   capitalDate?: string; // Tanggal alokasi modal YYYY-MM-DD
   activeBatch?: string; // Batch default yang sedang aktif berjalan (default: "Batch 1")
   availableBatches?: string[]; // Daftar batch produksi/penjualan: ["Batch 1", "Batch 2", ...]

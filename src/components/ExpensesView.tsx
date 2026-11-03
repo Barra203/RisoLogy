@@ -13,6 +13,7 @@ import {
   Check,
   AlertTriangle,
 } from 'lucide-react';
+import { useSmoothDragScroll } from '../hooks/useDragScroll';
 
 const TEAM_PIC_LIST = ['Barra', 'Harits', 'Dimas', 'Akhyar'];
 
@@ -55,6 +56,9 @@ export const ExpensesView: React.FC = () => {
   const [cashier, setCashier] = useState<string>(activeCashier || 'Barra');
   const [batch, setBatch] = useState<string>(settings.activeBatch || 'Batch 1');
   const [formError, setFormError] = useState<string>('');
+
+  // Smooth Drag-to-Scroll untuk Tabel Belanja Bahan (Tanpa Mouse Wheel Horizontal)
+  const { scrollRef, dragProps, isDragging } = useSmoothDragScroll();
 
   const availableBatches = useMemo(() => {
     const set = new Set<string>(settings.availableBatches || ['Batch 1', 'Batch 2']);
@@ -457,8 +461,15 @@ export const ExpensesView: React.FC = () => {
             {/* TAMPILAN DESKTOP: TABEL RINGKAS (hidden md:block)             */}
             {/* ============================================================= */}
             <div className="hidden md:block bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+              <div
+                ref={scrollRef}
+                {...dragProps}
+                className={`w-full overflow-x-auto select-none scroll-smooth transition-all ${
+                  isDragging ? 'cursor-grabbing' : 'cursor-grab'
+                }`}
+                style={{ scrollbarWidth: 'thin' }}
+              >
+                <table className="w-full text-left border-collapse text-xs min-w-[760px]">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
                       <th className="py-3 px-4">No &amp; Tanggal</th>
