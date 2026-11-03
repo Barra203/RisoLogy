@@ -27,6 +27,7 @@ interface EditFormState {
   cashierName: string;
   cashier: string;
   status: TransactionStatus;
+  batch: string;
   notes: string;
 }
 
@@ -72,11 +73,13 @@ export const renderStatusBadge = (status: string) => {
 export const HistoryView: React.FC = () => {
   const {
     transactions,
+    availableBatches,
     viewReceipt,
     updateTransaction,
     deleteTransaction,
     cashierList,
   } = usePos();
+  const [selectedBatch, setSelectedBatch] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [methodFilter, setMethodFilter] = useState<'ALL' | 'CASH' | 'QRIS' | 'TRANSFER'>('ALL');
 
@@ -88,6 +91,7 @@ export const HistoryView: React.FC = () => {
     cashierName: 'Harits',
     cashier: 'Harits',
     status: 'PAID',
+    batch: 'Batch 1',
     notes: '',
   });
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -118,10 +122,18 @@ export const HistoryView: React.FC = () => {
     return Array.from(set);
   }, [cashierList, editFormData.cashierName]);
 
-  // Filter transactions
+  // Filter transactions (Kombinasi Filter Batch, Metode Pembayaran, dan Pencarian Teks)
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
-      const q = searchQuery.toLowerCase();
+      // 1. Filter Batch
+      const txBatch = tx.batch || 'Batch 1';
+      const matchesBatch = selectedBatch === 'ALL' || txBatch === selectedBatch;
+
+      // 2. Filter Metode Pembayaran
+      const matchesMethod = methodFilter === 'ALL' || tx.paymentMethod === methodFilter;
+
+      // 3. Filter Pencarian Teks (No. Transaksi, ID, Nama Pelanggan, Kasir/PIC, Menu Item, Status, Catatan)
+      const q = searchQuery.trim().toLowerCase();
       const txCashier = (tx.cashierName || tx.cashier || tx.pic || '').toLowerCase();
       const txStatusLabel =
         tx.status === 'UNPAID' || tx.status === 'Belum Bayar'
@@ -129,38 +141,51 @@ export const HistoryView: React.FC = () => {
           : tx.status === 'REFUNDED' || tx.status === 'Refund'
           ? 'refund dibatalkan'
           : 'lunas paid';
-      const matchSearch =
-        tx.transactionNumber.toLowerCase().includes(q) ||
-        tx.customerName.toLowerCase().includes(q) ||
+      const matchesSearch =
+        !q ||
+        (tx.id || '').toLowerCase().includes(q) ||
+        (tx.transactionNumber || '').toLowerCase().includes(q) ||
+        (tx.customerName || '').toLowerCase().includes(q) ||
         txCashier.includes(q) ||
         txStatusLabel.includes(q) ||
-        (tx.notes && tx.notes.toLowerCase().includes(q));
-      const matchMethod = methodFilter === 'ALL' || tx.paymentMethod === methodFilter;
-      return matchSearch && matchMethod;
+        (tx.notes || '').toLowerCase().includes(q) ||
+        (tx.items || []).some(
+          (i) =>
+            (i.name || '').toLowerCase().includes(q) ||
+            (i.note || i.description || '').toLowerCase().includes(q)
+        );
+
+      return matchesBatch && matchesMethod && matchesSearch;
     });
-  }, [transactions, searchQuery, methodFilter]);
+  }, [transactions, selectedBatch, methodFilter, searchQuery]);
 
   // Statistics (Hanya menghitung transaksi PAID / Lunas sebagai Uang Masuk / Omset)
+  const totalOrders = filteredTransactions.length;
+  const totalRevenue = useMemo(() => {
+    return filteredTransactions
+      .filter((tx) => !tx.status || tx.status === 'PAID' || tx.status === 'Lunas')
+      .reduce((sum, tx) => sum + (Number(tx.total) || 0), 0);
+  }, [filteredTransactions]);
+
   const stats = useMemo(() => {
     const paidList = filteredTransactions.filter(
-      (t) => t.status === 'PAID' || t.status === 'Lunas'
+      (t) => !t.status || t.status === 'PAID' || t.status === 'Lunas'
     );
     const unpaidList = filteredTransactions.filter(
       (t) => t.status === 'UNPAID' || t.status === 'Belum Bayar'
     );
-    const totalRev = paidList.reduce((acc, t) => acc + (Number(t.total) || 0), 0);
     const totalSub = paidList.reduce((acc, t) => acc + (Number(t.subtotal) || 0), 0);
     const totalDisc = paidList.reduce((acc, t) => acc + (Number(t.discountAmount) || 0), 0);
     const unpaidTotal = unpaidList.reduce((acc, t) => acc + (Number(t.total) || 0), 0);
     return {
-      revenue: totalRev,
+      revenue: totalRevenue,
       subtotal: totalSub,
       discount: totalDisc,
       unpaidCount: unpaidList.length,
       unpaidTotal,
-      count: filteredTransactions.length,
+      count: totalOrders,
     };
-  }, [filteredTransactions]);
+  }, [filteredTransactions, totalRevenue, totalOrders]);
 
   // Buka Modal Edit Transaksi
   const handleOpenEditModal = (tx: Transaction) => {
@@ -172,11 +197,12 @@ export const HistoryView: React.FC = () => {
       cashierName: currentCashier,
       cashier: currentCashier,
       status: normalizeStatusValue(tx.status),
+      batch: tx.batch || 'Batch 1',
       notes: tx.notes || '',
     });
   };
 
-  // Simpan Perubahan Edit Transaksi (termasuk Kasir / PIC Shift & Status) ke Cloud Firestore
+  // Simpan Perubahan Edit Transaksi (termasuk Kasir / PIC Shift, Batch & Status) ke Cloud Firestore
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTransaction) return;
@@ -187,6 +213,7 @@ export const HistoryView: React.FC = () => {
         (editFormData.cashierName || editFormData.cashier || '').trim() ||
         editingTransaction.cashierName ||
         'Harits';
+      const resolvedBatch = (editFormData.batch || '').trim() || editingTransaction.batch || 'Batch 1';
 
       await updateTransaction(editingTransaction.id, {
         customerName: editFormData.customerName.trim() || 'Pelanggan',
@@ -195,12 +222,13 @@ export const HistoryView: React.FC = () => {
         cashier: resolvedCashier,
         pic: resolvedCashier,
         status: editFormData.status,
+        batch: resolvedBatch,
         notes: editFormData.notes.trim(),
       });
       setEditingTransaction(null);
       showFeedback(
         'success',
-        `Transaksi ${editingTransaction.transactionNumber} berhasil diperbarui (Status: ${
+        `Transaksi ${editingTransaction.transactionNumber} berhasil diperbarui (${resolvedBatch}, Status: ${
           editFormData.status === 'UNPAID'
             ? 'Belum Bayar'
             : editFormData.status === 'REFUNDED'
@@ -237,13 +265,8 @@ export const HistoryView: React.FC = () => {
       {/* Header */}
       <div className="p-4 sm:p-6 bg-white border-b border-slate-200 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
-              <Receipt className="w-4 h-4 stroke-[2]" />
-            </div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-              Riwayat Transaksi
-            </h1>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Riwayat Transaksi</h1>
           </div>
 
           {/* Quick Metrics with Color Coding */}
@@ -254,7 +277,7 @@ export const HistoryView: React.FC = () => {
                 Total Transaksi
               </span>
               <span className="font-mono font-bold text-sm text-amber-700 tabular-nums">
-                {stats.count} Pesanan
+                {stats.count} Pesanan {selectedBatch !== 'ALL' ? `(${selectedBatch})` : ''}
               </span>
             </div>
 
@@ -318,55 +341,89 @@ export const HistoryView: React.FC = () => {
         )}
 
         {/* Filter & Search Bar */}
-        <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100">
-          {/* Search box */}
-          <div className="relative w-full sm:w-80">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cari No. Transaksi (#RSL-...), Nama, Kasir/PIC, atau Catatan..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:bg-white transition-all rounded-lg"
-            />
-            {searchQuery && (
+        <div className="mt-5 pt-4 border-t border-slate-100">
+          {/* Batch Filter Selector Bar */}
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">
+              Batch:
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedBatch('ALL')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                selectedBatch === 'ALL'
+                  ? 'bg-amber-600 text-white shadow-sm'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              Semua Batch
+            </button>
+            {(availableBatches || ['Batch 1', 'Batch 2']).map((batchName) => (
               <button
+                key={batchName}
                 type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-800 cursor-pointer"
+                onClick={() => setSelectedBatch(batchName)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  selectedBatch === batchName
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
               >
-                ✕
+                {batchName}
               </button>
-            )}
+            ))}
           </div>
 
-          {/* Method Filter Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
-            {(['ALL', 'CASH', 'QRIS', 'TRANSFER'] as const).map((m) => {
-              const isSelected = methodFilter === m;
-              const label =
-                m === 'ALL'
-                  ? 'Semua Metode'
-                  : m === 'CASH'
-                  ? 'Tunai (Cash)'
-                  : m === 'QRIS'
-                  ? 'QRIS'
-                  : 'Transfer';
-              return (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            {/* Search box */}
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Cari No. Transaksi (#RSL-...), Nama, Kasir/PIC, atau Catatan..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:bg-white transition-all rounded-lg"
+              />
+              {searchQuery && (
                 <button
-                  key={m}
                   type="button"
-                  onClick={() => setMethodFilter(m)}
-                  className={`px-3 py-1.5 text-xs font-medium border cursor-pointer transition-all rounded-lg ${
-                    isSelected
-                      ? 'bg-amber-600 text-white border-amber-600 font-semibold shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-200 hover:border-amber-500 hover:text-amber-600'
-                  }`}
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-800 cursor-pointer"
                 >
-                  {label}
+                  ✕
                 </button>
-              );
-            })}
+              )}
+            </div>
+
+            {/* Method Filter Tabs */}
+            <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+              {(['ALL', 'CASH', 'QRIS', 'TRANSFER'] as const).map((m) => {
+                const isSelected = methodFilter === m;
+                const label =
+                  m === 'ALL'
+                    ? 'Semua Metode'
+                    : m === 'CASH'
+                    ? 'Tunai (Cash)'
+                    : m === 'QRIS'
+                    ? 'QRIS'
+                    : 'Transfer';
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMethodFilter(m)}
+                    className={`px-3 py-1.5 text-xs font-medium border cursor-pointer transition-all rounded-lg ${
+                      isSelected
+                        ? 'bg-amber-600 text-white border-amber-600 font-semibold shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-amber-500 hover:text-amber-600'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -402,12 +459,17 @@ export const HistoryView: React.FC = () => {
                     key={tx.id}
                     className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-2.5 mb-3"
                   >
-                    {/* Baris 1: ID Transaksi, Badge Status, dan Nama Kasir/PIC */}
+                    {/* Baris 1: ID Transaksi, Badge Batch, Badge Status, dan Nama Kasir/PIC */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-xs text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-bold text-xs text-slate-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md">
                           {tx.transactionNumber}
                         </span>
+                        {(tx.batch || 'Batch 1') && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                            {tx.batch || 'Batch 1'}
+                          </span>
+                        )}
                         {renderStatusBadge(tx.status)}
                       </div>
 
@@ -574,11 +636,18 @@ export const HistoryView: React.FC = () => {
 
                     return (
                       <tr key={tx.id} className="hover:bg-amber-50/30 transition-colors group">
-                        {/* Transaction # */}
+                        {/* Transaction # & Batch Badge */}
                         <td className="py-3.5 px-4 whitespace-nowrap align-top">
-                          <span className="font-mono font-bold text-xs text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md">
-                            {tx.transactionNumber}
-                          </span>
+                          <div className="flex flex-col gap-1 items-start">
+                            <span className="font-mono font-bold text-slate-800 text-xs bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md">
+                              {tx.transactionNumber}
+                            </span>
+                            {(tx.batch || 'Batch 1') && (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                {tx.batch || 'Batch 1'}
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Time */}
@@ -758,10 +827,11 @@ export const HistoryView: React.FC = () => {
           <div className="bg-white border border-slate-200 rounded-xl p-6 w-full max-w-md shadow-xl space-y-5 text-slate-800">
             {/* Header Modal */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Pencil className="w-4 h-4 text-amber-600" />
-                <span>Edit Transaksi {editingTransaction.transactionNumber}</span>
-              </h3>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  Edit Transaksi {editingTransaction.transactionNumber}
+                </h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setEditingTransaction(null)}
@@ -842,6 +912,33 @@ export const HistoryView: React.FC = () => {
                       className="bg-white text-slate-800"
                     >
                       {cashierName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Batch Penjualan */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Batch Penjualan
+                </label>
+                <select
+                  value={editFormData.batch}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      batch: e.target.value,
+                    })
+                  }
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer shadow-sm"
+                >
+                  {(availableBatches || ['Batch 1', 'Batch 2']).map((batchName) => (
+                    <option
+                      key={batchName}
+                      value={batchName}
+                      className="bg-white text-slate-800"
+                    >
+                      {batchName}
                     </option>
                   ))}
                 </select>

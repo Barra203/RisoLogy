@@ -93,10 +93,7 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <Tag className="w-5 h-5 text-amber-400" />
-            <div>
-              <h3 className="font-bold text-sm tracking-tight">Manajemen Diskon &amp; Promo</h3>
-              <p className="text-[11px] text-slate-300">Kelola preset diskon transaksi kasir</p>
-            </div>
+            <h3 className="font-bold text-base tracking-tight">Manajemen Diskon &amp; Promo</h3>
           </div>
           <button
             type="button"

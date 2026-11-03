@@ -635,18 +635,13 @@ export const DashboardView: React.FC = () => {
       {/* Top Header */}
       <div className="p-4 sm:p-6 bg-white border-b border-slate-200 shrink-0 space-y-3 w-full overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
-              <LayoutDashboard className="w-4 h-4 stroke-[2]" />
-            </div>
-            <div className="min-w-0 flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-                Dashboard Operasional
-              </h1>
-              <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md font-mono font-bold uppercase">
-                {selectedBatch === 'ALL' ? 'Semua Batch' : selectedBatch}
-              </span>
-            </div>
+          <div className="min-w-0 flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              Dashboard Operasional
+            </h1>
+            <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md font-mono font-bold uppercase">
+              {selectedBatch === 'ALL' ? 'Semua Batch' : selectedBatch}
+            </span>
           </div>
 
           {/* Time range selector & Active Shift badge */}
@@ -1105,32 +1100,25 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
 
-          {/* Cashflow Narrative for Lecturer / Presentation */}
+          {/* Cashflow Status Summary */}
           <div
-            className={`p-3.5 rounded-lg border text-xs leading-relaxed ${
+            className={`px-3.5 py-2.5 rounded-lg border text-xs flex items-center justify-between gap-2 flex-wrap ${
               isBepReached
                 ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
                 : 'bg-amber-50/70 border-amber-200 text-amber-950'
             }`}
           >
-            <div className="flex items-start gap-2.5">
+            <div className="flex items-center gap-2 font-bold text-slate-900">
               {isBepReached ? (
-                <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
               ) : (
-                <Landmark className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <Landmark className="w-4 h-4 text-amber-700 shrink-0" />
               )}
-              <div>
-                <p className="font-bold mb-0.5 text-slate-900">
-                  {isBepReached
-                    ? 'Evaluasi Finansial: Usaha Menghasilkan Laba Operasional Bersih (Di Atas BEP)'
-                    : 'Evaluasi Finansial: Usaha Berada dalam Tahap Pemulihan Modal Bahan (Menuju BEP)'}
-                </p>
-                <p className="text-slate-700 text-[11px]">
-                  {isBepReached
-                    ? `Total omzet penjualan lunas (${formatCurrency(netSales)}) telah melampaui 100% total beban belanja bahan baku (${formatCurrency(totalExpenses)}). Usaha berhasil membukukan laba operasional bersih sebesar ${formatCurrency(estimatedNetProfit)} dengan Return on Investment (ROI) sebesar ${roiPercentage}% terhadap modal awal usaha ${formatCurrency(initialCapital)}.`
-                    : `Dibutuhkan tambahan omzet penjualan sebesar ${formatCurrency(bepShortfall)} lagi agar penjualan kasir menutup 100% biaya belanja bahan (${formatCurrency(totalExpenses)}). Saat ini tingkat serapan belanja adalah ${capitalAbsorption}% dari modal awal usaha ${formatCurrency(initialCapital)}.`}
-                </p>
-              </div>
+              <span>
+                {isBepReached
+                  ? `Laba Operasional Bersih: +${formatCurrency(estimatedNetProfit)} (${roiPercentage}% ROI)`
+                  : `Target Menuju BEP: Kurang ${formatCurrency(bepShortfall)} (${capitalAbsorption}% Serapan Modal)`}
+              </span>
             </div>
           </div>
 
@@ -1733,14 +1721,9 @@ export const DashboardView: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Package className="w-4 h-4 text-amber-600" />
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight">
-                    Status Stok Menu Produk ({metrics.totalStockUnits} Porsi Total)
-                  </h3>
-                  <span className="text-[10px] text-slate-500">
-                    {metrics.totalProductsCount} menu terdaftar di katalog
-                  </span>
-                </div>
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight">
+                  Status Stok Menu Produk ({metrics.totalStockUnits} Porsi Total)
+                </h3>
               </div>
               <button
                 type="button"
@@ -1936,9 +1919,6 @@ export const DashboardView: React.FC = () => {
                     required
                   />
                 </div>
-                <p className="text-[11px] text-slate-500">
-                  Uang tunai operasional yang disetor tim di awal kegiatan usaha
-                </p>
               </div>
 
               <div className="space-y-1.5">

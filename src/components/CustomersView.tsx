@@ -208,18 +208,10 @@ export const CustomersView: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col min-h-screen w-full bg-[#F5F5F5]">
       {/* Top Header */}
-      <div className="p-4 sm:p-6 bg-white border-b border-[#E5E5E5] shrink-0">
+      <div className="p-4 sm:p-6 bg-white border-b border-slate-200 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-amber-600 stroke-[2]" />
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">
-                Data Pelanggan &amp; Riwayat Belanja
-              </h1>
-            </div>
-            <p className="text-xs text-[#666666] mt-0.5">
-              Direktori pelanggan RisoLogy, frekuensi repeat order, total belanja LTV, tier loyalitas, dan menu kesukaan
-            </p>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Direktori Pelanggan</h1>
           </div>
 
           <div className="flex items-center gap-2">

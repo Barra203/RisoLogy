@@ -249,11 +249,8 @@ export const ExpensesView: React.FC = () => {
       <div className="p-4 sm:p-6 bg-white border-b border-slate-200 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
-              <Truck className="w-4 h-4 stroke-[2]" />
-            </div>
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-              Pencatatan Belanja Bahan Supplier
+              Belanja Bahan &amp; Operasional
             </h1>
             <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-md text-[10px] font-bold">
               Aktif: {settings.activeBatch || 'Batch 1'}
@@ -583,14 +580,9 @@ export const ExpensesView: React.FC = () => {
 
             {/* Header */}
             <div className="pb-3.5 border-b border-slate-100 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center">
-                  <Truck className="w-4 h-4 text-amber-700" />
-                </div>
-                <h3 className="font-bold text-sm text-slate-900 tracking-tight">
-                  {editingExpenseId ? 'Edit Belanja Bahan' : 'Catat Belanja Bahan Supplier Baru'}
-                </h3>
-              </div>
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                {editingExpenseId ? 'Edit Belanja Bahan' : 'Catat Belanja Bahan'}
+              </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}

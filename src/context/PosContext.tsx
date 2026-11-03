@@ -141,6 +141,7 @@ interface PosContextType {
 
   // Settings & Actions
   settings: StoreSettings;
+  availableBatches: string[];
   updateSettings: (newSettings: Partial<StoreSettings>) => void;
   updateInitialCapital: (amount: number, source: string, date?: string) => Promise<void>;
   setActiveBatch: (batchName: string) => void;
@@ -2077,6 +2078,18 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
+  // Daftar seluruh batch yang tersedia (mengikuti urutan di settings.availableBatches + batch unik dari transaksi/belanja)
+  const availableBatches = Array.from(
+    new Set([
+      ...(settings.availableBatches && settings.availableBatches.length > 0
+        ? settings.availableBatches
+        : ['Batch 1', 'Batch 2']),
+      ...(settings.activeBatch ? [settings.activeBatch] : []),
+      ...transactions.map((t) => t.batch).filter((b): b is string => Boolean(b)),
+      ...expenses.map((e) => e.batch).filter((b): b is string => Boolean(b)),
+    ])
+  );
+
   return (
     <PosContext.Provider
       value={{
@@ -2135,6 +2148,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateCustomer,
         deleteCustomer,
         settings,
+        availableBatches,
         updateSettings,
         updateInitialCapital,
         setActiveBatch,

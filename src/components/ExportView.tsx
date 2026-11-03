@@ -426,18 +426,10 @@ export const ExportView: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col min-h-screen w-full bg-[#F5F5F5]">
       {/* Top Header */}
-      <div className="p-4 sm:p-6 bg-white border-b border-[#E5E5E5] shrink-0 space-y-4">
+      <div className="p-4 sm:p-6 bg-white border-b border-slate-200 shrink-0 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-amber-600 stroke-[2]" />
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">
-                Modul Ekspor Spreadsheet (6 Template Laporan)
-              </h1>
-            </div>
-            <p className="text-xs text-[#666666] mt-0.5">
-              Pilih template laporan, tentukan rentang periode, download CSV UTF-8 atau salin data langsung ke Excel / Google Sheets
-            </p>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Ekspor Laporan</h1>
           </div>
 
           {/* Action Download & Copy Buttons */}

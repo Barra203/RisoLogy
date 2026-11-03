@@ -397,10 +397,7 @@ export const SettingsView: React.FC = () => {
       {/* Top Header */}
       <div className="p-4 sm:p-6 bg-white border-b border-slate-200 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
-              <Store className="w-4 h-4 stroke-[2]" />
-            </div>
+          <div>
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">
               Pengaturan Toko &amp; POS
             </h1>
@@ -431,9 +428,7 @@ export const SettingsView: React.FC = () => {
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
           <div className="flex items-center gap-2 pb-4 mb-4 border-b border-slate-100">
             <Store className="w-4 h-4 text-amber-600 stroke-[1.5]" />
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-              1. Identitas Brand &amp; Upload Logo Toko
-            </h2>
+            <h2 className="text-base font-bold text-slate-900">Identitas Brand &amp; Logo</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -587,9 +582,6 @@ export const SettingsView: React.FC = () => {
                       <p className="text-sm font-bold text-stone-800">
                         Efek Suara Kasir (Audio Chime)
                       </p>
-                      <p className="text-xs text-stone-500">
-                        Mainkan nada halus saat transaksi pembayaran berhasil diselesaikan
-                      </p>
                     </div>
                   </div>
                   <button
@@ -622,8 +614,8 @@ export const SettingsView: React.FC = () => {
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <Coins className="w-4 h-4 text-amber-600 stroke-[1.8]" />
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                2. Pengaturan Modal Awal Usaha &amp; Arus Kas
+              <h2 className="text-base font-bold text-slate-900">
+                Modal Awal Usaha &amp; Arus Kas
               </h2>
             </div>
 
@@ -663,9 +655,6 @@ export const SettingsView: React.FC = () => {
                     required
                   />
                 </div>
-                <p className="text-[11px] text-slate-500">
-                  Uang tunai operasional yang disetor di awal usaha
-                </p>
               </div>
 
               {/* Field 2: Sumber / Asal Modal */}
@@ -688,9 +677,6 @@ export const SettingsView: React.FC = () => {
                   <option value="Iuran Kas Mahasiswa" />
                   <option value="Investor / Pembina Usaha" />
                 </datalist>
-                <p className="text-[11px] text-slate-500">
-                  Keterangan asal pendanaan untuk laporan akuntansi
-                </p>
               </div>
 
               {/* Field 3: Tanggal Alokasi Modal */}
@@ -705,9 +691,6 @@ export const SettingsView: React.FC = () => {
                   className="w-full px-3 py-2 text-xs border border-[#CCCCCC] focus:border-amber-500 bg-white font-medium text-slate-800 focus:outline-none"
                   required
                 />
-                <p className="text-[11px] text-slate-500">
-                  Tanggal pencatatan penerimaan modal usaha
-                </p>
               </div>
             </div>
 
@@ -832,9 +815,7 @@ export const SettingsView: React.FC = () => {
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
           <div className="flex items-center gap-2 pb-4 mb-4 border-b border-slate-100">
             <QrCode className="w-4 h-4 text-amber-600 stroke-[1.5]" />
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-              3. Konfigurasi &amp; Upload Gambar QRIS Toko
-            </h2>
+            <h2 className="text-base font-bold text-slate-900">Konfigurasi &amp; Upload QRIS</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
@@ -895,21 +876,11 @@ export const SettingsView: React.FC = () => {
               </div>
             </div>
 
-            {/* QRIS Description & Guidance */}
-            <div className="md:col-span-2 space-y-3">
-              <div className="p-4 bg-[#FAFAFA] border border-[#E5E5E5] text-xs text-[#444444] leading-relaxed">
-                <strong className="text-black text-sm block mb-1">Kemudahan Pembayaran QRIS (Sinkronisasi Cloud):</strong>
-                <p className="mb-2">
-                  Anda dapat langsung mengunggah foto atau screenshot kode QRIS resmi toko Anda (BCA, Mandiri, GoPay, OVO, ShopeePay, DANA, dsb).
-                </p>
-                <p className="text-[#666666]">
-                  Gambar QRIS dikompresi otomatis dan disimpan langsung ke Cloud Firestore (<code>settings/general</code>) sehingga langsung tampil di HP/laptop seluruh kasir tanpa perlu unggah ulang.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 text-xs text-amber-800">
+            {/* QRIS Status */}
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-2 p-3.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 font-medium">
                 <Check className="w-4 h-4 shrink-0 text-amber-600" />
-                <span>Gambar QRIS &amp; Logo Toko tersinkronisasi real-time di seluruh perangkat via Cloud Firestore.</span>
+                <span>Gambar QRIS &amp; Logo Toko tersinkronisasi real-time via Cloud Firestore.</span>
               </div>
             </div>
           </div>
@@ -920,8 +891,8 @@ export const SettingsView: React.FC = () => {
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-amber-600 stroke-[1.5]" />
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                4. Manajemen Kategori Menu Kasir ({categories.length})
+              <h2 className="text-base font-bold text-slate-900">
+                Kategori Menu ({categories.length})
               </h2>
             </div>
           </div>
@@ -1044,8 +1015,8 @@ export const SettingsView: React.FC = () => {
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <RisolIcon className="w-4 h-4 text-amber-600 stroke-[1.8]" />
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                5. Manajemen Menu Produk ({products.length} Menu • {products.reduce((acc, p) => acc + (p.stockQuantity || 0), 0)} Porsi Stok)
+              <h2 className="text-base font-bold text-slate-900">
+                Manajemen Menu Produk ({products.length} Menu • {products.reduce((acc, p) => acc + (p.stockQuantity || 0), 0)} Porsi Stok)
               </h2>
             </div>
 
@@ -1343,8 +1314,8 @@ export const SettingsView: React.FC = () => {
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
           <div className="flex items-center gap-2 pb-4 mb-4 border-b border-slate-100">
             <Lock className="w-4 h-4 text-amber-600 stroke-[1.5]" />
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-              6. Keamanan, Akun Kasir &amp; Password Masuk
+            <h2 className="text-base font-bold text-slate-900">
+              Keamanan, Akun Kasir &amp; Password Masuk
             </h2>
           </div>
 

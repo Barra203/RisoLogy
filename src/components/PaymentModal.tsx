@@ -97,13 +97,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
               <span className="font-mono text-xs font-bold bg-amber-600 text-white px-2 py-0.5 rounded">
                 {nextTransactionNumber}
               </span>
-              <h2 className="text-base font-bold text-black uppercase tracking-tight">
+              <h2 className="text-base font-bold text-slate-900 tracking-tight">
                 Pembayaran Transaksi
               </h2>
             </div>
-            <p className="text-xs text-[#666666] mt-0.5">
-              Pilih metode pembayaran untuk menyelesaikan pesanan
-            </p>
           </div>
           <button
             type="button"
@@ -249,13 +246,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
                 }}
               />
 
-              <div className="space-y-1">
-                <div className="text-xs font-bold text-black uppercase tracking-wider">
-                  {settings.storeName} • {settings.activeBatch || 'Batch 1'}
-                </div>
-                <p className="text-[11px] text-[#666666] max-w-xs mt-1">
-                  Pindai QRIS menggunakan BCA Mobile, GoPay, OVO, Dana, ShopeePay, atau m-Banking lainnya.
-                </p>
+              <div className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                {settings.storeName} • {settings.activeBatch || 'Batch 1'}
               </div>
             </div>
           )}
