@@ -8,7 +8,6 @@ import {
   FileText,
   Banknote,
   QrCode,
-  CreditCard,
   CheckCircle,
   ArrowDownRight,
   ArrowUpRight,
@@ -81,7 +80,7 @@ export const HistoryView: React.FC = () => {
   } = usePos();
   const [selectedBatch, setSelectedBatch] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [methodFilter, setMethodFilter] = useState<'ALL' | 'CASH' | 'QRIS' | 'TRANSFER'>('ALL');
+  const [methodFilter, setMethodFilter] = useState<'ALL' | 'CASH' | 'QRIS'>('ALL');
 
   // State Modal Edit Transaksi (Light Mode + Kasir / PIC Shift)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -398,16 +397,14 @@ export const HistoryView: React.FC = () => {
 
             {/* Method Filter Tabs */}
             <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
-              {(['ALL', 'CASH', 'QRIS', 'TRANSFER'] as const).map((m) => {
+              {(['ALL', 'CASH', 'QRIS'] as const).map((m) => {
                 const isSelected = methodFilter === m;
                 const label =
                   m === 'ALL'
                     ? 'Semua Metode'
                     : m === 'CASH'
                     ? 'Tunai (Cash)'
-                    : m === 'QRIS'
-                    ? 'QRIS'
-                    : 'Transfer';
+                    : 'QRIS';
                 return (
                   <button
                     key={m}
@@ -494,11 +491,6 @@ export const HistoryView: React.FC = () => {
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200/90 rounded-lg text-[11px] font-semibold">
                               <Banknote className="w-3.5 h-3.5 text-amber-700" />
                               <span>Cash</span>
-                            </span>
-                          ) : tx.paymentMethod === 'TRANSFER' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-900 border border-purple-200 rounded-lg text-[11px] font-semibold">
-                              <CreditCard className="w-3.5 h-3.5 text-purple-700" />
-                              <span>Transfer</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 text-amber-700 border border-amber-500/20 rounded-lg text-[11px] font-semibold">
@@ -719,11 +711,6 @@ export const HistoryView: React.FC = () => {
                               <Banknote className="w-3.5 h-3.5 text-amber-700" />
                               <span>Cash</span>
                             </span>
-                          ) : tx.paymentMethod === 'TRANSFER' ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 text-purple-900 border border-purple-200 rounded text-[11px] font-semibold">
-                              <CreditCard className="w-3.5 h-3.5 text-purple-700" />
-                              <span>Transfer</span>
-                            </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 text-amber-700 border border-amber-500/20 rounded text-[11px] font-semibold">
                               <QrCode className="w-3.5 h-3.5 text-amber-600" />
@@ -859,7 +846,7 @@ export const HistoryView: React.FC = () => {
                 />
               </div>
 
-              {/* Pilihan Dropdown Metode Pembayaran (Cash, QRIS, Transfer) */}
+              {/* Pilihan Dropdown Metode Pembayaran (Cash, QRIS) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Metode Pembayaran
@@ -875,13 +862,10 @@ export const HistoryView: React.FC = () => {
                   className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer shadow-sm"
                 >
                   <option value="CASH" className="bg-white text-slate-800">
-                    Cash (Tunai)
+                    Tunai (Cash)
                   </option>
                   <option value="QRIS" className="bg-white text-slate-800">
                     QRIS
-                  </option>
-                  <option value="TRANSFER" className="bg-white text-slate-800">
-                    Transfer
                   </option>
                 </select>
               </div>

@@ -25,7 +25,7 @@ export interface CartItem {
   product: Product;
 }
 
-export type PaymentMethod = 'CASH' | 'QRIS' | 'TRANSFER';
+export type PaymentMethod = 'CASH' | 'QRIS';
 
 export const CASHIER_LIST = ['Harits', 'Rafi', 'Barra', 'Dimas', 'Akhyar'] as const;
 export type CashierName = typeof CASHIER_LIST[number] | string;

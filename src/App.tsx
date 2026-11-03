@@ -257,7 +257,11 @@ const PosMainApp: React.FC = () => {
 
         {/* Area View (PosView, DashboardView, HistoryView, dsb.) */}
         <main
-          className="flex-1 h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-24 md:pb-6"
+          className={
+            activeTab === 'dashboard'
+              ? 'flex-1 h-full overflow-hidden'
+              : 'flex-1 h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-24 md:pb-6'
+          }
           role="main"
         >
           {renderCurrentView()}

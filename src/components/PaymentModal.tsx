@@ -46,7 +46,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
   const tenderedAmount = parseFloat(tenderedStr) || 0;
   const changeAmount = calculateChange(total, tenderedAmount);
   const isCashInsufficient = method === 'CASH' && tenderedAmount < total;
-  const paymentValid = method === 'QRIS' || method === 'TRANSFER' || !isCashInsufficient;
+  const paymentValid = method === 'QRIS' || !isCashInsufficient;
 
   // Preset quick cash amounts
   const quickAmounts = [
