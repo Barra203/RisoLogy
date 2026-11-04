@@ -13,7 +13,7 @@ import {
   Check,
   AlertTriangle,
 } from 'lucide-react';
-import { useSmoothDragScroll } from '../hooks/useDragScroll';
+import { useDragScroll } from '../hooks/useDragScroll';
 
 const TEAM_PIC_LIST = ['Barra', 'Harits', 'Dimas', 'Akhyar'];
 
@@ -57,8 +57,8 @@ export const ExpensesView: React.FC = () => {
   const [batch, setBatch] = useState<string>(settings.activeBatch || 'Batch 1');
   const [formError, setFormError] = useState<string>('');
 
-  // Smooth Drag-to-Scroll untuk Tabel Belanja Bahan (Tanpa Mouse Wheel Horizontal)
-  const { scrollRef, dragProps, isDragging } = useSmoothDragScroll();
+  // Smooth Drag-to-Scroll untuk Tabel Belanja Bahan (Touch & Wheel Pass-Through)
+  const tableScrollRef = useDragScroll<HTMLDivElement>();
 
   const availableBatches = useMemo(() => {
     const set = new Set<string>(settings.availableBatches || ['Batch 1', 'Batch 2']);
@@ -460,13 +460,11 @@ export const ExpensesView: React.FC = () => {
             {/* ============================================================= */}
             {/* TAMPILAN DESKTOP: TABEL RINGKAS (hidden md:block)             */}
             {/* ============================================================= */}
-            <div className="hidden md:block w-full bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6">
+            <div className="hidden md:block w-full bg-white border border-slate-200 rounded-xl shadow-sm mb-6">
               <div
-                ref={scrollRef}
-                {...dragProps}
-                className={`w-full overflow-x-auto touch-pan-x overscroll-x-contain select-none ${
-                  isDragging ? 'cursor-grabbing' : 'cursor-grab'
-                }`}
+                ref={tableScrollRef}
+                className="w-full overflow-x-auto overflow-y-visible touch-auto cursor-grab select-none no-scrollbar"
+                style={{ WebkitOverflowScrolling: 'touch' }}
               >
                 <table className="w-full text-left border-collapse text-xs md:text-sm min-w-[760px]">
                   <thead>

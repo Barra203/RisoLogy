@@ -12,7 +12,7 @@ import {
   Edit2,
   ArrowUpRight,
 } from 'lucide-react';
-import { useSmoothDragScroll } from '../hooks/useDragScroll';
+import { useDragScroll } from '../hooks/useDragScroll';
 
 // Helper untuk mengekstrak nominal pengeluaran secara konsisten
 const getExpenseNominal = (item: SupplierExpense): number => {
@@ -118,8 +118,8 @@ export const DashboardView: React.FC = () => {
     settings.capitalDate || new Date().toISOString().split('T')[0]
   );
 
-  // Smooth Drag-to-Scroll untuk Tabel Transaksi Terbaru (Tanpa Mouse Wheel Horizontal)
-  const { scrollRef, dragProps, isDragging } = useSmoothDragScroll();
+  // Smooth Drag-to-Scroll untuk Tabel Transaksi Terbaru (Touch & Wheel Pass-Through)
+  const tableScrollRef = useDragScroll<HTMLDivElement>();
 
   const availableBatches = useMemo(() => {
     const set = new Set<string>(
@@ -917,12 +917,9 @@ export const DashboardView: React.FC = () => {
               </div>
 
               <div
-                ref={scrollRef}
-                {...dragProps}
-                className={`w-full overflow-x-auto touch-pan-x overscroll-x-contain select-none scroll-smooth transition-all ${
-                  isDragging ? 'cursor-grabbing' : 'cursor-grab'
-                }`}
-                style={{ scrollbarWidth: 'thin' }}
+                ref={tableScrollRef}
+                className="w-full overflow-x-auto overflow-y-visible touch-auto cursor-grab select-none no-scrollbar"
+                style={{ WebkitOverflowScrolling: 'touch' }}
               >
                 <table className="w-full text-left border-collapse min-w-[560px]">
                   <thead>

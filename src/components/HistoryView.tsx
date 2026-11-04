@@ -19,7 +19,7 @@ import {
   StickyNote,
   UserCheck,
 } from 'lucide-react';
-import { useSmoothDragScroll } from '../hooks/useDragScroll';
+import { useDragScroll } from '../hooks/useDragScroll';
 
 interface EditFormState {
   customerName: string;
@@ -97,8 +97,8 @@ export const HistoryView: React.FC = () => {
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
-  // Smooth Drag-to-Scroll untuk Tabel Riwayat Transaksi (Tanpa Mouse Wheel Horizontal)
-  const { scrollRef, dragProps, isDragging } = useSmoothDragScroll();
+  // Smooth Drag-to-Scroll untuk Tabel Riwayat Transaksi (Touch & Wheel Pass-Through)
+  const tableScrollRef = useDragScroll<HTMLDivElement>();
 
   // Notifikasi Umpan Balik Aksi (Light Mode Toast)
   const [feedbackMsg, setFeedbackMsg] = useState<{
@@ -600,14 +600,12 @@ export const HistoryView: React.FC = () => {
             {/* ============================================================= */}
             {/* TAMPILAN DESKTOP: TABEL LENGKAP (hidden md:block)             */}
             {/* ============================================================= */}
-            <div className="hidden md:block w-full bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6">
-              {/* Scroll Horizontal Tabel (Hanya X, biarkan Y mengalir bebas) */}
+            <div className="hidden md:block w-full bg-white border border-slate-200 rounded-xl shadow-sm mb-6">
+              {/* Kontainer Scroll: Horizontal aktif (auto), Vertikal tembus (visible), Touch bebas (touch-auto) */}
               <div
-                ref={scrollRef}
-                {...dragProps}
-                className={`w-full overflow-x-auto touch-pan-x overscroll-x-contain select-none ${
-                  isDragging ? 'cursor-grabbing' : 'cursor-grab'
-                }`}
+                ref={tableScrollRef}
+                className="w-full overflow-x-auto overflow-y-visible touch-auto cursor-grab select-none no-scrollbar"
+                style={{ WebkitOverflowScrolling: 'touch' }}
               >
                 <table className="w-full text-left text-xs md:text-sm min-w-[760px] divide-y divide-slate-100">
                 <thead>
