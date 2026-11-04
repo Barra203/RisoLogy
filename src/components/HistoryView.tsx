@@ -563,11 +563,11 @@ export const HistoryView: React.FC = () => {
                         )}
                       </div>
 
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => viewReceipt(tx)}
-                          className="h-7 px-2.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                          className="h-8 px-3 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1 shadow-sm transition-all cursor-pointer touch-manipulation"
                         >
                           <FileText className="w-3.5 h-3.5" />
                           <span>Struk</span>
@@ -576,7 +576,7 @@ export const HistoryView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenEditModal(tx)}
-                          className="h-7 px-2.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1 transition-all cursor-pointer"
+                          className="h-8 px-3 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1 transition-all cursor-pointer touch-manipulation"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                           <span>Edit</span>
@@ -585,7 +585,7 @@ export const HistoryView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setDeletingTransaction(tx)}
-                          className="h-7 px-2.5 rounded-lg text-xs font-semibold bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 flex items-center gap-1 transition-all cursor-pointer"
+                          className="h-8 px-3 rounded-lg text-xs font-semibold bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 flex items-center gap-1 transition-all cursor-pointer touch-manipulation"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           <span>Hapus</span>
@@ -605,23 +605,23 @@ export const HistoryView: React.FC = () => {
               <div
                 ref={scrollRef}
                 {...dragProps}
-                className={`w-full overflow-x-auto select-none ${
+                className={`w-full overflow-x-auto touch-pan-x overscroll-x-contain select-none ${
                   isDragging ? 'cursor-grabbing' : 'cursor-grab'
                 }`}
               >
-                <table className="w-full text-left text-xs min-w-[760px] divide-y divide-slate-100">
+                <table className="w-full text-left text-xs md:text-sm min-w-[760px] divide-y divide-slate-100">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] tracking-wider font-semibold">
-                    <th className="py-3 px-4">No. Transaksi</th>
-                    <th className="py-3 px-4">Waktu</th>
-                    <th className="py-3 px-4">Pelanggan &amp; Kasir / PIC</th>
-                    <th className="py-3 px-4">Pesanan &amp; Catatan</th>
-                    <th className="py-3 px-4">Metode</th>
-                    <th className="py-3 px-4 text-right">Subtotal</th>
-                    <th className="py-3 px-4 text-right">Diskon (-)</th>
-                    <th className="py-3 px-4 text-right">Total Masuk (+)</th>
-                    <th className="py-3 px-4 text-center">Status</th>
-                    <th className="py-3 px-4 text-right">Aksi</th>
+                    <th className="py-3 px-3.5">No. Transaksi</th>
+                    <th className="py-3 px-3.5">Waktu</th>
+                    <th className="py-3 px-3.5">Pelanggan &amp; Kasir / PIC</th>
+                    <th className="py-3 px-3.5">Pesanan &amp; Catatan</th>
+                    <th className="py-3 px-3.5">Metode</th>
+                    <th className="py-3 px-3.5 text-right">Subtotal</th>
+                    <th className="py-3 px-3.5 text-right">Diskon (-)</th>
+                    <th className="py-3 px-3.5 text-right">Total Masuk (+)</th>
+                    <th className="py-3 px-3.5 text-center">Status</th>
+                    <th className="py-3 px-3.5 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -640,7 +640,7 @@ export const HistoryView: React.FC = () => {
                     return (
                       <tr key={tx.id} className="hover:bg-amber-50/30 transition-colors group">
                         {/* Kolom No. Transaksi */}
-                        <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                        <td className="px-3.5 py-3 text-xs md:text-sm whitespace-nowrap align-middle">
                           <div className="flex flex-col gap-1 items-start">
                             <span className="px-2 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200">
                               {displayTxNum}
@@ -654,13 +654,13 @@ export const HistoryView: React.FC = () => {
                         </td>
 
                         {/* Kolom Waktu & Tanggal */}
-                        <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                        <td className="px-3.5 py-3 text-xs md:text-sm whitespace-nowrap align-middle">
                           <div className="text-xs font-medium text-slate-800">{dt.date}</div>
                           <div className="text-[11px] text-slate-400">{dt.time}</div>
                         </td>
 
                         {/* Kolom Pelanggan & Kasir */}
-                        <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                        <td className="px-3.5 py-3 text-xs md:text-sm whitespace-nowrap align-middle">
                           <div className="text-xs font-semibold text-slate-900">
                             {tx.customerName}
                           </div>
@@ -676,7 +676,7 @@ export const HistoryView: React.FC = () => {
                         </td>
 
                         {/* Kolom Pesanan & Catatan */}
-                        <td className="py-3.5 px-4 min-w-[240px] max-w-sm align-middle">
+                        <td className="px-3.5 py-3 text-xs md:text-sm min-w-[240px] max-w-sm align-middle">
                           <div>
                             <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-semibold mb-1">
                               {totalItems} item
@@ -715,19 +715,19 @@ export const HistoryView: React.FC = () => {
                         </td>
 
                         {/* Kolom Metode Pembayaran */}
-                        <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                        <td className="px-3.5 py-3 text-xs md:text-sm whitespace-nowrap align-middle">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                             {tx.paymentMethod === 'CASH' ? 'Cash' : tx.paymentMethod}
                           </span>
                         </td>
 
                         {/* Subtotal */}
-                        <td className="py-3.5 px-4 text-right font-mono text-xs font-medium text-slate-700 tabular-nums whitespace-nowrap align-middle">
+                        <td className="px-3.5 py-3 text-right font-mono text-xs md:text-sm font-medium text-slate-700 tabular-nums whitespace-nowrap align-middle">
                           {formatCurrency(tx.subtotal)}
                         </td>
 
                         {/* Discount: MINUS = RED */}
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap align-middle">
+                        <td className="px-3.5 py-3 text-xs md:text-sm text-right whitespace-nowrap align-middle">
                           {tx.discountAmount > 0 ? (
                             <span className="text-xs font-bold text-rose-600 tabular-nums">
                               -Rp {tx.discountAmount.toLocaleString('id-ID')}
@@ -738,7 +738,7 @@ export const HistoryView: React.FC = () => {
                         </td>
 
                         {/* Kolom Nominal Omzet (+) */}
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap align-middle">
+                        <td className="px-3.5 py-3 text-xs md:text-sm text-right whitespace-nowrap align-middle">
                           {isRefund ? (
                             <span className="text-xs font-bold text-rose-600 tabular-nums">
                               -Rp {(tx.total || 0).toLocaleString('id-ID')}
@@ -755,18 +755,18 @@ export const HistoryView: React.FC = () => {
                         </td>
 
                         {/* Kolom Status Pembayaran */}
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap align-middle">
+                        <td className="px-3.5 py-3 text-xs md:text-sm text-center whitespace-nowrap align-middle">
                           {renderStatusBadge(tx.status)}
                         </td>
 
                         {/* Kolom Aksi (Tombol Struk, Edit, Hapus) */}
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap align-middle">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <td className="px-3.5 py-3 text-xs md:text-sm text-right whitespace-nowrap align-middle">
+                          <div className="flex items-center justify-end gap-2">
                             <button
                               type="button"
                               onClick={() => viewReceipt(tx)}
                               title="Lihat Struk"
-                              className="h-7 px-2.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                              className="h-8 px-3 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1 shadow-sm transition-all cursor-pointer touch-manipulation"
                             >
                               <FileText className="w-3.5 h-3.5" />
                               <span>Struk</span>
@@ -776,7 +776,7 @@ export const HistoryView: React.FC = () => {
                               type="button"
                               onClick={() => handleOpenEditModal(tx)}
                               title="Edit Transaksi"
-                              className="h-7 px-2.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1 transition-all cursor-pointer"
+                              className="h-8 px-3 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1 transition-all cursor-pointer touch-manipulation"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                               <span>Edit</span>
@@ -786,7 +786,7 @@ export const HistoryView: React.FC = () => {
                               type="button"
                               onClick={() => setDeletingTransaction(tx)}
                               title="Hapus Transaksi"
-                              className="h-7 px-2.5 rounded-lg text-xs font-semibold bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 flex items-center gap-1 transition-all cursor-pointer"
+                              className="h-8 px-3 rounded-lg text-xs font-semibold bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 flex items-center gap-1 transition-all cursor-pointer touch-manipulation"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                               <span>Hapus</span>
@@ -811,8 +811,8 @@ export const HistoryView: React.FC = () => {
       {/* MODAL FORMULIR EDIT TRANSAKSI (LIGHT MODE)                            */}
       {/* ===================================================================== */}
       {editingTransaction && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-xl p-6 w-full max-w-md shadow-xl space-y-5 text-slate-800">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-[92vw] max-w-lg max-h-[88dvh] overflow-y-auto bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-xl space-y-5 text-slate-800">
             {/* Header Modal */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
@@ -1003,8 +1003,8 @@ export const HistoryView: React.FC = () => {
       {/* MODAL KONFIRMASI HAPUS TRANSAKSI (LIGHT MODE)                         */}
       {/* ===================================================================== */}
       {deletingTransaction && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-5 text-slate-800">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-[92vw] max-w-lg max-h-[88dvh] overflow-y-auto bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xl space-y-5 text-slate-800">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-5 h-5 text-rose-600" />

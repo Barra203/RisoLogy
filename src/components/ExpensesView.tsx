@@ -436,7 +436,7 @@ export const ExpensesView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenEditModal(exp)}
-                          className="touch-manipulation py-2 px-3 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold rounded-lg inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
+                          className="touch-manipulation h-8 px-3 bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold rounded-lg inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                           <span>Edit</span>
@@ -445,7 +445,7 @@ export const ExpensesView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setDeletingExpense(exp)}
-                          className="touch-manipulation py-2 px-3 bg-rose-600 text-white hover:bg-rose-700 text-xs font-bold rounded-lg inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
+                          className="touch-manipulation h-8 px-3 bg-rose-600 text-white hover:bg-rose-700 text-xs font-bold rounded-lg inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           <span>Hapus</span>
@@ -464,21 +464,21 @@ export const ExpensesView: React.FC = () => {
               <div
                 ref={scrollRef}
                 {...dragProps}
-                className={`w-full overflow-x-auto select-none ${
+                className={`w-full overflow-x-auto touch-pan-x overscroll-x-contain select-none ${
                   isDragging ? 'cursor-grabbing' : 'cursor-grab'
                 }`}
               >
-                <table className="w-full text-left border-collapse text-xs min-w-[760px]">
+                <table className="w-full text-left border-collapse text-xs md:text-sm min-w-[760px]">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
-                      <th className="py-3 px-4">No &amp; Tanggal</th>
-                      <th className="py-3 px-3">Batch</th>
-                      <th className="py-3 px-4">Nama Bahan</th>
-                      <th className="py-3 px-3">Kategori</th>
-                      <th className="py-3 px-4 text-right">Total Belanja (-)</th>
-                      <th className="py-3 px-4">Supplier</th>
-                      <th className="py-3 px-3">Kasir / PIC</th>
-                      <th className="py-3 px-3 text-center">Aksi</th>
+                      <th className="py-3 px-3.5">No &amp; Tanggal</th>
+                      <th className="py-3 px-3.5">Batch</th>
+                      <th className="py-3 px-3.5">Nama Bahan</th>
+                      <th className="py-3 px-3.5">Kategori</th>
+                      <th className="py-3 px-3.5 text-right">Total Belanja (-)</th>
+                      <th className="py-3 px-3.5">Supplier</th>
+                      <th className="py-3 px-3.5">Kasir / PIC</th>
+                      <th className="py-3 px-3.5 text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -492,7 +492,7 @@ export const ExpensesView: React.FC = () => {
                       return (
                         <tr key={exp.id} className="hover:bg-slate-50 transition-colors">
                           {/* No & Tanggal */}
-                          <td className="py-3 px-4 whitespace-nowrap">
+                          <td className="px-3.5 py-3 text-xs md:text-sm whitespace-nowrap">
                             <span className="font-mono font-bold text-slate-900 block">
                               {exp.expenseNumber}
                             </span>
@@ -502,14 +502,14 @@ export const ExpensesView: React.FC = () => {
                           </td>
 
                           {/* Batch */}
-                          <td className="py-3 px-3 whitespace-nowrap">
+                          <td className="px-3.5 py-3 text-xs md:text-sm whitespace-nowrap">
                             <span className="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold rounded text-[10px]">
                               {displayBatch}
                             </span>
                           </td>
 
                           {/* Nama Bahan */}
-                          <td className="py-3 px-4 font-bold text-slate-900">
+                          <td className="px-3.5 py-3 text-xs md:text-sm font-bold text-slate-900">
                             <span>{displayName}</span>
                             {exp.notes && (
                               <span className="block text-[10px] text-slate-500 font-normal italic">
@@ -519,19 +519,19 @@ export const ExpensesView: React.FC = () => {
                           </td>
 
                           {/* Kategori */}
-                          <td className="py-3 px-3 whitespace-nowrap">
+                          <td className="px-3.5 py-3 text-xs md:text-sm whitespace-nowrap">
                             <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded text-[10px]">
                               {exp.category}
                             </span>
                           </td>
 
                           {/* Total Belanja (Minus = Red) */}
-                          <td className="py-3 px-4 text-right font-mono font-extrabold text-rose-600 bg-rose-50/30 tabular-nums whitespace-nowrap">
+                          <td className="px-3.5 py-3 text-xs md:text-sm text-right font-mono font-extrabold text-rose-600 bg-rose-50/30 tabular-nums whitespace-nowrap">
                             - {formatCurrency(nominal)}
                           </td>
 
                           {/* Supplier */}
-                          <td className="py-3 px-4">
+                          <td className="px-3.5 py-3 text-xs md:text-sm">
                             <div className="flex items-center gap-1.5 font-semibold text-slate-800">
                               <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                               <span>{displaySupplier}</span>
@@ -539,31 +539,31 @@ export const ExpensesView: React.FC = () => {
                           </td>
 
                           {/* Kasir / Shift PIC */}
-                          <td className="py-3 px-3 whitespace-nowrap">
+                          <td className="px-3.5 py-3 text-xs md:text-sm whitespace-nowrap">
                             <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[10px] border border-amber-200">
                               {displayCashier}
                             </span>
                           </td>
 
                           {/* Actions */}
-                          <td className="py-3 px-3 text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-1.5">
+                          <td className="px-3.5 py-3 text-xs md:text-sm text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-2">
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditModal(exp)}
-                                className="px-2.5 py-1 text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded font-semibold text-[11px] inline-flex items-center gap-1 cursor-pointer transition-colors"
+                                className="h-8 px-3 text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition-colors touch-manipulation"
                                 title="Edit belanja"
                               >
-                                <Edit2 className="w-3 h-3" />
+                                <Edit2 className="w-3.5 h-3.5" />
                                 <span>Edit</span>
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setDeletingExpense(exp)}
-                                className="px-2.5 py-1 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded font-semibold text-[11px] inline-flex items-center gap-1 cursor-pointer transition-colors"
+                                className="h-8 px-3 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition-colors touch-manipulation"
                                 title="Hapus belanja"
                               >
-                                <Trash2 className="w-3 h-3" />
+                                <Trash2 className="w-3.5 h-3.5" />
                                 <span>Hapus</span>
                               </button>
                             </div>
@@ -583,11 +583,11 @@ export const ExpensesView: React.FC = () => {
       <div className="h-20 md:h-6 w-full shrink-0" aria-hidden="true" />
 
       {/* ===================================================================== */}
-      {/* MODAL CATAT / EDIT BELANJA BAHAN (MOBILE BOTTOM SHEET & QUICK CHIPS)  */}
+      {/* MODAL CATAT / EDIT BELANJA BAHAN (TABLET & MOBILE FRIENDLY)           */}
       {/* ===================================================================== */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="w-full sm:max-w-md bg-white rounded-t-xl sm:rounded-xl max-h-[92vh] overflow-y-auto p-5 pb-8 shadow-xl border border-slate-200 flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="w-[92vw] max-w-lg max-h-[88dvh] overflow-y-auto bg-white rounded-2xl p-5 md:p-6 shadow-xl border border-slate-200 flex flex-col">
             {/* Mobile Drag Handle Indicator */}
             <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
 
@@ -786,8 +786,8 @@ export const ExpensesView: React.FC = () => {
 
       {/* Modal Konfirmasi Hapus Belanja Bahan */}
       {deletingExpense && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-5 text-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="w-[92vw] max-w-lg max-h-[88dvh] overflow-y-auto bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xl space-y-5 text-slate-800">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-5 h-5 text-rose-600" />

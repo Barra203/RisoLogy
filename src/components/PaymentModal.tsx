@@ -83,8 +83,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen = true, onClo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-2xl border border-[#E5E5E5] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="w-[92vw] max-w-lg max-h-[88dvh] overflow-y-auto bg-white rounded-2xl p-5 md:p-6 shadow-2xl border border-[#E5E5E5] flex flex-col">
         {/* Mobile Drag Handle */}
         <div className="sm:hidden flex justify-center pb-3">
           <div className="w-12 h-1.5 rounded-full bg-slate-300" />

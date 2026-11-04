@@ -103,9 +103,12 @@ export const Sidebar: React.FC = () => {
       {/* =================================================================== */}
       {/* DESKTOP & TABLET LANDSCAPE SIDEBAR (md:flex)                        */}
       {/* =================================================================== */}
-      <aside className="hidden md:flex flex-col w-64 h-full shrink-0 bg-white border-r border-slate-200 z-30 select-none print:hidden">
+      <aside className="hidden md:flex flex-col md:w-20 xl:w-64 h-full shrink-0 bg-white border-r border-slate-200 z-30 select-none transition-all duration-200 print:hidden">
         {/* A. Header Logo & Brand Toko (Tetap di atas, tidak ikut ter-scroll) */}
-        <div className="p-5 border-b border-slate-100 flex items-center gap-3 shrink-0">
+        <div
+          className="p-4 xl:p-5 border-b border-slate-100 flex items-center justify-center xl:justify-start gap-3 shrink-0"
+          title={settings?.storeName || 'RisoLogy POS'}
+        >
           <div
             className={`w-10 h-10 min-w-10 min-h-10 aspect-square rounded-xl overflow-hidden border flex items-center justify-center shadow-xs shrink-0 ${
               activeLogoSrc && !logoLoadError
@@ -127,7 +130,7 @@ export const Sidebar: React.FC = () => {
               </span>
             )}
           </div>
-          <div className="flex flex-col overflow-hidden min-w-0">
+          <div className="hidden xl:flex flex-col overflow-hidden min-w-0">
             <span className="font-bold text-sm text-slate-900 uppercase tracking-tight truncate">
               {settings?.storeName || 'RisoLogy POS'}
             </span>
@@ -139,7 +142,7 @@ export const Sidebar: React.FC = () => {
 
         {/* B. Daftar Menu Navigasi (Bisa di-scroll tersendiri jika layar vertikal sempit) */}
         <nav
-          className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5 scrollbar-thin"
+          className="flex-1 overflow-y-auto px-2 xl:px-3 py-4 space-y-2 scrollbar-thin"
           aria-label="Menu Utama POS"
         >
           {navItems.map((item) => {
@@ -149,20 +152,25 @@ export const Sidebar: React.FC = () => {
                 key={item.id}
                 type="button"
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors cursor-pointer border rounded-lg group ${
+                title={item.label}
+                className={`w-full flex items-center justify-center xl:justify-start gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-left transition-all cursor-pointer border group touch-manipulation ${
                   isActive
-                    ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600 font-semibold shadow-xs'
-                    : 'bg-transparent text-slate-800 border-transparent hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
+                    ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600 shadow-sm shadow-amber-600/20'
+                    : 'bg-transparent text-slate-600 border-transparent hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
                 }`}
               >
-                <span className={isActive ? 'text-white' : 'text-slate-600 group-hover:text-amber-600'}>
+                <span
+                  className={`shrink-0 ${
+                    isActive ? 'text-white' : 'text-slate-600 group-hover:text-amber-600'
+                  }`}
+                >
                   {item.icon}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs tracking-tight font-bold">{item.label}</div>
+                <div className="hidden xl:block min-w-0 flex-1">
+                  <div className="text-xs tracking-tight font-bold truncate">{item.label}</div>
                   {item.description && (
                     <div
-                      className={`text-[10px] truncate ${
+                      className={`text-[10px] truncate font-normal ${
                         isActive ? 'text-white/80' : 'text-slate-500'
                       }`}
                     >
@@ -176,14 +184,17 @@ export const Sidebar: React.FC = () => {
         </nav>
 
         {/* C. Profil Kasir / Shift Aktif (Tetap menempel di bawah sidebar) */}
-        <div className="p-4 border-t border-slate-100 shrink-0 bg-white space-y-2">
+        <div className="p-2.5 xl:p-4 border-t border-slate-100 shrink-0 bg-white space-y-2">
           {/* Real-time Firebase Sync Status */}
-          <div className="flex items-center justify-between px-2.5 py-1.5 bg-emerald-50/80 border border-emerald-200/80 rounded-lg text-[11px] text-emerald-800">
+          <div
+            className="flex items-center justify-center xl:justify-between px-2 xl:px-2.5 py-1.5 bg-emerald-50/80 border border-emerald-200/80 rounded-lg text-[11px] text-emerald-800"
+            title={`Sync: @${currentUser || 'RisoLogy'}`}
+          >
             <div className="flex items-center gap-1.5 font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
-              <span>Sync: @{currentUser || 'RisoLogy'}</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block shrink-0" />
+              <span className="hidden xl:inline truncate">Sync: @{currentUser || 'RisoLogy'}</span>
             </div>
-            <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+            <Cloud className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
           </div>
 
           {/* Shift Kasir Dropdown */}
@@ -191,11 +202,12 @@ export const Sidebar: React.FC = () => {
             <button
               type="button"
               onClick={() => setCashierDropdownOpen(!cashierDropdownOpen)}
-              className="w-full flex items-center justify-between p-2 text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-left cursor-pointer"
+              title={`Shift Aktif: ${activeCashier} (Klik untuk ganti shift)`}
+              className="w-full flex items-center justify-center xl:justify-between p-2 text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-left cursor-pointer touch-manipulation"
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <UserCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <div className="min-w-0">
+              <div className="flex flex-col xl:flex-row items-center gap-1 xl:gap-2 min-w-0">
+                <UserCheck className="w-4 h-4 xl:w-3.5 xl:h-3.5 text-amber-600 shrink-0" />
+                <div className="hidden xl:block min-w-0">
                   <span className="text-[9px] text-slate-500 uppercase font-bold block leading-none">
                     Shift Aktif:
                   </span>
@@ -203,12 +215,15 @@ export const Sidebar: React.FC = () => {
                     {activeCashier}
                   </span>
                 </div>
+                <span className="xl:hidden text-[9px] font-bold text-slate-700 truncate max-w-[56px]">
+                  {activeCashier}
+                </span>
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              <ChevronDown className="hidden xl:block w-3.5 h-3.5 text-slate-400 shrink-0" />
             </button>
 
             {cashierDropdownOpen && (
-              <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-slate-200 rounded-xl shadow-lg p-1 z-30 space-y-0.5">
+              <div className="absolute bottom-full left-0 w-48 xl:w-full mb-1 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 z-50 space-y-0.5">
                 <div className="px-2 py-1 text-[10px] font-bold text-slate-500 uppercase">
                   Pilih Shift Kasir:
                 </div>
@@ -220,7 +235,7 @@ export const Sidebar: React.FC = () => {
                       setActiveCashier(cashier);
                       setCashierDropdownOpen(false);
                     }}
-                    className={`w-full text-left px-2 py-1.5 text-xs rounded-lg cursor-pointer flex items-center justify-between ${
+                    className={`w-full text-left px-2.5 py-2 text-xs rounded-lg cursor-pointer flex items-center justify-between ${
                       activeCashier === cashier
                         ? 'bg-amber-600 text-white font-bold'
                         : 'text-slate-700 hover:bg-slate-100'
@@ -237,10 +252,11 @@ export const Sidebar: React.FC = () => {
           <button
             type="button"
             onClick={logout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 border border-slate-200 hover:border-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer uppercase tracking-wider rounded-lg"
+            title="Kunci / Keluar"
+            className="w-full flex items-center justify-center gap-2 px-2.5 xl:px-3 py-2.5 text-xs font-semibold text-slate-700 border border-slate-200 hover:border-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer uppercase tracking-wider rounded-xl touch-manipulation"
           >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Kunci / Keluar</span>
+            <LogOut className="w-4 h-4 xl:w-3.5 xl:h-3.5 shrink-0" />
+            <span className="hidden xl:inline-block">Kunci / Keluar</span>
           </button>
         </div>
       </aside>

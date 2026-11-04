@@ -644,7 +644,7 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* === 2. EMPAT KARTU METRIK UTAMA (FLAT, NON-GRADIENT, 12PX RADIUS) === */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
           {/* Kartu 1: Modal Awal Usaha */}
           <div className="rounded-xl border border-slate-200/80 shadow-sm bg-white p-5 flex flex-col justify-between">
             <div className="flex items-start justify-between gap-2">
@@ -875,7 +875,7 @@ export const DashboardView: React.FC = () => {
                     </span>
 
                     {/* Batang Bar */}
-                    <div className="w-full max-w-[42px] bg-slate-100 rounded-t-lg overflow-hidden flex items-end h-full">
+                    <div className="w-full max-w-[36px] bg-slate-100 rounded-t-lg overflow-hidden flex items-end h-full">
                       <div
                         style={{ height: `${heightPercent}%` }}
                         className={`w-full rounded-t-lg transition-all duration-500 ${
@@ -919,7 +919,7 @@ export const DashboardView: React.FC = () => {
               <div
                 ref={scrollRef}
                 {...dragProps}
-                className={`w-full overflow-x-auto select-none scroll-smooth transition-all ${
+                className={`w-full overflow-x-auto touch-pan-x overscroll-x-contain select-none scroll-smooth transition-all ${
                   isDragging ? 'cursor-grabbing' : 'cursor-grab'
                 }`}
                 style={{ scrollbarWidth: 'thin' }}
@@ -1037,8 +1037,8 @@ export const DashboardView: React.FC = () => {
 
       {/* Modal Edit Cepat Modal Awal Usaha */}
       {showCapitalModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-xl border border-slate-200 shadow-lg p-5">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-[92vw] max-w-lg max-h-[88dvh] overflow-y-auto bg-white rounded-2xl border border-slate-200 shadow-lg p-5 md:p-6">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-900">
                 Atur Modal Awal Usaha

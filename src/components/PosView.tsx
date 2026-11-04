@@ -309,21 +309,23 @@ export const PosView: React.FC = () => {
 
               {/* Kontrol Kuantitas & Subtotal Item */}
               <div className="flex items-center justify-between pt-1">
-                <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-0.5 border border-slate-200/60">
+                <div className="flex items-center gap-2 bg-slate-100 rounded-xl p-1 border border-slate-200/60">
                   <button
                     type="button"
                     onClick={() => decreaseQty(item.id)}
-                    className="w-6 h-6 rounded-md bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs flex items-center justify-center shadow-2xs cursor-pointer"
+                    className="w-9 h-9 rounded-lg bg-white text-slate-700 hover:bg-slate-50 active:scale-95 font-bold text-sm flex items-center justify-center shadow-2xs cursor-pointer touch-manipulation transition-all"
+                    aria-label="Kurangi jumlah item"
                   >
                     -
                   </button>
-                  <span className="text-xs font-bold text-slate-800 w-5 text-center font-mono">
+                  <span className="text-xs font-extrabold text-slate-800 w-6 text-center font-mono tabular-nums">
                     {item.qty}
                   </span>
                   <button
                     type="button"
                     onClick={() => increaseQty(item.id)}
-                    className="w-6 h-6 rounded-md bg-amber-600 text-white hover:bg-amber-700 font-bold text-xs flex items-center justify-center shadow-2xs cursor-pointer"
+                    className="w-9 h-9 rounded-lg bg-amber-600 text-white hover:bg-amber-700 active:scale-95 font-bold text-sm flex items-center justify-center shadow-2xs cursor-pointer touch-manipulation transition-all"
+                    aria-label="Tambah jumlah item"
                   >
                     +
                   </button>
@@ -458,7 +460,7 @@ export const PosView: React.FC = () => {
             }
             setShowPaymentModal(true);
           }}
-          className={`w-full py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm ${
+          className={`w-full h-12 px-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all shadow-sm touch-manipulation ${
             cartItems.length === 0
               ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
               : 'bg-amber-600 hover:bg-amber-700 active:scale-[0.99] text-white shadow-amber-600/20 hover:shadow-md cursor-pointer'
@@ -650,7 +652,7 @@ export const PosView: React.FC = () => {
         </div>
 
         {/* Product Grid Section (Independent Vertical Scroll) */}
-        <div className="flex-1 h-full min-h-0 overflow-y-auto p-4 sm:p-6 safe-bottom-clearance lg:pb-6">
+        <div className="flex-1 min-w-0 min-h-0 h-full overflow-y-auto p-4 safe-bottom-clearance lg:pb-6">
           {filteredProducts.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200/80 flex flex-col items-center justify-center text-center p-10 my-4">
               <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mb-3 text-amber-600">
@@ -664,7 +666,7 @@ export const PosView: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
               {filteredProducts.map((product) => {
                 const inCart = cart.find((i) => i.product.id === product.id);
                 const cartItemId = inCart ? inCart.id || inCart.product.id : product.id;
@@ -760,13 +762,13 @@ export const PosView: React.FC = () => {
                     <div className="mt-3 pt-2 border-t border-slate-100">
                       {inCart ? (
                         <div
-                          className="flex items-center justify-between bg-slate-100 rounded-lg p-1"
+                          className="flex items-center justify-between bg-slate-100 rounded-xl p-1"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <button
                             type="button"
                             onClick={() => updateCartQty(cartItemId, inCart.quantity - 1)}
-                            className="w-8 h-8 rounded-md bg-white text-slate-700 shadow-xs flex items-center justify-center font-bold hover:bg-slate-50 active:scale-95 cursor-pointer touch-manipulation transition-all"
+                            className="w-9 h-9 rounded-lg bg-white text-slate-700 shadow-xs flex items-center justify-center font-bold hover:bg-slate-50 active:scale-95 cursor-pointer touch-manipulation transition-all"
                             aria-label="Kurangi jumlah"
                           >
                             -
@@ -777,7 +779,7 @@ export const PosView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => updateCartQty(cartItemId, inCart.quantity + 1)}
-                            className="w-8 h-8 rounded-md bg-amber-600 text-white shadow-xs flex items-center justify-center font-bold hover:bg-amber-700 active:scale-95 cursor-pointer touch-manipulation transition-all"
+                            className="w-9 h-9 rounded-lg bg-amber-600 text-white shadow-xs flex items-center justify-center font-bold hover:bg-amber-700 active:scale-95 cursor-pointer touch-manipulation transition-all"
                             aria-label="Tambah jumlah"
                           >
                             +
@@ -791,7 +793,7 @@ export const PosView: React.FC = () => {
                             e.stopPropagation();
                             addToCart(product);
                           }}
-                          className={`w-full py-2 px-3 rounded-lg font-medium text-xs flex items-center justify-center gap-1.5 transition-all touch-manipulation ${
+                          className={`w-full min-h-9 py-2 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 transition-all touch-manipulation ${
                             isOutOfStock
                               ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                               : 'bg-amber-600 hover:bg-amber-700 text-white cursor-pointer active:scale-98'
@@ -808,19 +810,19 @@ export const PosView: React.FC = () => {
             </div>
           )}
 
-          {/* Spacer ekstra agar baris terakhir tidak tertutup Bottom Bar di HP */}
-          <div className="h-20 md:h-6 w-full shrink-0" aria-hidden="true" />
+          {/* Spacer ekstra agar baris terakhir tidak tertutup Bottom Bar di HP / Tablet Portrait */}
+          <div className="h-24 lg:h-6 w-full shrink-0" aria-hidden="true" />
         </div>
       </div>
 
-      {/* RIGHT PANEL: Order's Summary (Desktop Locked Full-Height Column) */}
-      <div className="hidden lg:flex w-full lg:w-[400px] xl:w-[420px] h-full flex-col bg-white border-l border-slate-200 shrink-0 select-none overflow-hidden">
+      {/* RIGHT PANEL: Order's Summary (Tablet Landscape 340px & Desktop 400px Locked Full-Height Column) */}
+      <div className="hidden lg:flex w-full md:w-[340px] lg:w-[340px] xl:w-[400px] h-full flex-col bg-white border-l border-slate-200 shrink-0 select-none overflow-hidden">
         {renderOrderSummaryContent(false)}
       </div>
 
-      {/* MOBILE FLOATING BOTTOM BAR (Shown when cart has items, above Bottom Nav) */}
+      {/* MOBILE & TABLET PORTRAIT FLOATING BOTTOM BAR (Shown when cart has items, < lg) */}
       {cart.length > 0 && (
-        <div className="lg:hidden fixed bottom-20 left-3 right-3 z-30 bg-slate-900 text-white p-2.5 pl-4 rounded-xl shadow-xl border border-slate-700 flex items-center justify-between gap-2">
+        <div className="lg:hidden fixed bottom-20 md:bottom-4 left-3 md:left-24 right-3 md:right-4 z-30 bg-slate-900 text-white p-2.5 pl-4 rounded-xl shadow-xl border border-slate-700 flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={() => setMobileCartOpen(true)}
@@ -842,7 +844,7 @@ export const PosView: React.FC = () => {
           <button
             type="button"
             onClick={() => setMobileCartOpen(true)}
-            className="bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-medium text-xs py-3 px-4 rounded-lg shadow-sm flex items-center gap-1.5 shrink-0 cursor-pointer touch-manipulation transition-all"
+            className="bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-semibold text-xs py-3 px-4 rounded-xl shadow-sm flex items-center gap-1.5 shrink-0 cursor-pointer touch-manipulation transition-all"
           >
             <span>Lihat Pesanan &amp; Bayar</span>
             <ChevronRight className="w-4 h-4 stroke-[2.5]" />
@@ -850,14 +852,14 @@ export const PosView: React.FC = () => {
         </div>
       )}
 
-      {/* MOBILE BOTTOM-SHEET MODAL (Order's Summary Drawer) */}
+      {/* MOBILE & TABLET PORTRAIT BOTTOM-SHEET MODAL (Order's Summary Drawer) */}
       {mobileCartOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex flex-col justify-end"
+          className="lg:hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex flex-col justify-end md:items-center md:justify-center md:p-4"
           onClick={() => setMobileCartOpen(false)}
         >
           <div
-            className="bg-white rounded-t-xl max-h-[88vh] h-[85vh] flex flex-col overflow-hidden shadow-2xl border-t border-slate-200"
+            className="w-full md:w-[92vw] md:max-w-lg bg-white rounded-t-2xl md:rounded-2xl max-h-[88dvh] h-[85dvh] flex flex-col overflow-hidden shadow-2xl border border-slate-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="pt-2.5 pb-1 bg-white flex justify-center shrink-0">

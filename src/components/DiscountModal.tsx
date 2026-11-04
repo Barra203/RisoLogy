@@ -87,10 +87,10 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-      <div className="w-full max-w-lg bg-white rounded-lg shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="w-[92vw] max-w-lg max-h-[88dvh] overflow-y-auto bg-white rounded-2xl p-5 md:p-6 shadow-2xl border border-slate-200 flex flex-col space-y-4">
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+        <div className="px-5 py-3.5 bg-slate-900 text-white rounded-xl flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <Tag className="w-5 h-5 text-amber-400" />
             <h3 className="font-bold text-base tracking-tight">Manajemen Diskon &amp; Promo</h3>
@@ -105,7 +105,7 @@ export const DiscountModal: React.FC<DiscountModalProps> = ({ isOpen, onClose, o
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-4 flex-1">
+        <div className="space-y-4 flex-1">
           {/* Create / Edit Form */}
           {isEditing ? (
             <form onSubmit={handleSave} className="p-4 bg-amber-50/60 border border-amber-200 rounded-md space-y-3">
