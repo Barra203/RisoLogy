@@ -600,16 +600,16 @@ export const HistoryView: React.FC = () => {
             {/* ============================================================= */}
             {/* TAMPILAN DESKTOP: TABEL LENGKAP (hidden md:block)             */}
             {/* ============================================================= */}
-            <div className="hidden md:block w-full bg-white border border-slate-200 rounded-xl shadow-sm">
+            <div className="hidden md:block w-full bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6">
               {/* Scroll Horizontal Tabel (Hanya X, biarkan Y mengalir bebas) */}
               <div
                 ref={scrollRef}
                 {...dragProps}
-                className={`w-full overflow-x-auto select-none no-scrollbar ${
+                className={`w-full overflow-x-auto select-none ${
                   isDragging ? 'cursor-grabbing' : 'cursor-grab'
                 }`}
               >
-                <table className="w-full text-left text-xs min-w-[800px] divide-y divide-slate-100">
+                <table className="w-full text-left text-xs min-w-[760px] divide-y divide-slate-100">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] tracking-wider font-semibold">
                     <th className="py-3 px-4">No. Transaksi</th>
@@ -803,6 +803,9 @@ export const HistoryView: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Spacer ekstra agar baris terakhir tidak tertutup Bottom Bar di HP */}
+      <div className="h-20 md:h-6 w-full shrink-0" aria-hidden="true" />
 
       {/* ===================================================================== */}
       {/* MODAL FORMULIR EDIT TRANSAKSI (LIGHT MODE)                            */}

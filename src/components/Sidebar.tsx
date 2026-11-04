@@ -250,7 +250,7 @@ export const Sidebar: React.FC = () => {
       {/* =================================================================== */}
       <nav
         aria-label="Navigasi Bawah Mobile"
-        className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 z-40 px-3 flex md:hidden items-center justify-around shadow-lg print:hidden"
+        className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 z-40 pointer-events-auto px-3 flex md:hidden items-center justify-around shadow-lg print:hidden"
       >
         {mobileBottomNavItems.map((item) => {
           const IconComponent = item.icon;

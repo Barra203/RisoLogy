@@ -525,9 +525,9 @@ export const DashboardView: React.FC = () => {
   const activeBatchName = settings.activeBatch || 'Batch 1';
 
   return (
-    <div className="bg-slate-50 h-screen overflow-hidden flex flex-col w-full">
+    <div className="bg-slate-50 h-full min-h-0 overflow-hidden flex flex-col w-full">
       {/* Kontainer Independen yang Dapat Di-scroll */}
-      <div className="flex-1 overflow-y-auto p-6 pb-24 md:pb-8 space-y-5">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 safe-bottom-clearance md:pb-8 space-y-5">
         {/* === 1. HEADER BAR: JUDUL BERSIH, FILTER PERIODE & SELEKTOR BATCH === */}
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">
@@ -1030,6 +1030,9 @@ export const DashboardView: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Spacer ekstra agar baris terakhir tidak tertutup Bottom Bar di HP */}
+        <div className="h-20 md:h-6 w-full shrink-0" aria-hidden="true" />
       </div>
 
       {/* Modal Edit Cepat Modal Awal Usaha */}

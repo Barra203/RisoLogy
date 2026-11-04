@@ -472,9 +472,9 @@ export const PosView: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col lg:flex-row h-full w-full overflow-hidden bg-slate-50">
+    <div className="flex flex-col lg:flex-row h-full min-h-0 w-full overflow-hidden bg-slate-50">
       {/* LEFT / CENTER: Header, Queue Status Bar & Product Catalog (Scrollable Independently) */}
-      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col h-full min-w-0 min-h-0 overflow-hidden">
         {/* Top Bar: Active Order Queue Status + Search + Category Tabs */}
         <div className="p-4 sm:p-5 bg-white border-b border-slate-200/80 space-y-3.5 shrink-0">
           {/* Status Antrean / Transaksi Terkini & Batch Selector */}
@@ -650,7 +650,7 @@ export const PosView: React.FC = () => {
         </div>
 
         {/* Product Grid Section (Independent Vertical Scroll) */}
-        <div className="flex-1 h-full overflow-y-auto p-4 sm:p-6 pb-24 lg:pb-6">
+        <div className="flex-1 h-full min-h-0 overflow-y-auto p-4 sm:p-6 safe-bottom-clearance lg:pb-6">
           {filteredProducts.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200/80 flex flex-col items-center justify-center text-center p-10 my-4">
               <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mb-3 text-amber-600">
@@ -807,6 +807,9 @@ export const PosView: React.FC = () => {
               })}
             </div>
           )}
+
+          {/* Spacer ekstra agar baris terakhir tidak tertutup Bottom Bar di HP */}
+          <div className="h-20 md:h-6 w-full shrink-0" aria-hidden="true" />
         </div>
       </div>
 

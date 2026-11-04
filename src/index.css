@@ -16,11 +16,13 @@
 @layer base {
   html, body, #root {
     height: 100%;
+    height: 100dvh; /* Gunakan Dynamic Viewport Height untuk browser mobile (Android/iOS) */
     width: 100%;
     margin: 0;
     padding: 0;
     overflow: hidden; /* Mencegah window scroll global agar scroll bar hanya aktif di dalam tag main */
     -webkit-overflow-scrolling: touch;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
@@ -32,6 +34,11 @@
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
+}
+
+/* Safe area padding untuk mengakomodasi Bottom Navigation & Gesture Bar HP */
+.safe-bottom-clearance {
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */

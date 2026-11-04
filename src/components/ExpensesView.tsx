@@ -248,9 +248,9 @@ export const ExpensesView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen w-full bg-slate-50">
+    <div className="w-full min-h-full flex flex-col space-y-5 pb-28 md:pb-12">
       {/* Top Header */}
-      <div className="p-4 sm:p-6 bg-white border-b border-slate-200 shrink-0">
+      <div className="p-4 sm:p-6 bg-white border border-slate-200 rounded-xl shadow-sm shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">
@@ -359,7 +359,7 @@ export const ExpensesView: React.FC = () => {
       </div>
 
       {/* Main Table (Desktop) & Card List (Mobile) */}
-      <div className="flex-1 p-4 sm:p-6">
+      <div className="w-full">
         {filteredExpenses.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-xl p-10 text-center text-slate-400 text-xs">
             Belum ada data belanja bahan supplier yang tercatat.
@@ -460,14 +460,13 @@ export const ExpensesView: React.FC = () => {
             {/* ============================================================= */}
             {/* TAMPILAN DESKTOP: TABEL RINGKAS (hidden md:block)             */}
             {/* ============================================================= */}
-            <div className="hidden md:block bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
+            <div className="hidden md:block w-full bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6">
               <div
                 ref={scrollRef}
                 {...dragProps}
-                className={`w-full overflow-x-auto select-none scroll-smooth transition-all ${
+                className={`w-full overflow-x-auto select-none ${
                   isDragging ? 'cursor-grabbing' : 'cursor-grab'
                 }`}
-                style={{ scrollbarWidth: 'thin' }}
               >
                 <table className="w-full text-left border-collapse text-xs min-w-[760px]">
                   <thead>
@@ -579,6 +578,9 @@ export const ExpensesView: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Spacer ekstra agar baris terakhir tidak tertutup Bottom Bar di HP */}
+      <div className="h-20 md:h-6 w-full shrink-0" aria-hidden="true" />
 
       {/* ===================================================================== */}
       {/* MODAL CATAT / EDIT BELANJA BAHAN (MOBILE BOTTOM SHEET & QUICK CHIPS)  */}

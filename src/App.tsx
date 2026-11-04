@@ -118,12 +118,12 @@ const PosMainApp: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-800">
+    <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-50 text-slate-800">
       {/* 1. Sidebar Navigasi Desktop: Terkunci tetap & tidak bisa ikut ter-scroll window */}
       <Sidebar />
 
       {/* 2. Container Area Konten Utama: Satu-satunya area yang memiliki scroll vertikal */}
-      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col h-full min-w-0 min-h-0 overflow-hidden relative">
         {/* Mobile Global Top Navbar (< md, shrink-0) */}
         <header className="flex md:hidden w-full bg-white border-b border-slate-200 items-center justify-between px-3.5 py-2.5 shrink-0 print:hidden z-30">
           <div className="flex items-center gap-2 min-w-0">
@@ -259,8 +259,8 @@ const PosMainApp: React.FC = () => {
         <main
           className={
             activeTab === 'dashboard' || activeTab === 'pos'
-              ? 'flex-1 h-full overflow-hidden'
-              : 'flex-1 h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-28 md:pb-8'
+              ? 'flex-1 h-full min-h-0 overflow-hidden'
+              : 'flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden p-4 md:p-6 safe-bottom-clearance md:pb-8'
           }
           role="main"
         >
