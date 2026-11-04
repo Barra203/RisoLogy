@@ -260,7 +260,7 @@ const PosMainApp: React.FC = () => {
           className={
             activeTab === 'dashboard' || activeTab === 'pos'
               ? 'flex-1 h-full overflow-hidden'
-              : 'flex-1 h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-24 md:pb-6'
+              : 'flex-1 h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-28 md:pb-8'
           }
           role="main"
         >

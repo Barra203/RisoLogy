@@ -261,9 +261,9 @@ export const HistoryView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen w-full bg-slate-50">
-      {/* Header */}
-      <div className="p-4 sm:p-6 bg-white border-b border-slate-200 shrink-0">
+    <div className="w-full min-h-full flex flex-col space-y-5 pb-28 md:pb-12">
+      {/* 1. Header, Quick Metrics & Filter Bar */}
+      <div className="p-4 sm:p-6 bg-white border border-slate-200 rounded-xl shadow-sm shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">Riwayat Transaksi</h1>
@@ -426,10 +426,10 @@ export const HistoryView: React.FC = () => {
         </div>
       </div>
 
-      {/* Transactions Table (Desktop) & Card List (Mobile) */}
-      <div className="flex-1 p-4 sm:p-6">
+      {/* 3. Tabel / Kartu Daftar Transaksi */}
+      <div className="w-full">
         {filteredTransactions.length === 0 ? (
-          <div className="h-64 flex flex-col items-center justify-center text-center p-6 bg-white border border-slate-200 rounded-xl shadow-xs">
+          <div className="h-64 flex flex-col items-center justify-center text-center p-6 bg-white border border-slate-200 rounded-xl shadow-sm">
             <Receipt className="w-9 h-9 text-slate-400 stroke-[1.5] mb-2" />
             <p className="text-sm font-semibold text-slate-900">Tidak ada transaksi ditemukan</p>
             <p className="text-xs text-slate-500 mt-1">
@@ -441,7 +441,7 @@ export const HistoryView: React.FC = () => {
             {/* ============================================================= */}
             {/* TAMPILAN MOBILE: DAFTAR KARTU TRANSAKSI (block md:hidden)     */}
             {/* ============================================================= */}
-            <div className="block md:hidden">
+            <div className="block md:hidden space-y-3">
               {filteredTransactions.map((tx) => {
                 const dt = formatDateTime(tx.timestamp);
                 const normalizedStatus = (tx.status || 'PAID').toUpperCase();
@@ -600,16 +600,16 @@ export const HistoryView: React.FC = () => {
             {/* ============================================================= */}
             {/* TAMPILAN DESKTOP: TABEL LENGKAP (hidden md:block)             */}
             {/* ============================================================= */}
-            <div className="hidden md:block bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+            <div className="hidden md:block w-full bg-white border border-slate-200 rounded-xl shadow-sm">
+              {/* Scroll Horizontal Tabel (Hanya X, biarkan Y mengalir bebas) */}
               <div
                 ref={scrollRef}
                 {...dragProps}
-                className={`w-full overflow-x-auto select-none scroll-smooth transition-all ${
+                className={`w-full overflow-x-auto select-none no-scrollbar ${
                   isDragging ? 'cursor-grabbing' : 'cursor-grab'
                 }`}
-                style={{ scrollbarWidth: 'thin' }}
               >
-                <table className="w-full text-left text-xs border-collapse min-w-[760px]">
+                <table className="w-full text-left text-xs min-w-[800px] divide-y divide-slate-100">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] tracking-wider font-semibold">
                     <th className="py-3 px-4">No. Transaksi</th>
