@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PosProvider, usePos } from './context/PosContext';
 import { LoginScreen } from './components/LoginScreen';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar, PrivacyToggleButton } from './components/Sidebar';
 import { PosView } from './components/PosView';
 import { DashboardView } from './components/DashboardView';
 import { HistoryView } from './components/HistoryView';
@@ -159,6 +159,8 @@ const PosMainApp: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            <PrivacyToggleButton compact />
+
             <button
               type="button"
               onClick={() => setActiveTab('customers')}

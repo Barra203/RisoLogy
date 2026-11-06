@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import {
   collection,
   doc,
@@ -141,6 +141,7 @@ interface PosContextType {
 
   // Settings & Actions
   settings: StoreSettings;
+  activeBatch: string;
   availableBatches: string[];
   updateSettings: (newSettings: Partial<StoreSettings>) => void;
   updateInitialCapital: (
@@ -159,6 +160,10 @@ interface PosContextType {
   viewReceipt: (tx: Transaction | null) => void;
   activeReceipt: Transaction | null;
   resetAllData: (verificationPassword?: string) => { success: boolean; message: string };
+
+  // Privacy Mode (Sensor Nominal Rupiah + Hotkey 'H')
+  isPrivacyMode: boolean;
+  togglePrivacyMode: () => void;
 
   // UI Loading & Error State
   isLoading: boolean;
@@ -197,6 +202,53 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Active navigation tab
   const [activeTab, setActiveTab] = useState<ActiveTab>('pos');
+
+  // Privacy Mode State (Tersimpan di localStorage + Pintasan Keyboard 'H')
+  const [isPrivacyMode, setIsPrivacyMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('risology_privacy_mode') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const togglePrivacyMode = useCallback(() => {
+    setIsPrivacyMode((prev) => {
+      const nextVal = !prev;
+      try {
+        localStorage.setItem('risology_privacy_mode', String(nextVal));
+      } catch {
+        // Ignore storage error
+      }
+      return nextVal;
+    });
+  }, []);
+
+  // Global Keyboard Shortcut Listener ('H' atau 'h')
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cegah pemicuan jika kasir sedang mengetik di dalam kolom input, textarea, select, atau elemen editable
+      const activeEl = document.activeElement;
+      const isTyping =
+        activeEl instanceof HTMLInputElement ||
+        activeEl instanceof HTMLTextAreaElement ||
+        activeEl instanceof HTMLSelectElement ||
+        (activeEl as HTMLElement)?.isContentEditable;
+
+      if (isTyping) return;
+
+      // Jangan picu jika dikombinasikan dengan Ctrl, Alt, atau Meta (Cmd)
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      if (e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        togglePrivacyMode();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [togglePrivacyMode]);
 
   // Cashier Shift state (Sinkronisasi real-time antar semua perangkat lewat Firestore)
   const [activeCashier, setActiveCashierState] = useState<string>(INITIAL_CASHIERS[0]);
@@ -1219,6 +1271,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const resolvedName = updates.name ?? updates.itemName;
     const resolvedSupplier = updates.supplier ?? updates.supplierName;
     const resolvedCashier = updates.cashier ?? updates.cashierName;
+    const resolvedBatch = updates.batch ? updates.batch.trim() : undefined;
 
     const normalizedUpdates: Partial<SupplierExpense> = {
       ...updates,
@@ -1234,6 +1287,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...(resolvedCashier !== undefined
         ? { cashier: resolvedCashier, cashierName: resolvedCashier }
         : {}),
+      ...(resolvedBatch !== undefined ? { batch: resolvedBatch } : {}),
       ...(resolvedNominal !== undefined
         ? {
             totalPrice: Number(resolvedNominal) || 0,
@@ -2208,6 +2262,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateCustomer,
         deleteCustomer,
         settings,
+        activeBatch: settings.activeBatch || 'Batch 1',
         availableBatches,
         updateSettings,
         updateInitialCapital,
@@ -2218,6 +2273,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         viewReceipt,
         activeReceipt,
         resetAllData,
+        isPrivacyMode,
+        togglePrivacyMode,
         isLoading,
         isSyncing,
         dbError,

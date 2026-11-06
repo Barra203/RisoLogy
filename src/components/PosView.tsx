@@ -49,6 +49,7 @@ export const PosView: React.FC = () => {
     settings,
     setActiveBatch,
     transactions,
+    isPrivacyMode,
   } = usePos();
 
   const currentInvoiceNumber = nextTransactionNumber.replace(/^#/, '');
@@ -359,7 +360,7 @@ export const PosView: React.FC = () => {
           <div className="flex items-center justify-between text-slate-600">
             <span>Subtotal Produk</span>
             <span className="font-bold text-slate-900 font-mono">
-              Rp {subtotal.toLocaleString('id-ID')}
+              {formatCurrency(subtotal, isPrivacyMode)}
             </span>
           </div>
 
@@ -379,7 +380,7 @@ export const PosView: React.FC = () => {
                 </button>
               </div>
               <span className="font-bold text-slate-500 font-mono">
-                - Rp {discountAmount.toLocaleString('id-ID')}
+                - {formatCurrency(discountAmount, isPrivacyMode)}
               </span>
             </div>
 
@@ -445,7 +446,7 @@ export const PosView: React.FC = () => {
               Total Pembayaran
             </span>
             <span className="text-lg font-extrabold text-amber-700 font-mono">
-              Rp {finalTotal.toLocaleString('id-ID')}
+              {formatCurrency(finalTotal, isPrivacyMode)}
             </span>
           </div>
         </div>
@@ -836,7 +837,7 @@ export const PosView: React.FC = () => {
                 {totalCartQty} Items | {customerName || 'Pelanggan'}
               </span>
               <span className="font-mono font-extrabold text-base text-white block tabular-nums">
-                {formatCurrency(total)}
+                {formatCurrency(total, isPrivacyMode)}
               </span>
             </div>
           </button>

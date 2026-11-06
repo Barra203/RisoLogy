@@ -75,6 +75,7 @@ export const HistoryView: React.FC = () => {
     updateTransaction,
     deleteTransaction,
     cashierList,
+    isPrivacyMode,
   } = usePos();
   const [selectedBatch, setSelectedBatch] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -289,7 +290,7 @@ export const HistoryView: React.FC = () => {
                   Belum Bayar ({stats.unpaidCount})
                 </span>
                 <span className="font-mono font-bold text-sm text-amber-700 tabular-nums">
-                  {formatCurrency(stats.unpaidTotal)}
+                  {formatCurrency(stats.unpaidTotal, isPrivacyMode)}
                 </span>
               </div>
             )}
@@ -302,7 +303,7 @@ export const HistoryView: React.FC = () => {
                   Total Diskon (-)
                 </span>
                 <span className="font-mono font-bold text-sm text-rose-600 tabular-nums">
-                  -{formatCurrency(stats.discount)}
+                  -{formatCurrency(stats.discount, isPrivacyMode)}
                 </span>
               </div>
             )}
@@ -314,7 +315,7 @@ export const HistoryView: React.FC = () => {
                 Uang Masuk / Omset (+)
               </span>
               <span className="font-mono font-bold text-base text-emerald-600 tabular-nums">
-                +{formatCurrency(stats.revenue)}
+                +{formatCurrency(stats.revenue, isPrivacyMode)}
               </span>
             </div>
           </div>
@@ -550,15 +551,15 @@ export const HistoryView: React.FC = () => {
                         </span>
                         {isRefund ? (
                           <span className="font-mono font-extrabold text-base text-rose-600 tabular-nums">
-                            -{formatCurrency(tx.total)}
+                            -{formatCurrency(tx.total, isPrivacyMode)}
                           </span>
                         ) : isUnpaid ? (
                           <span className="font-mono font-extrabold text-base text-amber-700 tabular-nums">
-                            {formatCurrency(tx.total)}
+                            {formatCurrency(tx.total, isPrivacyMode)}
                           </span>
                         ) : (
                           <span className="font-mono font-extrabold text-base text-emerald-600 tabular-nums">
-                            +{formatCurrency(tx.total)}
+                            +{formatCurrency(tx.total, isPrivacyMode)}
                           </span>
                         )}
                       </div>
@@ -721,17 +722,19 @@ export const HistoryView: React.FC = () => {
 
                         {/* Subtotal */}
                         <td className="px-3.5 py-3 text-right font-mono text-xs md:text-sm font-medium text-slate-700 tabular-nums whitespace-nowrap align-middle">
-                          {formatCurrency(tx.subtotal)}
+                          {formatCurrency(tx.subtotal, isPrivacyMode)}
                         </td>
 
                         {/* Discount: MINUS = RED */}
                         <td className="px-3.5 py-3 text-xs md:text-sm text-right whitespace-nowrap align-middle">
                           {tx.discountAmount > 0 ? (
                             <span className="text-xs font-bold text-rose-600 tabular-nums">
-                              -Rp {tx.discountAmount.toLocaleString('id-ID')}
+                              -{formatCurrency(tx.discountAmount, isPrivacyMode)}
                             </span>
                           ) : (
-                            <span className="text-xs text-slate-400 tabular-nums">Rp 0</span>
+                            <span className="text-xs text-slate-400 tabular-nums">
+                              {formatCurrency(0, isPrivacyMode)}
+                            </span>
                           )}
                         </td>
 
@@ -739,15 +742,15 @@ export const HistoryView: React.FC = () => {
                         <td className="px-3.5 py-3 text-xs md:text-sm text-right whitespace-nowrap align-middle">
                           {isRefund ? (
                             <span className="text-xs font-bold text-rose-600 tabular-nums">
-                              -Rp {(tx.total || 0).toLocaleString('id-ID')}
+                              -{formatCurrency(tx.total || 0, isPrivacyMode)}
                             </span>
                           ) : isUnpaid ? (
                             <span className="text-xs font-bold text-amber-700 tabular-nums">
-                              Rp {(tx.total || 0).toLocaleString('id-ID')}
+                              {formatCurrency(tx.total || 0, isPrivacyMode)}
                             </span>
                           ) : (
                             <span className="text-xs font-bold text-emerald-600 tabular-nums">
-                              +Rp {(tx.total || 0).toLocaleString('id-ID')}
+                              +{formatCurrency(tx.total || 0, isPrivacyMode)}
                             </span>
                           )}
                         </td>
@@ -1016,7 +1019,7 @@ export const HistoryView: React.FC = () => {
                   <strong className="text-slate-900">{deletingTransaction.customerName}</strong>{' '}
                   senilai{' '}
                   <strong className="text-emerald-700">
-                    {formatCurrency(deletingTransaction.total)}
+                    {formatCurrency(deletingTransaction.total, isPrivacyMode)}
                   </strong>
                   ? Tindakan ini akan menghapus dokumen secara permanen dari Cloud Firestore.
                 </p>

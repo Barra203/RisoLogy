@@ -15,6 +15,138 @@ import {
   Cloud,
 } from 'lucide-react';
 
+export const PrivacyToggleButton: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
+  const { isPrivacyMode, togglePrivacyMode } = usePos();
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={togglePrivacyMode}
+        title={
+          isPrivacyMode
+            ? 'Tampilkan Nominal Rupiah (Tekan H)'
+            : 'Sembunyikan Nominal Rupiah (Tekan H)'
+        }
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border select-none cursor-pointer touch-manipulation ${
+          isPrivacyMode
+            ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-xs'
+            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+        }`}
+      >
+        {isPrivacyMode ? (
+          <svg
+            className="w-3.5 h-3.5 text-amber-600 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+            />
+          </svg>
+        ) : (
+          <svg
+            className="w-3.5 h-3.5 text-slate-500 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+            />
+          </svg>
+        )}
+        <span className="hidden sm:inline">
+          {isPrivacyMode ? 'Sensor Aktif' : 'Privasi'}
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={togglePrivacyMode}
+      title={
+        isPrivacyMode
+          ? 'Tampilkan Nominal Rupiah (Tekan H)'
+          : 'Sembunyikan Nominal Rupiah (Tekan H)'
+      }
+      className={`w-full flex items-center justify-center xl:justify-between gap-2 px-2.5 xl:px-3 py-2 rounded-xl text-xs font-semibold transition-all border select-none cursor-pointer touch-manipulation ${
+        isPrivacyMode
+          ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-xs'
+          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+      }`}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        {isPrivacyMode ? (
+          /* Ikon Mata Dicoret (Eye-Off) - Sensor Aktif */
+          <svg
+            className="w-4 h-4 text-amber-600 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+            />
+          </svg>
+        ) : (
+          /* Ikon Mata Terbuka (Eye) - Nominal Terlihat */
+          <svg
+            className="w-4 h-4 text-slate-500 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+            />
+          </svg>
+        )}
+
+        <span className="hidden xl:inline truncate">
+          {isPrivacyMode ? 'Sensor Aktif' : 'Privasi'}
+        </span>
+      </div>
+
+      {/* Badge Indikator Hotkey H */}
+      <kbd
+        className={`hidden xl:inline-block px-1.5 py-0.5 text-[10px] font-mono font-bold rounded border shrink-0 ${
+          isPrivacyMode
+            ? 'bg-amber-100 text-amber-800 border-amber-300'
+            : 'bg-white text-slate-400 border-slate-200'
+        }`}
+      >
+        H
+      </kbd>
+    </button>
+  );
+};
+
 export const Sidebar: React.FC = () => {
   const {
     activeTab,
@@ -185,6 +317,9 @@ export const Sidebar: React.FC = () => {
 
         {/* C. Profil Kasir / Shift Aktif (Tetap menempel di bawah sidebar) */}
         <div className="p-2.5 xl:p-4 border-t border-slate-100 shrink-0 bg-white space-y-2">
+          {/* Privacy Mode Toggle Button (Ikon Mata + Hotkey H) */}
+          <PrivacyToggleButton />
+
           {/* Real-time Firebase Sync Status */}
           <div
             className="flex items-center justify-center xl:justify-between px-2 xl:px-2.5 py-1.5 bg-emerald-50/80 border border-emerald-200/80 rounded-lg text-[11px] text-emerald-800"

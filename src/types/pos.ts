@@ -46,7 +46,7 @@ export interface SupplierExpense {
   date: string; // YYYY-MM-DD
   timestamp: number;
   itemName: string;
-  name?: string;
+  name: string;
   category:
     | 'Bahan Utama'
     | 'Bumbu & Saus'
@@ -60,15 +60,15 @@ export interface SupplierExpense {
   unitPrice?: number;
   totalPrice: number;
   totalBelanja?: number;
-  total?: number;
+  total: number;
   amount?: number;
   supplierName: string;
   supplier?: string;
   supplierLocation?: string;
   cashierName: string;
   cashier?: string;
-  batch?: string; // Cth: "Batch 1", "Batch 2"
-  createdAt?: string;
+  batch: string; // Cth: "Batch 1", "Batch 2", "Testing"
+  createdAt?: any;
   notes?: string;
 }
 

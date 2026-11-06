@@ -83,11 +83,18 @@ export function calculateChange(total: number, tendered: number): number {
 }
 
 /**
- * Formats a number to Indonesian Rupiah currency format.
- * Example: 12000 -> "Rp 12.000"
+ * Formats a number to Indonesian Rupiah currency format or masks it when Privacy Mode is active.
+ * Example: 12000 -> "Rp 12.000", or "Rp ••••••" when isPrivacy is true.
  */
-export function formatCurrency(amount: number): string {
-  const safeAmount = Math.round(amount || 0);
+export function formatCurrency(
+  amount: number | undefined | null,
+  isPrivacy: boolean = false,
+  mask: string = '••••••'
+): string {
+  if (isPrivacy) {
+    return `Rp ${mask}`;
+  }
+  const safeAmount = Math.round(Number(amount) || 0);
   const formatted = new Intl.NumberFormat('id-ID', {
     style: 'decimal',
     maximumFractionDigits: 0,

@@ -3,7 +3,6 @@ import { usePos } from '../context/PosContext';
 import { SupplierExpense } from '../types/pos';
 import { formatCurrency } from '../utils/pos-logic';
 import {
-  Truck,
   Plus,
   Search,
   Building2,
@@ -12,6 +11,7 @@ import {
   X,
   Check,
   AlertTriangle,
+  Layers,
 } from 'lucide-react';
 import { useDragScroll } from '../hooks/useDragScroll';
 
@@ -29,45 +29,70 @@ const getExpenseTotal = (exp: SupplierExpense): number => {
   );
 };
 
+interface ExpenseFormState {
+  name: string;
+  category: string;
+  date: string;
+  total: string;
+  supplier: string;
+  cashier: string;
+  batch: string;
+}
+
 export const ExpensesView: React.FC = () => {
   const {
     expenses,
+    availableBatches: contextBatches,
+    activeBatch: contextActiveBatch,
     addExpense,
     updateExpense,
     deleteExpense,
     activeCashier,
     cashierList,
     settings,
+    isPrivacyMode,
   } = usePos();
 
+  const activeBatch = contextActiveBatch || settings.activeBatch || 'Batch 1';
+
+  // Filter States
+  const [selectedBatch, setSelectedBatch] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
-  const [selectedBatchFilter, setSelectedBatchFilter] = useState<string>('ALL');
+
+  // Modal States
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<SupplierExpense | null>(null);
-
-  // Essential Form States + Batch
-  const [name, setName] = useState<string>('');
-  const [category, setCategory] = useState<string>('Bahan Utama');
-  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [total, setTotal] = useState<string>('');
-  const [supplier, setSupplier] = useState<string>('');
-  const [cashier, setCashier] = useState<string>(activeCashier || 'Barra');
-  const [batch, setBatch] = useState<string>(settings.activeBatch || 'Batch 1');
   const [formError, setFormError] = useState<string>('');
+
+  // Form Data State (Default batch otomatis ke activeBatch)
+  const [formData, setFormData] = useState<ExpenseFormState>({
+    name: '',
+    category: 'Bahan Utama',
+    date: new Date().toISOString().split('T')[0],
+    total: '',
+    supplier: '',
+    cashier: activeCashier || 'Barra',
+    batch: activeBatch || 'Batch 1',
+  });
 
   // Smooth Drag-to-Scroll untuk Tabel Belanja Bahan (Touch & Wheel Pass-Through)
   const tableScrollRef = useDragScroll<HTMLDivElement>();
 
+  // Daftar Batch Dinamis
   const availableBatches = useMemo(() => {
-    const set = new Set<string>(settings.availableBatches || ['Batch 1', 'Batch 2']);
-    if (settings.activeBatch) set.add(settings.activeBatch);
+    const baseList =
+      contextBatches && contextBatches.length > 0
+        ? contextBatches
+        : settings.availableBatches || ['Batch 1', 'Batch 2'];
+    const set = new Set<string>(baseList);
+    if (activeBatch) set.add(activeBatch);
     expenses.forEach((e) => {
       if (e.batch) set.add(e.batch);
     });
     return Array.from(set);
-  }, [settings.availableBatches, settings.activeBatch, expenses]);
+  }, [contextBatches, settings.availableBatches, activeBatch, expenses]);
 
   const categories = [
     'Semua',
@@ -85,48 +110,62 @@ export const ExpensesView: React.FC = () => {
     if (activeCashier && activeCashier.trim()) {
       set.add(activeCashier.trim());
     }
-    if (cashier && cashier.trim()) {
-      set.add(cashier.trim());
+    if (formData.cashier && formData.cashier.trim()) {
+      set.add(formData.cashier.trim());
     }
     return Array.from(set);
-  }, [cashierList, activeCashier, cashier]);
+  }, [cashierList, activeCashier, formData.cashier]);
 
-  // Filtered expenses
+  // Filter Data Belanja berdasarkan Batch, Kategori, dan Pencarian Teks
   const filteredExpenses = useMemo(() => {
-    return expenses.filter((exp) => {
-      const q = searchQuery.toLowerCase();
-      const expName = (exp.itemName || exp.name || '').toLowerCase();
-      const expSupplier = (exp.supplierName || exp.supplier || '').toLowerCase();
-      const expNumber = (exp.expenseNumber || '').toLowerCase();
-      const expCashier = (exp.cashierName || exp.cashier || '').toLowerCase();
-      const expBatch = exp.batch || 'Batch 1';
+    return expenses.filter((item) => {
+      const itemBatch = item.batch || 'Batch 1';
+      // 1. Filter Batch
+      const matchBatch = selectedBatch === 'ALL' || itemBatch === selectedBatch;
 
-      const matchSearch =
-        expName.includes(q) ||
-        expSupplier.includes(q) ||
-        expNumber.includes(q) ||
-        expCashier.includes(q) ||
-        expBatch.toLowerCase().includes(q);
-      const matchCategory = selectedCategory === 'Semua' || exp.category === selectedCategory;
-      const matchBatch = selectedBatchFilter === 'ALL' || expBatch === selectedBatchFilter;
-      return matchSearch && matchCategory && matchBatch;
+      // 2. Filter Kategori
+      const matchCategory =
+        selectedCategory === 'Semua' || item.category === selectedCategory;
+
+      // 3. Filter Pencarian Teks
+      const query = searchQuery.toLowerCase().trim();
+      const itemName = (item.name || item.itemName || '').toLowerCase();
+      const itemSupplier = (item.supplier || item.supplierName || '').toLowerCase();
+      const itemCategory = (item.category || '').toLowerCase();
+      const itemCashier = (item.cashier || item.cashierName || '').toLowerCase();
+      const itemNumber = (item.expenseNumber || '').toLowerCase();
+
+      const matchQuery =
+        !query ||
+        itemName.includes(query) ||
+        itemSupplier.includes(query) ||
+        itemCategory.includes(query) ||
+        itemCashier.includes(query) ||
+        itemNumber.includes(query) ||
+        itemBatch.toLowerCase().includes(query);
+
+      return matchBatch && matchCategory && matchQuery;
     });
-  }, [expenses, searchQuery, selectedCategory, selectedBatchFilter]);
+  }, [expenses, selectedBatch, selectedCategory, searchQuery]);
 
-  // Aggregate stats (mengikuti filter batch jika dipilih)
+  // Total Pengeluaran Batch Terpilih
+  const totalExpenseAmount = useMemo(() => {
+    return filteredExpenses.reduce(
+      (sum, item) => sum + (Number(item.total) || getExpenseTotal(item)),
+      0
+    );
+  }, [filteredExpenses]);
+
+  // Metrik Pendukung (Faktur, Rata-rata, Kategori Terbesar, & Rekap Per-Batch)
   const stats = useMemo(() => {
-    const targetList =
-      selectedBatchFilter === 'ALL'
-        ? expenses
-        : expenses.filter((e) => (e.batch || 'Batch 1') === selectedBatchFilter);
-    const totalExpenses = targetList.reduce((acc, exp) => acc + getExpenseTotal(exp), 0);
-    const invoiceCount = targetList.length;
-    const avgInvoice = invoiceCount > 0 ? Math.round(totalExpenses / invoiceCount) : 0;
+    const invoiceCount = filteredExpenses.length;
+    const avgInvoice =
+      invoiceCount > 0 ? Math.round(totalExpenseAmount / invoiceCount) : 0;
 
-    // Largest category
     const catMap: Record<string, number> = {};
-    targetList.forEach((e) => {
-      catMap[e.category] = (catMap[e.category] || 0) + getExpenseTotal(e);
+    filteredExpenses.forEach((e) => {
+      const cat = e.category || 'Bahan Utama';
+      catMap[cat] = (catMap[cat] || 0) + getExpenseTotal(e);
     });
 
     let topCat = 'Bahan Utama';
@@ -138,18 +177,43 @@ export const ExpensesView: React.FC = () => {
       }
     });
 
-    return { totalExpenses, invoiceCount, avgInvoice, topCat, topCatAmount };
-  }, [expenses, selectedBatchFilter]);
+    return {
+      totalExpenses: totalExpenseAmount,
+      invoiceCount,
+      avgInvoice,
+      topCat,
+      topCatAmount,
+    };
+  }, [filteredExpenses, totalExpenseAmount]);
+
+  // Rekap Pengelompokan Akumulasi Belanja per Batch
+  const batchRecapList = useMemo(() => {
+    const map: Record<string, { batchName: string; count: number; total: number }> = {};
+    availableBatches.forEach((b) => {
+      map[b] = { batchName: b, count: 0, total: 0 };
+    });
+    expenses.forEach((exp) => {
+      const b = exp.batch || 'Batch 1';
+      if (!map[b]) {
+        map[b] = { batchName: b, count: 0, total: 0 };
+      }
+      map[b].count += 1;
+      map[b].total += getExpenseTotal(exp);
+    });
+    return Object.values(map);
+  }, [expenses, availableBatches]);
 
   const handleOpenAddModal = () => {
     setEditingExpenseId(null);
-    setName('');
-    setCategory('Bahan Utama');
-    setDate(new Date().toISOString().split('T')[0]);
-    setTotal('');
-    setSupplier('');
-    setCashier(activeCashier || 'Barra');
-    setBatch(settings.activeBatch || 'Batch 1');
+    setFormData({
+      name: '',
+      category: 'Bahan Utama',
+      date: new Date().toISOString().split('T')[0],
+      total: '',
+      supplier: '',
+      cashier: activeCashier || 'Barra',
+      batch: selectedBatch !== 'ALL' ? selectedBatch : activeBatch || 'Batch 1',
+    });
     setFormError('');
     setIsModalOpen(true);
   };
@@ -157,30 +221,31 @@ export const ExpensesView: React.FC = () => {
   const handleOpenEditModal = (exp: SupplierExpense) => {
     const resolvedNominal = getExpenseTotal(exp);
     setEditingExpenseId(exp.id);
-    setName(exp.itemName || exp.name || '');
-    setCategory(exp.category || 'Bahan Utama');
-    setDate(exp.date || new Date().toISOString().split('T')[0]);
-    setTotal(resolvedNominal > 0 ? String(resolvedNominal) : '');
-    setSupplier(
-      (exp.supplierName || exp.supplier || '') === '-'
-        ? ''
-        : exp.supplierName || exp.supplier || ''
-    );
-    setCashier(exp.cashierName || exp.cashier || activeCashier || 'Barra');
-    setBatch(exp.batch || settings.activeBatch || 'Batch 1');
+    setFormData({
+      name: exp.name || exp.itemName || '',
+      category: exp.category || 'Bahan Utama',
+      date: exp.date || new Date().toISOString().split('T')[0],
+      total: resolvedNominal > 0 ? String(resolvedNominal) : '',
+      supplier:
+        (exp.supplier || exp.supplierName || '') === '-'
+          ? ''
+          : exp.supplier || exp.supplierName || '',
+      cashier: exp.cashier || exp.cashierName || activeCashier || 'Barra',
+      batch: exp.batch || activeBatch || 'Batch 1',
+    });
     setFormError('');
     setIsModalOpen(true);
   };
 
   const handleQuickAddNominal = (amountToAdd: number) => {
-    const current = Number(total) || 0;
-    setTotal(String(current + amountToAdd));
+    const current = Number(formData.total) || 0;
+    setFormData((prev) => ({ ...prev, total: String(current + amountToAdd) }));
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmedName = name.trim();
-    const numericTotal = Number(total);
+    const trimmedName = formData.name.trim();
+    const numericTotal = Number(formData.total);
 
     if (!trimmedName) {
       setFormError('Nama bahan / keperluan wajib diisi');
@@ -191,16 +256,16 @@ export const ExpensesView: React.FC = () => {
       return;
     }
 
-    const resolvedSupplier = supplier.trim() || '-';
-    const resolvedCashier = cashier || activeCashier || 'Kasir';
-    const resolvedDate = date || new Date().toISOString().split('T')[0];
-    const resolvedBatch = batch || settings.activeBatch || 'Batch 1';
+    const resolvedSupplier = formData.supplier.trim() || '-';
+    const resolvedCashier = formData.cashier || activeCashier || 'Kasir';
+    const resolvedDate = formData.date || new Date().toISOString().split('T')[0];
+    const resolvedBatch = formData.batch || activeBatch || 'Batch 1';
 
     if (editingExpenseId) {
       updateExpense(editingExpenseId, {
         name: trimmedName,
         itemName: trimmedName,
-        category,
+        category: formData.category,
         date: resolvedDate,
         total: numericTotal,
         totalBelanja: numericTotal,
@@ -219,7 +284,7 @@ export const ExpensesView: React.FC = () => {
       addExpense({
         name: trimmedName,
         itemName: trimmedName,
-        category,
+        category: formData.category,
         date: resolvedDate,
         total: numericTotal,
         totalBelanja: numericTotal,
@@ -249,15 +314,16 @@ export const ExpensesView: React.FC = () => {
 
   return (
     <div className="w-full min-h-full flex flex-col space-y-5 pb-28 md:pb-12">
-      {/* Top Header */}
+      {/* Top Header, Batch Filter & KPI Cards */}
       <div className="p-4 sm:p-6 bg-white border border-slate-200 rounded-xl shadow-sm shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">
               Belanja Bahan &amp; Operasional
             </h1>
-            <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-md text-[10px] font-bold">
-              Aktif: {settings.activeBatch || 'Batch 1'}
+            <span className="px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-md text-xs font-bold flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <span>Batch Aktif: {activeBatch}</span>
             </span>
           </div>
 
@@ -271,72 +337,152 @@ export const ExpensesView: React.FC = () => {
           </button>
         </div>
 
-        {/* KPI Cards Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-100">
-          {/* Total Belanja (Red money) */}
-          <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-lg">
-            <span className="text-[10px] font-bold text-rose-900 uppercase tracking-wider block">
-              Total Pengeluaran Bahan
+        {/* Selektor Filter Batch (Open PO) */}
+        <div className="mt-4 pt-4 border-t border-slate-100">
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">
+              Filter Batch:
             </span>
-            <span className="font-mono text-xl font-extrabold text-rose-600 mt-0.5 block tabular-nums">
-              - {formatCurrency(stats.totalExpenses)}
-            </span>
+
+            {/* Tombol Semua Batch */}
+            <button
+              type="button"
+              onClick={() => setSelectedBatch('ALL')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                selectedBatch === 'ALL'
+                  ? 'bg-amber-600 text-white shadow-sm'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              Semua Batch
+            </button>
+
+            {/* Daftar Batch Dinamis */}
+            {(availableBatches || ['Batch 1', 'Batch 2']).map((batchName) => (
+              <button
+                key={batchName}
+                type="button"
+                onClick={() => setSelectedBatch(batchName)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  selectedBatch === batchName
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <span>{batchName}</span>
+                {batchName === activeBatch && (
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      selectedBatch === batchName ? 'bg-white' : 'bg-amber-500'
+                    }`}
+                    title="Batch Aktif Saat Ini"
+                  />
+                )}
+              </button>
+            ))}
           </div>
 
-          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg">
-            <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">
-              Jumlah Faktur / Transaksi
-            </span>
-            <span className="font-mono text-xl font-extrabold text-amber-950 mt-0.5 block tabular-nums">
-              {stats.invoiceCount} Transaksi
-            </span>
-          </div>
-
-          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg">
-            <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">
-              Rata-rata Nota Belanja
-            </span>
-            <span className="font-mono text-xl font-extrabold text-amber-950 mt-0.5 block tabular-nums">
-              {formatCurrency(stats.avgInvoice)}
-            </span>
-          </div>
-
-          <div className="p-3 bg-slate-100 border border-slate-200 rounded-lg">
-            <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider block">
-              Kategori Terbesar: {stats.topCat}
-            </span>
-            <span className="font-mono text-xl font-extrabold text-slate-800 mt-0.5 block tabular-nums">
-              {formatCurrency(stats.topCatAmount)}
-            </span>
-          </div>
-        </div>
-
-        {/* Filter & Search Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-100">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 max-w-xl">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari nama bahan, toko, kasir, batch, atau #EXP..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
-              />
+          {/* KPI Cards Row (Menyesuaikan Filter Batch secara Reaktif) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+            {/* Kartu 1: Total Belanja Operasional (Merah Tegas) */}
+            <div className="p-3.5 bg-rose-50/70 border border-rose-200 rounded-xl flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-rose-900 uppercase tracking-wider block">
+                TOTAL BELANJA OPERASIONAL
+              </span>
+              <span className="font-mono text-xl font-extrabold text-rose-600 mt-1 block tabular-nums">
+                - {formatCurrency(totalExpenseAmount, isPrivacyMode)}
+              </span>
+              <span className="text-[11px] font-semibold text-rose-800/80 mt-1 block">
+                {filteredExpenses.length} Nota Pembelian (
+                {selectedBatch === 'ALL' ? 'Akumulasi Semua Batch' : selectedBatch})
+              </span>
             </div>
 
-            <select
-              value={selectedBatchFilter}
-              onChange={(e) => setSelectedBatchFilter(e.target.value)}
-              className="px-3 py-1.5 text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200 rounded-lg focus:outline-none focus:border-amber-500 cursor-pointer"
-            >
-              <option value="ALL">Semua Batch</option>
-              {availableBatches.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
+            {/* Kartu 2: Jumlah Faktur / Transaksi */}
+            <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">
+                Jumlah Faktur / Nota
+              </span>
+              <span className="font-mono text-xl font-extrabold text-amber-950 mt-1 block tabular-nums">
+                {stats.invoiceCount} Nota
+              </span>
+              <span className="text-[11px] font-medium text-amber-800/80 mt-1 block">
+                Filter: {selectedBatch === 'ALL' ? 'Semua Batch' : selectedBatch}
+              </span>
+            </div>
+
+            {/* Kartu 3: Rata-rata Nota Belanja */}
+            <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">
+                Rata-rata Nota Belanja
+              </span>
+              <span className="font-mono text-xl font-extrabold text-amber-950 mt-1 block tabular-nums">
+                {formatCurrency(stats.avgInvoice, isPrivacyMode)}
+              </span>
+              <span className="text-[11px] font-medium text-amber-800/80 mt-1 block">
+                Per transaksi belanja bahan
+              </span>
+            </div>
+
+            {/* Kartu 4: Kategori Terbesar */}
+            <div className="p-3.5 bg-slate-100 border border-slate-200 rounded-xl flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider block truncate">
+                Kategori Terbesar: {stats.topCat}
+              </span>
+              <span className="font-mono text-xl font-extrabold text-slate-800 mt-1 block tabular-nums">
+                {formatCurrency(stats.topCatAmount, isPrivacyMode)}
+              </span>
+              <span className="text-[11px] font-medium text-slate-500 mt-1 block">
+                Serapan modal tertinggi
+              </span>
+            </div>
+          </div>
+
+          {/* Rekap Cepat Pengelompokan per Batch (Tampil saat Semua Batch dipilih) */}
+          {selectedBatch === 'ALL' && batchRecapList.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1 mr-1">
+                <Layers className="w-3.5 h-3.5 text-amber-600" />
+                <span>Rekap per Batch:</span>
+              </span>
+              {batchRecapList.map((recap) => (
+                <button
+                  key={recap.batchName}
+                  type="button"
+                  onClick={() => setSelectedBatch(recap.batchName)}
+                  className="px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-200 text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <span className="font-bold text-slate-800">{recap.batchName}:</span>
+                  <span className="font-mono font-bold text-rose-600 tabular-nums">
+                    -{formatCurrency(recap.total, isPrivacyMode)}
+                  </span>
+                  <span className="text-[10px] text-slate-500">({recap.count} nota)</span>
+                </button>
               ))}
-            </select>
+            </div>
+          )}
+        </div>
+
+        {/* Search & Category Filter Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-100">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Cari nama bahan, toko/supplier, kategori, kasir, atau #EXP..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none text-slate-900"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
@@ -345,7 +491,7 @@ export const ExpensesView: React.FC = () => {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg whitespace-nowrap cursor-pointer transition-colors ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap cursor-pointer transition-colors ${
                   selectedCategory === cat
                     ? 'bg-amber-600 text-white shadow-xs'
                     : 'bg-white text-slate-700 border border-slate-200 hover:border-amber-300'
@@ -362,7 +508,11 @@ export const ExpensesView: React.FC = () => {
       <div className="w-full">
         {filteredExpenses.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-xl p-10 text-center text-slate-400 text-xs">
-            Belum ada data belanja bahan supplier yang tercatat.
+            Belum ada data belanja bahan supplier yang tercatat untuk filter{' '}
+            <strong className="text-slate-700">
+              {selectedBatch === 'ALL' ? 'Semua Batch' : selectedBatch}
+            </strong>
+            .
           </div>
         ) : (
           <>
@@ -372,9 +522,9 @@ export const ExpensesView: React.FC = () => {
             <div className="block md:hidden">
               {filteredExpenses.map((exp) => {
                 const nominal = getExpenseTotal(exp);
-                const displayName = exp.itemName || exp.name || 'Belanja Bahan';
-                const displaySupplier = exp.supplierName || exp.supplier || '-';
-                const displayCashier = exp.cashierName || exp.cashier || 'Kasir';
+                const displayName = exp.name || exp.itemName || 'Belanja Bahan';
+                const displaySupplier = exp.supplier || exp.supplierName || '-';
+                const displayCashier = exp.cashier || exp.cashierName || 'Kasir';
                 const displayBatch = exp.batch || 'Batch 1';
 
                 return (
@@ -382,13 +532,13 @@ export const ExpensesView: React.FC = () => {
                     key={exp.id}
                     className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-2.5 mb-3"
                   >
-                    {/* Baris 1: ID Nota Belanja, Badge Kategori, Batch, dan Nama Kasir/PIC */}
+                    {/* Header Kartu Mobile: ID Nota, Badge Batch, & Tanggal Belanja */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-mono font-bold text-xs text-slate-900 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
                           {exp.expenseNumber}
                         </span>
-                        <span className="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold rounded text-[10px]">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                           {displayBatch}
                         </span>
                         <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded text-[10px]">
@@ -396,12 +546,17 @@ export const ExpensesView: React.FC = () => {
                         </span>
                       </div>
 
-                      <span className="px-2 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[10px] border border-amber-200">
-                        PIC: {displayCashier}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-mono text-slate-500">
+                          {exp.date}
+                        </span>
+                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[10px] border border-amber-200">
+                          PIC: {displayCashier}
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Baris 2: Tanggal, Nama Bahan, dan Tempat Beli / Supplier */}
+                    {/* Baris 2: Nama Bahan dan Tempat Beli / Supplier */}
                     <div className="pt-1.5 border-t border-slate-100 space-y-1">
                       <div className="flex items-start justify-between gap-2">
                         <div>
@@ -410,9 +565,6 @@ export const ExpensesView: React.FC = () => {
                             <p className="text-[11px] text-slate-500 italic">{exp.notes}</p>
                           )}
                         </div>
-                        <span className="text-[11px] font-mono text-slate-500 shrink-0">
-                          {exp.date}
-                        </span>
                       </div>
 
                       <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium pt-0.5">
@@ -421,14 +573,14 @@ export const ExpensesView: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Baris 3: Total Nominal (Teks Tebal Besar) serta Tombol Aksi Sentuh */}
+                    {/* Baris 3: Total Nominal serta Tombol Aksi Sentuh */}
                     <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                       <div>
                         <span className="text-[10px] font-bold text-slate-400 uppercase block">
                           Total Belanja
                         </span>
                         <span className="font-mono text-base font-extrabold text-rose-600 tabular-nums">
-                          - {formatCurrency(nominal)}
+                          - {formatCurrency(nominal, isPrivacyMode)}
                         </span>
                       </div>
 
@@ -458,7 +610,7 @@ export const ExpensesView: React.FC = () => {
             </div>
 
             {/* ============================================================= */}
-            {/* TAMPILAN DESKTOP: TABEL RINGKAS (hidden md:block)             */}
+            {/* TAMPILAN DESKTOP: TABEL BELANJA SUPPLIER (hidden md:block)    */}
             {/* ============================================================= */}
             <div className="hidden md:block w-full bg-white border border-slate-200 rounded-xl shadow-sm mb-6">
               <div
@@ -469,67 +621,57 @@ export const ExpensesView: React.FC = () => {
                 <table className="w-full text-left border-collapse text-xs md:text-sm min-w-[760px]">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
-                      <th className="py-3 px-3.5">No &amp; Tanggal</th>
-                      <th className="py-3 px-3.5">Batch</th>
-                      <th className="py-3 px-3.5">Nama Bahan</th>
-                      <th className="py-3 px-3.5">Kategori</th>
-                      <th className="py-3 px-3.5 text-right">Total Belanja (-)</th>
-                      <th className="py-3 px-3.5">Supplier</th>
-                      <th className="py-3 px-3.5">Kasir / PIC</th>
-                      <th className="py-3 px-3.5 text-center">Aksi</th>
+                      <th className="py-3 px-4">No &amp; Tanggal</th>
+                      <th className="py-3 px-4">Nama Bahan &amp; Batch</th>
+                      <th className="py-3 px-4">Supplier / Toko</th>
+                      <th className="py-3 px-4">Kasir / PIC</th>
+                      <th className="py-3 px-4 text-right">Total Belanja (-)</th>
+                      <th className="py-3 px-4 text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredExpenses.map((exp) => {
                       const nominal = getExpenseTotal(exp);
-                      const displayName = exp.itemName || exp.name || 'Belanja Bahan';
-                      const displaySupplier = exp.supplierName || exp.supplier || '-';
-                      const displayCashier = exp.cashierName || exp.cashier || 'Kasir';
-                      const displayBatch = exp.batch || 'Batch 1';
+                      const displayName = exp.name || exp.itemName || 'Belanja Bahan';
+                      const displaySupplier = exp.supplier || exp.supplierName || '-';
+                      const displayCashier = exp.cashier || exp.cashierName || 'Kasir';
 
                       return (
                         <tr key={exp.id} className="hover:bg-slate-50 transition-colors">
                           {/* No & Tanggal */}
-                          <td className="px-3.5 py-3 text-xs md:text-sm whitespace-nowrap">
+                          <td className="px-4 py-3.5 text-xs md:text-sm whitespace-nowrap">
                             <span className="font-mono font-bold text-slate-900 block">
                               {exp.expenseNumber}
                             </span>
-                            <span className="text-[10px] text-slate-500 font-mono">
+                            <span className="text-[11px] text-slate-500 font-mono">
                               {exp.date}
                             </span>
                           </td>
 
-                          {/* Batch */}
-                          <td className="px-3.5 py-3 text-xs md:text-sm whitespace-nowrap">
-                            <span className="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold rounded text-[10px]">
-                              {displayBatch}
-                            </span>
-                          </td>
-
-                          {/* Nama Bahan */}
-                          <td className="px-3.5 py-3 text-xs md:text-sm font-bold text-slate-900">
-                            <span>{displayName}</span>
-                            {exp.notes && (
-                              <span className="block text-[10px] text-slate-500 font-normal italic">
-                                {exp.notes}
+                          {/* Nama Barang, Badge Batch & Kategori */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <div className="flex flex-col items-start gap-1">
+                              <span className="text-xs font-bold text-slate-900">
+                                {displayName}
                               </span>
-                            )}
-                          </td>
-
-                          {/* Kategori */}
-                          <td className="px-3.5 py-3 text-xs md:text-sm whitespace-nowrap">
-                            <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded text-[10px]">
-                              {exp.category}
-                            </span>
-                          </td>
-
-                          {/* Total Belanja (Minus = Red) */}
-                          <td className="px-3.5 py-3 text-xs md:text-sm text-right font-mono font-extrabold text-rose-600 bg-rose-50/30 tabular-nums whitespace-nowrap">
-                            - {formatCurrency(nominal)}
+                              <div className="flex items-center gap-1.5">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                  {exp.batch || 'Batch 1'}
+                                </span>
+                                <span className="text-[11px] text-slate-500">
+                                  {exp.category}
+                                </span>
+                              </div>
+                              {exp.notes && (
+                                <span className="text-[10px] text-slate-500 italic">
+                                  {exp.notes}
+                                </span>
+                              )}
+                            </div>
                           </td>
 
                           {/* Supplier */}
-                          <td className="px-3.5 py-3 text-xs md:text-sm">
+                          <td className="px-4 py-3.5 text-xs md:text-sm whitespace-nowrap">
                             <div className="flex items-center gap-1.5 font-semibold text-slate-800">
                               <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                               <span>{displaySupplier}</span>
@@ -537,14 +679,19 @@ export const ExpensesView: React.FC = () => {
                           </td>
 
                           {/* Kasir / Shift PIC */}
-                          <td className="px-3.5 py-3 text-xs md:text-sm whitespace-nowrap">
+                          <td className="px-4 py-3.5 text-xs md:text-sm whitespace-nowrap">
                             <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[10px] border border-amber-200">
                               {displayCashier}
                             </span>
                           </td>
 
+                          {/* Total Belanja (Minus = Red) */}
+                          <td className="px-4 py-3.5 text-xs md:text-sm text-right font-mono font-extrabold text-rose-600 bg-rose-50/30 tabular-nums whitespace-nowrap">
+                            - {formatCurrency(nominal, isPrivacyMode)}
+                          </td>
+
                           {/* Actions */}
-                          <td className="px-3.5 py-3 text-xs md:text-sm text-center whitespace-nowrap">
+                          <td className="px-4 py-3.5 text-xs md:text-sm text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-2">
                               <button
                                 type="button"
@@ -581,7 +728,7 @@ export const ExpensesView: React.FC = () => {
       <div className="h-20 md:h-6 w-full shrink-0" aria-hidden="true" />
 
       {/* ===================================================================== */}
-      {/* MODAL CATAT / EDIT BELANJA BAHAN (TABLET & MOBILE FRIENDLY)           */}
+      {/* MODAL CATAT / EDIT BELANJA BAHAN (DENGAN ALOKASI BATCH / OPEN PO)     */}
       {/* ===================================================================== */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -621,22 +768,22 @@ export const ExpensesView: React.FC = () => {
                   type="text"
                   required
                   placeholder="Cth: Keju, Tepung Terigu, Minyak, Box Kemasan..."
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
                 />
               </div>
 
-              {/* 2. Kategori Pengeluaran, Batch, & Tanggal */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                <div className="col-span-2 sm:col-span-1">
+              {/* 2. Kategori, Alokasi Batch / Open PO, & Tanggal (Sejajar) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Kategori
                   </label>
                   <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium cursor-pointer"
                   >
                     <option value="Bahan Utama">Bahan Utama</option>
                     <option value="Bumbu & Saus">Bumbu &amp; Saus</option>
@@ -649,16 +796,16 @@ export const ExpensesView: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Batch Produksi
+                    Alokasi Batch / Open PO *
                   </label>
                   <select
-                    value={batch}
-                    onChange={(e) => setBatch(e.target.value)}
-                    className="w-full bg-amber-50/70 border border-amber-200 rounded-xl px-3 py-2.5 text-xs font-bold text-amber-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+                    value={formData.batch}
+                    onChange={(e) => setFormData({ ...formData, batch: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium cursor-pointer"
                   >
-                    {availableBatches.map((b) => (
+                    {(availableBatches || ['Batch 1', 'Batch 2']).map((b) => (
                       <option key={b} value={b}>
-                        {b}
+                        {b} {b === activeBatch ? '(Batch Aktif)' : ''}
                       </option>
                     ))}
                   </select>
@@ -671,9 +818,9 @@ export const ExpensesView: React.FC = () => {
                   <input
                     type="date"
                     required
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2.5 text-xs font-mono text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
                   />
                 </div>
               </div>
@@ -689,8 +836,8 @@ export const ExpensesView: React.FC = () => {
                   min="1"
                   step="any"
                   placeholder="Cth: 25000"
-                  value={total}
-                  onChange={(e) => setTotal(e.target.value)}
+                  value={formData.total}
+                  onChange={(e) => setFormData({ ...formData, total: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-lg font-bold text-rose-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-mono tabular-nums"
                 />
 
@@ -713,16 +860,16 @@ export const ExpensesView: React.FC = () => {
                   ))}
                   <button
                     type="button"
-                    onClick={() => setTotal('')}
+                    onClick={() => setFormData({ ...formData, total: '' })}
                     className="touch-manipulation px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold cursor-pointer transition-colors"
                   >
                     Reset
                   </button>
                 </div>
 
-                {Number(total) > 0 && (
+                {Number(formData.total) > 0 && (
                   <p className="text-[11px] font-mono text-rose-600 font-semibold mt-1.5">
-                    Nominal tercatat: - {formatCurrency(Number(total))}
+                    Nominal tercatat: - {formatCurrency(Number(formData.total), isPrivacyMode)}
                   </p>
                 )}
               </div>
@@ -736,8 +883,8 @@ export const ExpensesView: React.FC = () => {
                   <input
                     type="text"
                     placeholder="Cth: Pasar, O Save, Shopee, Warung..."
-                    value={supplier}
-                    onChange={(e) => setSupplier(e.target.value)}
+                    value={formData.supplier}
+                    onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
                   />
                 </div>
@@ -747,8 +894,8 @@ export const ExpensesView: React.FC = () => {
                     Kasir / PIC
                   </label>
                   <select
-                    value={cashier}
-                    onChange={(e) => setCashier(e.target.value)}
+                    value={formData.cashier}
+                    onChange={(e) => setFormData({ ...formData, cashier: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
                   >
                     {availableCashiers.map((c) => (
@@ -797,11 +944,11 @@ export const ExpensesView: React.FC = () => {
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                   Apakah Anda yakin ingin menghapus pengeluaran{' '}
                   <strong className="text-slate-900">
-                    {deletingExpense.itemName || deletingExpense.name}
+                    {deletingExpense.name || deletingExpense.itemName}
                   </strong>{' '}
-                  senilai{' '}
+                  ({deletingExpense.batch || 'Batch 1'}) senilai{' '}
                   <strong className="text-rose-600">
-                    {formatCurrency(getExpenseTotal(deletingExpense))}
+                    {formatCurrency(getExpenseTotal(deletingExpense), isPrivacyMode)}
                   </strong>
                   ?
                 </p>

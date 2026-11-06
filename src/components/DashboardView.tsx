@@ -13,6 +13,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { useDragScroll } from '../hooks/useDragScroll';
+import { formatCurrency } from '../utils/formatters';
 
 // Helper untuk mengekstrak nominal pengeluaran secara konsisten
 const getExpenseNominal = (item: SupplierExpense): number => {
@@ -37,11 +38,6 @@ const getExpenseTimestamp = (item: SupplierExpense): number => {
     return new Date(y, m - 1, d, 12, 0, 0).getTime();
   }
   return item.timestamp || 0;
-};
-
-// Format Rupiah penuh: Rp 204.000
-const formatCurrency = (val: number): string => {
-  return `Rp ${Math.round(val).toLocaleString('id-ID')}`;
 };
 
 // Ikon Risol Bulat Keemasan Tanpa Border Hitam untuk Daftar Menu Terlaris
@@ -93,6 +89,7 @@ export const DashboardView: React.FC = () => {
     addBatch,
     setActiveTab,
     viewReceipt,
+    isPrivacyMode,
   } = usePos();
 
   // Filter Periode: 'today' | '7days' | '30days' | 'all'
@@ -663,7 +660,7 @@ export const DashboardView: React.FC = () => {
                   </button>
                 </div>
                 <div className="text-2xl font-bold text-slate-900 tabular-nums tracking-tight">
-                  {`Rp ${activeInitialCapital.toLocaleString('id-ID')}`}
+                  {formatCurrency(activeInitialCapital, isPrivacyMode)}
                 </div>
               </div>
               <div className="w-9 h-9 rounded-lg bg-amber-50 border border-amber-200/70 flex items-center justify-center text-[#D97706] shrink-0">
@@ -692,7 +689,7 @@ export const DashboardView: React.FC = () => {
                   Uang Masuk / Omset
                 </span>
                 <div className="text-2xl font-bold text-slate-900 tabular-nums tracking-tight">
-                  {formatCurrency(metrics.netSales)}
+                  {formatCurrency(metrics.netSales, isPrivacyMode)}
                 </div>
               </div>
               <div className="w-9 h-9 rounded-lg bg-emerald-50 border border-emerald-200/70 flex items-center justify-center text-emerald-600 shrink-0">
@@ -712,7 +709,7 @@ export const DashboardView: React.FC = () => {
                   Belanja Bahan / Kas Keluar
                 </span>
                 <div className="text-2xl font-bold text-rose-600 tabular-nums tracking-tight">
-                  - {formatCurrency(metrics.totalExpenses)}
+                  - {formatCurrency(metrics.totalExpenses, isPrivacyMode)}
                 </div>
               </div>
               <div className="w-9 h-9 rounded-lg bg-rose-50 border border-rose-200/70 flex items-center justify-center text-rose-600 shrink-0">
@@ -732,7 +729,7 @@ export const DashboardView: React.FC = () => {
                   Estimasi Sisa Kas
                 </span>
                 <div className="text-2xl font-extrabold text-amber-600 tabular-nums tracking-tight">
-                  {formatCurrency(metrics.estimatedRemainingCash)}
+                  {formatCurrency(metrics.estimatedRemainingCash, isPrivacyMode)}
                 </div>
               </div>
               <div className="w-9 h-9 rounded-lg bg-amber-50 border border-amber-200/70 flex items-center justify-center text-amber-600 shrink-0">
@@ -800,7 +797,7 @@ export const DashboardView: React.FC = () => {
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-2">
                   <span className="text-sm font-extrabold text-slate-900 tabular-nums leading-tight">
-                    {`Rp ${paymentSummary.grandTotal.toLocaleString('id-ID')}`}
+                    {formatCurrency(paymentSummary.grandTotal, isPrivacyMode)}
                   </span>
                   <span className="text-[11px] font-medium text-slate-500 tabular-nums mt-0.5">
                     {`${paymentSummary.totalCount} Transaksi`}
@@ -818,7 +815,7 @@ export const DashboardView: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-slate-900 tabular-nums">
-                      Rp {paymentSummary.qrisTotal.toLocaleString('id-ID')}
+                      {formatCurrency(paymentSummary.qrisTotal, isPrivacyMode)}
                     </span>
                     <span className="text-xs font-semibold text-slate-500 w-9 text-right tabular-nums">
                       {paymentSummary.qrisPercent}%
@@ -834,7 +831,7 @@ export const DashboardView: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-slate-900 tabular-nums">
-                      Rp {paymentSummary.cashTotal.toLocaleString('id-ID')}
+                      {formatCurrency(paymentSummary.cashTotal, isPrivacyMode)}
                     </span>
                     <span className="text-xs font-semibold text-slate-500 w-9 text-right tabular-nums">
                       {paymentSummary.cashPercent}%
@@ -871,7 +868,7 @@ export const DashboardView: React.FC = () => {
                   >
                     {/* Label Angka Nominal */}
                     <span className="text-[11px] font-bold text-slate-700 mb-1.5 transition-all group-hover:text-amber-600 tabular-nums whitespace-nowrap">
-                      {item.formattedLabel}
+                      {isPrivacyMode ? '***' : item.formattedLabel}
                     </span>
 
                     {/* Batang Bar */}
@@ -962,7 +959,7 @@ export const DashboardView: React.FC = () => {
                             {tx.itemSummary}
                           </td>
                           <td className="py-3 px-3 text-sm font-semibold text-slate-800 text-right tabular-nums whitespace-nowrap">
-                            {formatCurrency(tx.total)}
+                            {formatCurrency(tx.total, isPrivacyMode)}
                           </td>
                           <td className="py-3 pl-3 text-right whitespace-nowrap">
                             {tx.isPaid ? (
@@ -1011,7 +1008,7 @@ export const DashboardView: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-sm font-bold text-slate-900 tabular-nums shrink-0">
-                      {formatCurrency(item.revenue)}
+                      {formatCurrency(item.revenue, isPrivacyMode)}
                     </div>
                   </div>
                 ))}
