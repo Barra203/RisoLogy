@@ -748,102 +748,146 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* === 2B. KARTU WIDGET KEBUTUHAN PRODUKSI DAPUR (KITCHEN PREP LIST) === */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-          {/* Header Card */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        {/* WIDGET KEBUTUHAN PRODUKSI DAPUR */}
+        <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-xs space-y-4">
+          {/* Header: Judul & Rekap Total */}
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0">
-                🍳
+              <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-600 shrink-0">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900 leading-none">
-                  Kebutuhan Produksi Risol (Kitchen Prep)
+                <h3 className="text-sm font-bold text-slate-900 tracking-tight leading-none">
+                  Kebutuhan Produksi
                 </h3>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Dihitung otomatis: 1 porsi = 3 pcs (termasuk kalkulasi catatan Risol Mix)
-                </p>
+                <span className="text-[11px] font-medium text-slate-400 mt-0.5 inline-block">
+                  Batch: {selectedBatch === 'ALL' ? 'Semua Batch' : selectedBatch}
+                </span>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 self-start sm:self-auto shrink-0 tabular-nums">
-              Total: {productionData.totalPcs} Pcs ({productionData.totalPortions} Porsi)
-            </span>
+
+            {/* Metric Total Badge */}
+            <div className="flex items-center gap-2">
+              <div className="px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700">
+                <span className="text-slate-900 font-bold">{productionData.totalPcs}</span> Pcs
+                <span className="text-slate-300 mx-1.5">|</span>
+                <span className="text-slate-900 font-bold">{productionData.totalPortions}</span> Porsi
+              </div>
+            </div>
           </div>
 
-          {/* Grid 2 Kolom Varian Risol */}
+          {/* Kartu Metrik Per Varian */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {/* Kartu Risol Ayam Balado */}
-            <div className="p-4 rounded-xl border border-rose-100 bg-rose-50/40 flex items-center justify-between">
-              <div className="space-y-1">
-                <span className="text-xs font-bold text-rose-800 uppercase tracking-wider">
-                  🍗 Risol Ayam Balado
+            {/* Varian 1: Ayam Balado */}
+            <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  Ayam Balado
                 </span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-extrabold text-slate-900 tabular-nums">
+                <span className="text-xs font-bold px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700">
+                  {productionData.totalPcs > 0
+                    ? Math.round((productionData.ayamBaladoPcs / productionData.totalPcs) * 100)
+                    : 0}%
+                </span>
+              </div>
+
+              <div className="my-2">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
                     {productionData.ayamBaladoPcs}
                   </span>
-                  <span className="text-xs font-semibold text-slate-500">
-                    pcs perlu dibikin
-                  </span>
+                  <span className="text-xs font-bold text-slate-400 uppercase">Pcs</span>
                 </div>
-                <span className="text-[11px] text-slate-400 block tabular-nums">
-                  Setara ±{(productionData.ayamBaladoPcs / 3).toFixed(1)} Porsi
-                </span>
               </div>
-              <div className="text-right">
-                <span className="text-xs font-bold text-rose-700 bg-white px-2.5 py-1 rounded-md border border-rose-200 shadow-xs tabular-nums">
-                  {productionData.totalPcs > 0
-                    ? Math.round(
-                        (productionData.ayamBaladoPcs / productionData.totalPcs) * 100
-                      )
-                    : 0}
-                  %
+
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                <span>Konversi Porsi</span>
+                <span className="font-semibold text-slate-700">
+                  {(productionData.ayamBaladoPcs / 3).toFixed(1)} Porsi
                 </span>
               </div>
             </div>
 
-            {/* Kartu Risol Mac-n-Cheese */}
-            <div className="p-4 rounded-xl border border-amber-200/80 bg-amber-50/40 flex items-center justify-between">
-              <div className="space-y-1">
-                <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">
-                  🧀 Risol Mac-n-Cheese
+            {/* Varian 2: Mac-n-Cheese */}
+            <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  Mac-n-Cheese
                 </span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-extrabold text-slate-900 tabular-nums">
-                    {productionData.macCheesePcs}
-                  </span>
-                  <span className="text-xs font-semibold text-slate-500">
-                    pcs perlu dibikin
-                  </span>
-                </div>
-                <span className="text-[11px] text-slate-400 block tabular-nums">
-                  Setara ±{(productionData.macCheesePcs / 3).toFixed(1)} Porsi
+                <span className="text-xs font-bold px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700">
+                  {productionData.totalPcs > 0
+                    ? Math.round((productionData.macCheesePcs / productionData.totalPcs) * 100)
+                    : 0}%
                 </span>
               </div>
-              <div className="text-right">
-                <span className="text-xs font-bold text-amber-700 bg-white px-2.5 py-1 rounded-md border border-amber-200 shadow-xs tabular-nums">
-                  {productionData.totalPcs > 0
-                    ? Math.round(
-                        (productionData.macCheesePcs / productionData.totalPcs) * 100
-                      )
-                    : 0}
-                  %
+
+              <div className="my-2">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                    {productionData.macCheesePcs}
+                  </span>
+                  <span className="text-xs font-bold text-slate-400 uppercase">Pcs</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                <span>Konversi Porsi</span>
+                <span className="font-semibold text-slate-700">
+                  {(productionData.macCheesePcs / 3).toFixed(1)} Porsi
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Peringatan jika ada pesanan mix yang catatannya belum terisi/salah */}
+          {/* Split Ratio Bar */}
+          {productionData.totalPcs > 0 && (
+            <div className="space-y-1.5 pt-1">
+              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                <div
+                  style={{
+                    width: `${(productionData.ayamBaladoPcs / productionData.totalPcs) * 100}%`,
+                  }}
+                  className="bg-amber-600 transition-all duration-300"
+                  title={`Ayam Balado: ${productionData.ayamBaladoPcs} Pcs`}
+                />
+                <div
+                  style={{
+                    width: `${(productionData.macCheesePcs / productionData.totalPcs) * 100}%`,
+                  }}
+                  className="bg-amber-400 transition-all duration-300"
+                  title={`Mac-n-Cheese: ${productionData.macCheesePcs} Pcs`}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-semibold text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-600 inline-block" />
+                  Ayam Balado ({productionData.ayamBaladoPcs} pcs)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+                  Mac-n-Cheese ({productionData.macCheesePcs} pcs)
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* System Status: Anomali Format Mix (Minimal Alert) */}
           {productionData.unparsedMixPortions > 0 && (
-            <div className="p-2.5 rounded-lg bg-amber-100/60 border border-amber-300 text-[11px] text-amber-900 flex items-center justify-between gap-2">
-              <span>
-                ⚠️ Ada {productionData.unparsedMixPortions} porsi Risol Mix tanpa rincian
-                jelas (dihitung default 2 Ayam + 1 Mac).
-              </span>
+            <div className="px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-between text-xs text-amber-900 font-medium">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-amber-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>
+                  {productionData.unparsedMixPortions} porsi menu mix tidak memiliki catatan terstruktur (menggunakan rasio default 2:1).
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={() => setActiveTab('history')}
-                className="font-semibold underline cursor-pointer shrink-0 hover:text-amber-950"
+                className="font-semibold underline cursor-pointer shrink-0 text-amber-800 hover:text-amber-950 ml-2"
               >
                 Cek Riwayat
               </button>
