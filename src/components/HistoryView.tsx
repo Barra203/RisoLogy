@@ -1,6 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { usePos } from '../context/PosContext';
-import { Transaction, PaymentMethod, TransactionStatus } from '../types/pos';
+import {
+  Transaction,
+  TransactionItem,
+  PaymentMethod,
+  TransactionStatus,
+} from '../types/pos';
 import { formatCurrency, formatDateTime } from '../utils/pos-logic';
 import {
   Search,
@@ -16,7 +21,6 @@ import {
   X,
   Loader2,
   AlertTriangle,
-  StickyNote,
   UserCheck,
 } from 'lucide-react';
 import { useDragScroll } from '../hooks/useDragScroll';
@@ -29,6 +33,7 @@ interface EditFormState {
   status: TransactionStatus;
   batch: string;
   notes: string;
+  items: TransactionItem[];
 }
 
 const DEFAULT_TEAM_CASHIERS = ['Barra', 'Harits', 'Dimas', 'Akhyar', 'Rafi'];
@@ -81,7 +86,7 @@ export const HistoryView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [methodFilter, setMethodFilter] = useState<'ALL' | 'CASH' | 'QRIS'>('ALL');
 
-  // State Modal Edit Transaksi (Light Mode + Kasir / PIC Shift)
+  // State Modal Edit Transaksi (Light Mode + Kasir / PIC Shift + Edit Catatan Mix)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editFormData, setEditFormData] = useState<EditFormState>({
     customerName: '',
@@ -91,6 +96,7 @@ export const HistoryView: React.FC = () => {
     status: 'PAID',
     batch: 'Batch 1',
     notes: '',
+    items: [],
   });
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
@@ -188,9 +194,28 @@ export const HistoryView: React.FC = () => {
     };
   }, [filteredTransactions, totalRevenue, totalOrders]);
 
-  // Buka Modal Edit Transaksi
+  // Buka Modal Edit Transaksi (Inisialisasi catatan dari tx.notes atau item.notes / item.note)
   const handleOpenEditModal = (tx: Transaction) => {
     const currentCashier = tx.cashierName || tx.cashier || tx.pic || 'Harits';
+    const clonedItems: TransactionItem[] = JSON.parse(JSON.stringify(tx.items || []));
+    const mixItemWithNote = clonedItems.find(
+      (i) =>
+        (i.name || '').toLowerCase().includes('mix') &&
+        Boolean(i.notes || i.note || i.description)
+    );
+    const anyItemWithNote = clonedItems.find((i) =>
+      Boolean(i.notes || i.note || i.description)
+    );
+    const initialNotes =
+      tx.notes ||
+      mixItemWithNote?.notes ||
+      mixItemWithNote?.note ||
+      mixItemWithNote?.description ||
+      anyItemWithNote?.notes ||
+      anyItemWithNote?.note ||
+      anyItemWithNote?.description ||
+      '';
+
     setEditingTransaction(tx);
     setEditFormData({
       customerName: tx.customerName || 'Pelanggan',
@@ -199,11 +224,38 @@ export const HistoryView: React.FC = () => {
       cashier: currentCashier,
       status: normalizeStatusValue(tx.status),
       batch: tx.batch || 'Batch 1',
-      notes: tx.notes || '',
+      notes: initialNotes,
+      items: clonedItems,
     });
   };
 
-  // Simpan Perubahan Edit Transaksi (termasuk Kasir / PIC Shift, Batch & Status) ke Cloud Firestore
+  // Helper sinkronisasi perubahan catatan di modal ke editFormData.notes dan editFormData.items
+  const handleChangeEditNotes = (val: string) => {
+    setEditFormData((prev) => {
+      const hasMixItem = prev.items.some((i) =>
+        (i.name || '').toLowerCase().includes('mix')
+      );
+      const updatedItems = prev.items.map((item, idx) => {
+        const isMix = (item.name || '').toLowerCase().includes('mix');
+        if (isMix || (!hasMixItem && idx === 0)) {
+          return {
+            ...item,
+            notes: val,
+            note: val,
+            description: val,
+          };
+        }
+        return item;
+      });
+      return {
+        ...prev,
+        notes: val,
+        items: updatedItems,
+      };
+    });
+  };
+
+  // Simpan Perubahan Edit Transaksi (termasuk Catatan Pesanan / Mix, Items, Kasir / PIC Shift, Batch & Status) ke Cloud Firestore
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTransaction) return;
@@ -214,7 +266,28 @@ export const HistoryView: React.FC = () => {
         (editFormData.cashierName || editFormData.cashier || '').trim() ||
         editingTransaction.cashierName ||
         'Harits';
-      const resolvedBatch = (editFormData.batch || '').trim() || editingTransaction.batch || 'Batch 1';
+      const resolvedBatch =
+        (editFormData.batch || '').trim() || editingTransaction.batch || 'Batch 1';
+      const trimmedNotes = editFormData.notes.trim();
+
+      const hasMixItem = editFormData.items.some((i) =>
+        (i.name || '').toLowerCase().includes('mix')
+      );
+
+      const updatedItems: TransactionItem[] = editFormData.items.map((item, idx) => {
+        const isMix = (item.name || '').toLowerCase().includes('mix');
+        if (isMix || (!hasMixItem && idx === 0)) {
+          return {
+            ...item,
+            quantity: Number(item.quantity ?? item.qty) || 1,
+            qty: Number(item.quantity ?? item.qty) || 1,
+            notes: trimmedNotes,
+            note: trimmedNotes,
+            description: trimmedNotes,
+          };
+        }
+        return item;
+      });
 
       await updateTransaction(editingTransaction.id, {
         customerName: editFormData.customerName.trim() || 'Pelanggan',
@@ -224,7 +297,8 @@ export const HistoryView: React.FC = () => {
         pic: resolvedCashier,
         status: editFormData.status,
         batch: resolvedBatch,
-        notes: editFormData.notes.trim(),
+        notes: trimmedNotes,
+        items: updatedItems,
       });
       setEditingTransaction(null);
       showFeedback(
@@ -513,7 +587,7 @@ export const HistoryView: React.FC = () => {
                         <div className="divide-y divide-slate-100 space-y-2">
                           {tx.items.map((i, idx) => {
                             const cleanName = String(i.name || '').replace(/Rlsol/gi, 'Risol');
-                            const itemNote = i.note || i.description;
+                            const itemNote = i.notes || i.note || i.description;
                             return (
                               <div
                                 key={`${i.productId}-${idx}`}
@@ -527,19 +601,26 @@ export const HistoryView: React.FC = () => {
                                     <span className="font-bold text-amber-800 shrink-0">
                                       Catatan:
                                     </span>
-                                    <span className="leading-relaxed">{itemNote}</span>
+                                    <span className="leading-relaxed whitespace-pre-line">
+                                      {itemNote}
+                                    </span>
                                   </div>
                                 )}
                               </div>
                             );
                           })}
                         </div>
-                        {tx.notes && (
-                          <div className="mt-1.5 flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50/90 border border-amber-200/70 text-xs font-medium text-amber-950">
-                            <span className="font-bold text-amber-800 shrink-0">Catatan:</span>
-                            <span className="leading-relaxed">{tx.notes}</span>
-                          </div>
-                        )}
+                        {tx.notes &&
+                          !tx.items.some(
+                            (i) => (i.notes || i.note || i.description) === tx.notes
+                          ) && (
+                            <div className="mt-1.5 flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50/90 border border-amber-200/70 text-xs font-medium text-amber-950">
+                              <span className="font-bold text-amber-800 shrink-0">Catatan:</span>
+                              <span className="leading-relaxed whitespace-pre-line">
+                                {tx.notes}
+                              </span>
+                            </div>
+                          )}
                       </div>
                     </div>
 
@@ -684,7 +765,7 @@ export const HistoryView: React.FC = () => {
                           <div className="divide-y divide-slate-100 space-y-1.5">
                             {tx.items.map((i, idx) => {
                               const cleanName = String(i.name || '').replace(/Rlsol/gi, 'Risol');
-                              const itemNote = i.note || i.description;
+                              const itemNote = i.notes || i.note || i.description;
                               return (
                                 <div
                                   key={`${i.productId}-${idx}`}
@@ -698,19 +779,26 @@ export const HistoryView: React.FC = () => {
                                       <span className="font-bold text-amber-800 shrink-0">
                                         Catatan:
                                       </span>
-                                      <span className="leading-relaxed">{itemNote}</span>
+                                      <span className="leading-relaxed whitespace-pre-line">
+                                        {itemNote}
+                                      </span>
                                     </div>
                                   )}
                                 </div>
                               );
                             })}
                           </div>
-                          {tx.notes && (
-                            <div className="mt-1.5 flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50/90 border border-amber-200/70 text-xs font-medium text-amber-950">
-                              <span className="font-bold text-amber-800 shrink-0">Catatan:</span>
-                              <span className="leading-relaxed">{tx.notes}</span>
-                            </div>
-                          )}
+                          {tx.notes &&
+                            !tx.items.some(
+                              (i) => (i.notes || i.note || i.description) === tx.notes
+                            ) && (
+                              <div className="mt-1.5 flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50/90 border border-amber-200/70 text-xs font-medium text-amber-950">
+                                <span className="font-bold text-amber-800 shrink-0">Catatan:</span>
+                                <span className="leading-relaxed whitespace-pre-line">
+                                  {tx.notes}
+                                </span>
+                              </div>
+                            )}
                         </td>
 
                         {/* Kolom Metode Pembayaran */}
@@ -957,17 +1045,41 @@ export const HistoryView: React.FC = () => {
                 </select>
               </div>
 
-              {/* Textarea Catatan Transaksi (notes) */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Catatan Transaksi (Notes)
+              {/* Bagian Input Catatan / Komposisi Mix */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Catatan Pesanan / Komposisi Mix
                 </label>
                 <textarea
+                  rows={3}
                   value={editFormData.notes}
-                  onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
-                  placeholder="Tambahkan catatan transaksi (misal: pembayaran via transfer BCA, pesanan khusus, dll)..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all resize-none h-24"
+                  onChange={(e) => handleChangeEditNotes(e.target.value)}
+                  placeholder="Contoh: 2pcs ayam, 1pcs Mac"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium"
                 />
+
+                {/* Tombol Preset Cepat Catatan */}
+                <div className="flex flex-wrap gap-1.5 pt-1.5">
+                  {[
+                    '2pcs Ayam, 1pcs MnC',
+                    '1pcs Ayam, 2pcs MnC',
+                    '4pcs Ayam, 2pcs MnC',
+                    '2pcs Mac, 1pcs Ayam Balado',
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleChangeEditNotes(preset)}
+                      className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-colors cursor-pointer touch-manipulation ${
+                        editFormData.notes === preset
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Tombol Aksi Bawah: Batal & Simpan */}

@@ -1350,8 +1350,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           category: item.product?.category || 'Umum',
           price: itemPrice,
           quantity: itemQty,
+          qty: itemQty,
           subtotal: itemPrice * itemQty,
-          ...(trimmedNote ? { note: trimmedNote, description: trimmedNote } : {}),
+          ...(trimmedNote
+            ? { note: trimmedNote, notes: trimmedNote, description: trimmedNote }
+            : {}),
         };
       }),
       subtotal,
@@ -1539,8 +1542,24 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const syncedCashier =
         updatedData.cashierName ?? updatedData.cashier ?? updatedData.pic;
       const syncedShift = updatedData.shift ?? updatedData.cashierShift;
+      const normalizedItems = Array.isArray(updatedData.items)
+        ? updatedData.items.map((item) => {
+            const itemNote = (item.notes ?? item.note ?? item.description ?? '').trim();
+            const itemQty = Number(item.quantity ?? item.qty) || 1;
+            return {
+              ...item,
+              quantity: itemQty,
+              qty: itemQty,
+              note: itemNote,
+              notes: itemNote,
+              description: itemNote,
+            };
+          })
+        : undefined;
+
       const normalizedData: Partial<Transaction> = {
         ...updatedData,
+        ...(normalizedItems !== undefined ? { items: normalizedItems } : {}),
         ...(syncedCashier !== undefined
           ? {
               cashierName: syncedCashier,

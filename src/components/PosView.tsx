@@ -345,6 +345,32 @@ export const PosView: React.FC = () => {
                 placeholder="Cth: 2pcs Ayam, 1pcs Mac..."
                 className="w-full px-2.5 py-1.5 text-[11px] bg-slate-50 border border-slate-200 rounded-lg text-slate-700 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-amber-500"
               />
+
+              {/* Chips Preset Cepat Khusus Menu Risol Mix */}
+              {item.name.toLowerCase().includes('mix') && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+                  {[
+                    { label: '2 Ayam, 1 MnC', val: '2pcs Ayam, 1pcs MnC' },
+                    { label: '1 Ayam, 2 MnC', val: '1pcs Ayam, 2pcs MnC' },
+                    { label: '4 Ayam, 2 MnC (2 Porsi)', val: '4pcs Ayam, 2pcs MnC' },
+                    { label: '3 Ayam Full', val: '3pcs Ayam' },
+                    { label: '3 MnC Full', val: '3pcs MnC' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => updateItemNotes(item.id, preset.val)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors border cursor-pointer touch-manipulation ${
+                        item.notes === preset.val
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ))
         )}

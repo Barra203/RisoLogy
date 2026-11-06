@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useDragScroll } from '../hooks/useDragScroll';
 import { formatCurrency } from '../utils/formatters';
+import { calculateKitchenProduction } from '../utils/risolCalculator';
 
 // Helper untuk mengekstrak nominal pengeluaran secara konsisten
 const getExpenseNominal = (item: SupplierExpense): number => {
@@ -313,6 +314,11 @@ export const DashboardView: React.FC = () => {
 
   // 3. Estimasi Sisa Kas Akurat (Modal Aktif + Omzet Masuk - Pengeluaran)
   const cashOnHand = activeInitialCapital + batchRevenue - batchExpenses;
+
+  // 4. Rekap Kebutuhan Produksi Dapur (Kitchen Prep List) berdasarkan transaksi terfilter
+  const productionData = useMemo(() => {
+    return calculateKitchenProduction(filteredTransactions);
+  }, [filteredTransactions]);
 
   // Kalkulasi Metrik Keuangan Utama
   const metrics = useMemo(() => {
@@ -740,6 +746,109 @@ export const DashboardView: React.FC = () => {
               Kas Akhir + Modal Aktif
             </div>
           </div>
+        </div>
+
+        {/* === 2B. KARTU WIDGET KEBUTUHAN PRODUKSI DAPUR (KITCHEN PREP LIST) === */}
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+          {/* Header Card */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0">
+                🍳
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 leading-none">
+                  Kebutuhan Produksi Risol (Kitchen Prep)
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Dihitung otomatis: 1 porsi = 3 pcs (termasuk kalkulasi catatan Risol Mix)
+                </p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 self-start sm:self-auto shrink-0 tabular-nums">
+              Total: {productionData.totalPcs} Pcs ({productionData.totalPortions} Porsi)
+            </span>
+          </div>
+
+          {/* Grid 2 Kolom Varian Risol */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {/* Kartu Risol Ayam Balado */}
+            <div className="p-4 rounded-xl border border-rose-100 bg-rose-50/40 flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-rose-800 uppercase tracking-wider">
+                  🍗 Risol Ayam Balado
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-extrabold text-slate-900 tabular-nums">
+                    {productionData.ayamBaladoPcs}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-500">
+                    pcs perlu dibikin
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-400 block tabular-nums">
+                  Setara ±{(productionData.ayamBaladoPcs / 3).toFixed(1)} Porsi
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-bold text-rose-700 bg-white px-2.5 py-1 rounded-md border border-rose-200 shadow-xs tabular-nums">
+                  {productionData.totalPcs > 0
+                    ? Math.round(
+                        (productionData.ayamBaladoPcs / productionData.totalPcs) * 100
+                      )
+                    : 0}
+                  %
+                </span>
+              </div>
+            </div>
+
+            {/* Kartu Risol Mac-n-Cheese */}
+            <div className="p-4 rounded-xl border border-amber-200/80 bg-amber-50/40 flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">
+                  🧀 Risol Mac-n-Cheese
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-extrabold text-slate-900 tabular-nums">
+                    {productionData.macCheesePcs}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-500">
+                    pcs perlu dibikin
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-400 block tabular-nums">
+                  Setara ±{(productionData.macCheesePcs / 3).toFixed(1)} Porsi
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-bold text-amber-700 bg-white px-2.5 py-1 rounded-md border border-amber-200 shadow-xs tabular-nums">
+                  {productionData.totalPcs > 0
+                    ? Math.round(
+                        (productionData.macCheesePcs / productionData.totalPcs) * 100
+                      )
+                    : 0}
+                  %
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Peringatan jika ada pesanan mix yang catatannya belum terisi/salah */}
+          {productionData.unparsedMixPortions > 0 && (
+            <div className="p-2.5 rounded-lg bg-amber-100/60 border border-amber-300 text-[11px] text-amber-900 flex items-center justify-between gap-2">
+              <span>
+                ⚠️ Ada {productionData.unparsedMixPortions} porsi Risol Mix tanpa rincian
+                jelas (dihitung default 2 Ayam + 1 Mac).
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveTab('history')}
+                className="font-semibold underline cursor-pointer shrink-0 hover:text-amber-950"
+              >
+                Cek Riwayat
+              </button>
+            </div>
+          )}
         </div>
 
         {/* === 3. GRAFIK & ANALISIS DATA (2 KOLOM SEJAJAR) === */}

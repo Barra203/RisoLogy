@@ -95,8 +95,10 @@ export interface TransactionItem {
   category: string;
   price: number;
   quantity: number;
+  qty?: number;
   subtotal: number;
   note?: string; // Catatan/deskripsi khusus per-item pesanan
+  notes?: string;
   description?: string;
 }
 
